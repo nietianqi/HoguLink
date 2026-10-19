@@ -1,0 +1,232 @@
+.coordination-panel {
+  padding: 24px;
+  margin: 22px 0;
+  border: 1px solid var(--hl-line);
+  border-radius: 16px;
+  background: var(--hl-canvas);
+  min-width: 0;
+}
+.coordination-panel h2,
+.coordination-panel h3,
+.coordination-panel h4 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--hl-pine-900);
+}
+.coordination-panel h4 {
+  font-size: 15px;
+}
+.coordination-next {
+  margin: 20px 0;
+  padding: 18px 20px;
+  background: var(--hl-tint);
+  border-left: 3px solid #698569;
+  border-radius: 0 10px 10px 0;
+}
+.coordination-next > span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--hl-ink-2);
+}
+.coordination-next p {
+  font-size: 15px;
+  line-height: 1.8;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.coordination-next small {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--hl-ink-2);
+  flex-wrap: wrap;
+}
+.coordination-history {
+  margin: 20px 0;
+  border-top: 1px solid var(--hl-line);
+  padding-top: 16px;
+}
+.coordination-history summary {
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  align-content: center;
+}
+.coordination-history ol {
+  list-style: none;
+  margin: 14px 0;
+  padding: 0 0 0 15px;
+  border-left: 1px solid var(--hl-line-strong);
+}
+.coordination-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  position: relative;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 9px 0;
+  overflow-wrap: anywhere;
+}
+.coordination-history li:before {
+  content: '';
+  position: absolute;
+  left: -19px;
+  top: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hl-pine-800);
+}
+.coordination-history time {
+  color: var(--hl-ink-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.coordination-internal,
+.coordination-cases {
+  border-top: 1px solid var(--hl-line);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+.coordination-case {
+  padding: 15px 0;
+  border-bottom: 1px solid var(--hl-line);
+}
+.coordination-case > a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  color: var(--hl-pine-900);
+  text-decoration: none;
+}
+.coordination-case strong,
+.coordination-case small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.coordination-case strong {
+  font-size: 14px;
+}
+.coordination-case small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+  margin-top: 5px;
+}
+.coordination-case > button {
+  margin-top: 10px;
+  text-align: left;
+}
+.handoff-card {
+  border: 1px solid var(--hl-line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  min-width: 0;
+}
+.handoff-card > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.handoff-card > header strong {
+  font-size: 14px;
+}
+.handoff-card > header span {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.handoff-card > small {
+  display: block;
+  margin: 10px 0;
+  color: var(--hl-ink-2);
+  font-size: 11px;
+}
+.handoff-messages {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.handoff-messages > li {
+  padding: 12px 14px;
+  margin: 8px 0;
+  background: var(--hl-canvas);
+  border-radius: 8px;
+}
+.handoff-messages span {
+  font-size: 11px;
+  color: var(--hl-ink-2);
+}
+.handoff-messages p {
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.coordination-panel .flow-form select {
+  min-width: 0;
+  width: 100%;
+  padding: 12px;
+  min-height: 48px;
+  font: 16px/1.5 system-ui;
+  border: 1px solid var(--hl-line);
+  border-radius: 9px;
+  background: #fff;
+}
+.coordination-panel .flow-form {
+  margin-top: 14px;
+}
+.handoff-order-ref {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+  margin: 22px 0 -8px;
+}
+.staff-cooperation {
+  background: #fff;
+}
+.coordination-cases > p {
+  font-size: 13px;
+  color: var(--hl-ink-2);
+  line-height: 1.8;
+}
+@media (max-width: 760px) {
+  .coordination-panel {
+    padding: 20px 16px;
+    margin: 18px 0;
+  }
+  .coordination-next {
+    padding: 16px;
+  }
+  .coordination-history li {
+    flex-direction: column;
+    gap: 3px;
+  }
+  .handoff-card {
+    padding: 17px 14px;
+  }
+  .coordination-panel .flow-section-head > .quality-button {
+    width: 100%;
+    min-height: 48px;
+    white-space: normal;
+  }
+  .handoff-card .flow-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .coordination-history summary {
+    min-height: 44px;
+  }
+  .coordination-panel h2 {
+    font-size: 19px;
+  }
+}

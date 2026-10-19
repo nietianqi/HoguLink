@@ -1,0 +1,84 @@
+import type { Locale } from './index.js';
+import type { BillingStanding } from './subscription.js';
+export type MoneyEntry = {
+  id: string;
+  storeId: string;
+  bookingId: string;
+  kind: 'CAPTURE' | 'CANCELLATION' | 'REFUND' | 'OPENING';
+  at: number;
+  captured: number;
+  refunded: number;
+  platformFee: number;
+  source: 'DEMO' | 'LEGACY';
+  reversalOf?: string;
+};
+export type MoneyReport = {
+  id: string;
+  version: number;
+  reference: string;
+  captured: number;
+  refunded: number;
+  platformFee: number;
+  processorFee: number;
+  net: number;
+  status: 'MATCHED' | 'DIFFERENCE';
+  note: string;
+  at: number;
+};
+export type FinanceRow = MoneyEntry & {
+  report: MoneyReport | null;
+  history: MoneyReport[];
+  recordedBatchId?: string;
+  hold: boolean;
+  holdReason: 'AFTERCARE' | 'LEDGER' | null;
+};
+export type BillStatement = {
+  id: string;
+  storeId: string;
+  month: string;
+  revision: number;
+  at: number;
+  token: string;
+  lines: MoneyEntry[];
+  captured: number;
+  refunded: number;
+  platformFee: number;
+  net: number;
+};
+export type SettlementBatch = {
+  id: string;
+  storeId: string;
+  version: number;
+  state: 'DRAFT' | 'SHOP_CONFIRMED' | 'DISPUTED' | 'FAILED' | 'RECORDED' | 'VOID';
+  entryIds: string[];
+  token: string;
+  net: number;
+  processorFee: number;
+  createdAt: number;
+  updatedAt: number;
+  notes: { role: 'MERCHANT' | 'ADMIN'; text: string; at: number }[];
+  reference?: string;
+};
+export type FinanceWorkspace = {
+  now: number;
+  mode: 'DEMO';
+  billing: BillingStanding;
+  storeId: string;
+  stores: { id: string; name: Record<Locale, string> }[];
+  month: string;
+  token: string;
+  rows: FinanceRow[];
+  openRows: FinanceRow[];
+  statements: BillStatement[];
+  batches: SettlementBatch[];
+  totals: {
+    captured: number;
+    refunded: number;
+    platformFee: number;
+    net: number;
+    unmatched: number;
+    held: number;
+    unsettled: number;
+  };
+  canPrepare: boolean;
+};

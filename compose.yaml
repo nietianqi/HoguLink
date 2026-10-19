@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: hogulink
+      POSTGRES_USER: hogulink
+      POSTGRES_PASSWORD: local_only
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - hogulink_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hogulink"]
+      interval: 5s
+      retries: 5
+volumes:
+  hogulink_pg:

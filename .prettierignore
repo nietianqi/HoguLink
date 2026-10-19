@@ -1,0 +1,6 @@
+node_modules
+.next
+.playwright-mcp
+hogulink-api/data
+HoguLink_*
+package-lock.json

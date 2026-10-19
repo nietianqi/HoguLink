@@ -1,0 +1,30 @@
+import type { BookingStatus, Locale, SupportTicketStatus } from './index.js';
+import type { AlertKind } from './governance.js';
+export type HandoffTopic = 'VISIT_NOTE' | 'SERVICE_ISSUE' | 'AFTERCARE_FACTS';
+export type WorkHandoff = {
+  id: string;
+  bookingId: string;
+  storeId: string;
+  staffId: string;
+  listingId: string;
+  topic: HandoffTopic;
+  status: 'WAITING_STAFF' | 'WAITING_SHOP' | 'RESOLVED';
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+  ticketId?: string;
+  messages: { role: 'STAFF' | 'MERCHANT'; text: string; at: number }[];
+};
+export type HandoffView = Omit<WorkHandoff, 'storeId' | 'staffId' | 'listingId' | 'ticketId'>;
+export type StaffHandoffItem = HandoffView & { startAt: number; bookingStatus: BookingStatus };
+export type Coordination = {
+  bookingId: string;
+  bookingVersion: number;
+  now: number;
+  platformAttention?: { kind: AlertKind; firstSeenAt: number }[];
+  timeline: { id: string; action: string; at: number }[];
+  handoffs: HandoffView[];
+  cases: { id: string; subject: string; status: SupportTicketStatus; refundPending: boolean }[];
+  staffName?: Record<Locale, string>;
+  proposedName?: Record<Locale, string>;
+};

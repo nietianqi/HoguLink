@@ -1,0 +1,107 @@
+import type { Locale } from '@hogulink/contracts';
+const words = {
+  home: ['首页', 'ホーム', 'Home'],
+  discover: ['发现', '見つける', 'Discover'],
+  title: [
+    '让每一次放松，都更了解彼此',
+    'くつろぎの時間を、もっと身近に',
+    'A little closer to calm',
+  ],
+  intro: [
+    '认识附近的店铺，读懂预约规则，再从容选择服务。',
+    '地域の店舗と予約のしくみを知り、自分に合うサービスを。',
+    'Meet local shops, understand your booking, and choose with confidence.',
+  ],
+  recommended: ['为你精选', 'おすすめ', 'For you'],
+  shops: ['同城店铺', '地域の店舗', 'Local shops'],
+  guides: ['预约指南', '予約ガイド', 'Booking guides'],
+  safety: ['安心服务', '安心のために', 'Safer visits'],
+  search: ['搜索店铺或项目', '店舗・メニューを検索', 'Search shops or services'],
+  searchAction: ['查找店铺', '店舗を検索', 'Find shops'],
+  allAreas: ['全部服务地区', 'すべてのエリア', 'All service areas'],
+  empty: [
+    '暂无符合条件的店铺，请调整筛选。',
+    '条件に合う店舗はありません。条件を変更してください。',
+    'No shops match. Try other filters.',
+  ],
+  reset: ['重置筛选', '条件をリセット', 'Reset filters'],
+  viewShop: ['了解店铺', '店舗を見る', 'Meet the shop'],
+  viewServices: ['选择项目', 'メニューを選ぶ', 'Choose a service'],
+  from: ['含交通费起价', '交通費込み・最低料金', 'From, including travel'],
+  priceHelp: [
+    '店铺安排技师的含税总价；指名费另行展示，时段以预约页为准。',
+    '店舗おまかせの税込合計。指名料は別途表示し、日時は予約画面で確認します。',
+    'Total incl. tax with shop assignment. Nomination fees are shown separately; check times when booking.',
+  ],
+  shopFavorite: ['收藏店铺', '店舗を保存', 'Save shop'],
+  shopSaved: ['已收藏店铺', '保存済み', 'Shop saved'],
+  therapistFavorites: ['收藏的技师', '保存したスタッフ', 'Saved therapists'],
+  shopFavorites: ['收藏的店铺', '保存した店舗', 'Saved shops'],
+  favoriteIntro: [
+    '保存喜欢的店铺，下次直接查看当前项目与团队。',
+    '気になる店舗を保存して、次回はメニューとスタッフへ。',
+    'Keep shops you like, then return to their current menu and team.',
+  ],
+  unavailable: [
+    '店铺当前暂不可预约',
+    '現在この店舗は予約できません',
+    'This shop is currently unavailable',
+  ],
+  remove: ['取消收藏', '保存を解除', 'Remove'],
+  readGuide: ['阅读指南', 'ガイドを読む', 'Read guide'],
+  editorial: [
+    'HoguLink 预约编辑室 · 开发样例',
+    'HoguLink 予約ガイド · 開発サンプル',
+    'HoguLink booking desk · Development sample',
+  ],
+  returnDiscover: ['返回发现', '見つけるに戻る', 'Back to Discover'],
+  inbox: ['消息', 'お知らせ', 'Messages'],
+  inboxTitle: ['每一步，都心中有数', 'ご予約の動きが、ひと目で', 'Stay in the know'],
+  inboxHelp: [
+    '这里汇总本人预约和售后的站内更新。回复与处理请进入对应详情；紧急情况请使用当地紧急服务。',
+    'ご本人の予約・お問い合わせの更新です。返信や手続きは詳細画面へ。緊急時は地域の緊急窓口をご利用ください。',
+    'Your booking and support updates in one place. Open details to reply or take action; use local emergency services in an emergency.',
+  ],
+  localOnly: [
+    '站内更新；尚未接入短信、邮件或 LINE 推送。',
+    'サイト内のお知らせです。SMS・メール・LINE 配信は未接続です。',
+    'In-app updates. SMS, email and LINE delivery are not connected.',
+  ],
+  all: ['全部', 'すべて', 'All'],
+  unread: ['未读', '未読', 'Unread'],
+  bookings: ['预约动态', 'ご予約', 'Bookings'],
+  support: ['售后回复', 'お問い合わせ', 'Support'],
+  read: ['已读', '既読', 'Read'],
+  markRead: ['标为已读', '既読にする', 'Mark read'],
+  markVisible: ['当前列表标为已读', '表示中を既読にする', 'Mark displayed items read'],
+  stale: [
+    '有新的更新，已保留为未读，请刷新查看。',
+    '新しい更新があるため未読のままです。更新してください。',
+    'A new update arrived and remains unread. Refresh to see it.',
+  ],
+  openBooking: ['查看预约', '予約の詳細', 'Open booking'],
+  openSupport: ['查看工单', '問い合わせの詳細', 'Open support case'],
+  replies: ['条服务方回复', '件の運営側からの返信', 'provider replies'],
+  emptyInbox: [
+    '当前没有这类更新。',
+    'この種類のお知らせはありません。',
+    'No updates in this view.',
+  ],
+  more: ['加载更早更新', '以前のお知らせ', 'Load older updates'],
+  loading: ['正在读取…', '読み込み中…', 'Loading…'],
+  refresh: ['刷新', '更新', 'Refresh'],
+  refreshHint: [
+    '进入页面或返回页面时更新，也可手动刷新。',
+    'ページの表示・再表示時に更新します。手動でも更新できます。',
+    'Updates when you enter or return to this page. You can also refresh.',
+  ],
+  refreshError: [
+    '暂时无法读取，请刷新重试。',
+    '読み込めませんでした。更新して再試行してください。',
+    'Unable to load. Please refresh and retry.',
+  ],
+} as const;
+export type DiscoveryText = keyof typeof words;
+export function xt(locale: Locale, key: DiscoveryText) {
+  return words[key][locale === 'zh-cn' ? 0 : locale === 'ja' ? 1 : 2];
+}

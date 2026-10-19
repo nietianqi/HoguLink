@@ -1,0 +1,2431 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import {
+  addressInput,
+  bookingInput,
+  quoteInput,
+  automaticAcceptanceReason,
+  dailyAutomaticCount,
+  scheduledCancellationBps,
+  type Actor,
+  type Audit,
+  type Booking,
+  type Hold,
+  type Listing,
+  type Message,
+  type Offering,
+  type Quote,
+  type SafetyEvent,
+  type Store,
+  type TimeOffRequest,
+} from '@hogulink/contracts';
+import { config } from './config.js';
+import { toPublicStore, toPublicListing } from './public-catalog.js';
+import { CustomerAuth } from './customer-auth.js';
+import { NotificationWorker, configuredSender } from './notifications.js';
+import { RateLimiter } from './rate-limit.js';
+import { ContentReviewService, contentRuleIds, queueContentReview } from './content-review.js';
+import { effectiveBookingRules } from './booking-rules.js';
+import { DomainError, ensure } from './errors.js';
+import { Repository, type Records } from './repository.js';
+import { CareService, assertCanBook, safetyEventView } from './care.js';
+import { MerchantService, type TimeBlock } from './merchant.js';
+import { StaffService } from './staff.js';
+import { AdminService } from './admin.js';
+import { TicketHandlingService } from './ticket-handling.js';
+import { EmployeeService } from './employees.js';
+import { requireAdmin } from './admin-access.js';
+import { staffBookingAccess } from './staff-access.js';
+import { ExperienceService } from './experience.js';
+import { EngagementService } from './engagement.js';
+import { AddressService } from './addresses.js';
+import { RefundService } from './refund-requests.js';
+import { CoordinationService } from './coordination.js';
+import { GovernanceService } from './governance.js';
+import { FinanceService, ensureMoneyOpening, recordMoney } from './finance.js';
+import { SubscriptionService, sweepSubscriptions } from './subscription.js';
+import { InvoicingService } from './invoicing.js';
+import { ReportingService } from './reporting.js';
+import { FulfillmentService, lateInstant, sweepFulfillment } from './fulfillment.js';
+import { OnboardingService, requireCurrentQualifications, sweepOnboarding } from './onboarding.js';
+import {
+  completionCase,
+  completionReceipt,
+  completionWindowMs,
+  serviceEligibleAt,
+} from './completion.js';
+
+type Payment = {
+  id: string;
+  customerId: string;
+  quoteId: string;
+  holdId: string;
+  amount: number;
+  account: string;
+  status: 'AUTHORIZED' | 'METHOD_SAVED' | 'PAID' | 'VOIDED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+  verified3ds: boolean;
+  expiresAt: number;
+  bookingId?: string;
+  capturedAmount?: number;
+  voidedAmount?: number;
+  refundedAmount?: number;
+};
+type Idempotency = { id: string; hash: string; bookingId: string };
+const terminal = new Set(['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED']);
+const activeBookingStatuses = [
+  'REQUESTED',
+  'ACCEPTED',
+  'CONFIRMED',
+  'EN_ROUTE',
+  'ARRIVED',
+  'IN_SERVICE',
+  'AWAITING_COMPLETION',
+];
+const minute = 60_000;
+const id = (prefix: string) => `${prefix}_${randomUUID()}`;
+export class Engine {
+  readonly customers: CustomerAuth;
+  readonly notifications: NotificationWorker;
+  readonly limits: RateLimiter;
+  readonly contentReview: ContentReviewService;
+  readonly care: CareService;
+  readonly merchant: MerchantService;
+  readonly staff: StaffService;
+  readonly admin: AdminService;
+  readonly handling: TicketHandlingService;
+  readonly employees: EmployeeService;
+  readonly onboarding: OnboardingService;
+  readonly experience: ExperienceService;
+  readonly engagement: EngagementService;
+  readonly addresses: AddressService;
+  readonly refunds: RefundService;
+  readonly fulfillment: FulfillmentService;
+  readonly coordination: CoordinationService;
+  readonly governance: GovernanceService;
+  readonly finance: FinanceService;
+  readonly subscriptions: SubscriptionService;
+  readonly invoicing: InvoicingService;
+  readonly reporting: ReportingService;
+  constructor(
+    public repo: Repository,
+    public now = () => Date.now(),
+  ) {
+    this.customers = new CustomerAuth(repo, now);
+    this.notifications = new NotificationWorker(repo, configuredSender(), now);
+    this.limits = new RateLimiter(repo, now);
+    this.contentReview = new ContentReviewService(repo, now);
+    this.care = new CareService(repo, now);
+    this.merchant = new MerchantService((fn) => this.run(fn), now);
+    this.staff = new StaffService((fn) => this.run(fn), now);
+    this.admin = new AdminService((fn) => this.run(fn), now);
+    this.handling = new TicketHandlingService((fn) => this.run(fn), now);
+    this.employees = new EmployeeService((fn) => this.run(fn), now);
+    this.onboarding = new OnboardingService((fn) => this.run(fn), now);
+    this.experience = new ExperienceService((fn) => this.run(fn), now);
+    this.engagement = new EngagementService((fn) => this.run(fn), now);
+    this.addresses = new AddressService((fn) => this.run(fn), now);
+    this.refunds = new RefundService(
+      (fn) => this.run(fn),
+      now,
+      this.care,
+      (tx, actor, b, amount) => this.applyRefund(tx, actor, b, amount),
+    );
+    this.fulfillment = new FulfillmentService((fn) => this.run(fn), now);
+    this.coordination = new CoordinationService((fn) => this.run(fn), now);
+    this.governance = new GovernanceService((fn) => this.run(fn), now, this.care);
+    this.finance = new FinanceService((fn) => this.run(fn), now);
+    this.subscriptions = new SubscriptionService((fn) => this.run(fn), now);
+    this.invoicing = new InvoicingService(
+      (fn) => this.run(fn),
+      now,
+      (tx, id) => this.finance.rows(tx, id),
+    );
+    this.reporting = new ReportingService(
+      (fn) => this.run(fn),
+      now,
+      (tx, id) => this.finance.rows(tx, id),
+    );
+  }
+  run<T>(fn: (tx: Records) => Promise<T>) {
+    return this.repo.transaction(async (tx) => {
+      await this.sweep(tx);
+      return fn(tx);
+    });
+  }
+  private async read<T>(fn: (tx: Records) => Promise<T>) {
+    // Background cleanup normally processes deadlines. Catch up only when an indexed deadline
+    // is due, so discovery also remains correct after a stopped worker or a clock jump.
+    if (await this.repo.hasDue(this.now())) await this.run(async () => {});
+    return this.repo.read(fn);
+  }
+  private async dailyAutomaticCount(tx: Records, storeId: string, startAt: number) {
+    const start = Math.floor((startAt + 9 * 3600000) / 86400000) * 86400000 - 9 * 3600000;
+    const filters = { storeId, 'quote.startAt': { gte: start, lt: start + 86400000 } };
+    return (
+      (await tx.count('bookings', { ...filters, 'acceptanceDecision.outcome': 'AUTO_ACCEPTED' })) +
+      (await tx.count('bookings', {
+        ...filters,
+        acceptanceDecision: null,
+        merchantAcceptance: 'AUTO_ACCEPTED',
+      }))
+    );
+  }
+  private async audit(tx: Records, actor: Actor, action: string, bookingId?: string, detail = '') {
+    await tx.put<Audit>('audit', {
+      id: id('audit'),
+      actorId: actor.id,
+      action,
+      bookingId,
+      bookingVersion: bookingId
+        ? (await tx.get<Booking>('bookings', bookingId))?.version
+        : undefined,
+      detail,
+      at: this.now(),
+    });
+    await tx.put('outbox', {
+      id: id('outbox'),
+      type: action,
+      bookingId,
+      createdAt: this.now(),
+      status: 'PENDING',
+      delivery: 'DEMO_LOCAL_ONLY',
+    });
+  }
+  private role(actor: Actor, ...roles: Actor['role'][]) {
+    ensure(
+      roles.includes(actor.role),
+      'FORBIDDEN',
+      'This operation is not available to this role.',
+      403,
+    );
+  }
+  private async listing(tx: Records, listingId: string, existingOrder = false) {
+    const listing = await tx.get<Listing>('listings', listingId);
+    const store = listing && (await tx.get<Store>('stores', listing.storeId));
+    ensure(
+      listing &&
+        store &&
+        listing.membershipActive &&
+        listing.portraitConsent &&
+        listing.identityVerified &&
+        listing.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+        store.active &&
+        store.approved &&
+        store.pspAccount,
+      'LISTING_UNAVAILABLE',
+      'This listing is no longer available.',
+      409,
+    );
+    ensure(
+      existingOrder || !store.billingBlocked,
+      'LISTING_UNAVAILABLE',
+      'This shop is temporarily unavailable for new bookings.',
+      409,
+    );
+    return { listing, store };
+  }
+  private async allowed(tx: Records, actor: Actor, storeId: string) {
+    await assertCanBook(tx, actor, storeId, this.now());
+  }
+  private async currentQuote(tx: Records, quote: Quote) {
+    const { store } = await this.listing(tx, quote.listingId);
+    const offering = await tx.get<Offering>('offerings', quote.offeringId);
+    ensure(
+      offering?.approved && offering.active !== false && offering.version === quote.offeringVersion,
+      'PRICE_CHANGED',
+      'Service pricing changed. Request a new quote.',
+      409,
+    );
+    ensure(
+      quote.storeRuleVersion === undefined || quote.storeRuleVersion === store.ruleVersion,
+      'SHOP_RULES_CHANGED',
+      'Shop booking rules changed. Request a new quote.',
+      409,
+    );
+    ensure(
+      (quote.bookingRulesVersion ?? 0) === effectiveBookingRules(store).version,
+      'SHOP_RULES_CHANGED',
+      'Shop prices or cancellation policy changed. Request a new quote.',
+      409,
+    );
+  }
+  private async getBooking(tx: Records, actor: Actor, bookingId: string, version?: number) {
+    const booking = await tx.get<Booking>('bookings', bookingId);
+    ensure(booking, 'NOT_FOUND', 'Booking not found.', 404);
+    ensure(
+      actor.role === 'ADMIN' ||
+        (actor.role === 'CUSTOMER' && actor.id === booking.customerId) ||
+        (actor.role === 'MERCHANT' && actor.storeId === booking.storeId) ||
+        (actor.role === 'STAFF' && (await staffBookingAccess(tx, actor, booking))),
+      'NOT_FOUND',
+      'Booking not found.',
+      404,
+    );
+    if (version !== undefined)
+      ensure(
+        version === booking.version,
+        'VERSION_CONFLICT',
+        'This booking has changed. Refresh and try again.',
+        409,
+      );
+    return booking;
+  }
+  private async save(tx: Records, booking: Booking, actor: Actor, action: string, detail = '') {
+    booking.version++;
+    booking.updatedAt = this.now();
+    await tx.put('bookings', booking);
+    await this.audit(tx, actor, action, booking.id, detail);
+    return this.redact(booking, actor);
+  }
+  private deadline(quote: Quote, replacement = false) {
+    const lead = (quote.startAt - this.now()) / minute;
+    const window = replacement
+      ? lead <= 1440
+        ? config.windows.replacementSameDayMinutes
+        : config.windows.advanceMinutes
+      : quote.bookingMode === 'INSTANT'
+        ? config.windows.instantMinutes
+        : lead <= 1440
+          ? config.windows.sameDayMinutes
+          : config.windows.advanceMinutes;
+    return Math.min(
+      this.now() + window * minute,
+      quote.startAt - (lead > 1440 && !replacement ? 720 : 15) * minute,
+    );
+  }
+  private buffered(quote: Quote) {
+    return {
+      startAt:
+        quote.bookingMode === 'INSTANT'
+          ? this.now()
+          : quote.startAt - config.bufferMinutes * minute,
+      endAt: quote.endAt + config.bufferMinutes * minute,
+    };
+  }
+  private async freeStaff(tx: Records, quote: Quote, exceptId = '') {
+    const serving = new Set(
+      quote.bookingMode === 'INSTANT'
+        ? (await tx.find<Booking>('bookings', { status: ['IN_SERVICE', 'EN_ROUTE', 'ARRIVED'] }))
+            .filter(
+              (b) =>
+                b.id !== exceptId &&
+                (b.status === 'IN_SERVICE' ||
+                  (['EN_ROUTE', 'ARRIVED'].includes(b.status) && b.quote.endAt <= this.now())),
+            )
+            .map((b) => b.assignedStaffId)
+        : [],
+    );
+    const candidates = (await tx.list<Listing>('listings')).filter(
+      (x) =>
+        x.storeId === quote.storeId &&
+        x.membershipActive &&
+        x.portraitConsent &&
+        x.identityVerified &&
+        x.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+        x.offeringIds.includes(quote.offeringId) &&
+        !serving.has(x.staffId) &&
+        (!quote.requiredLanguage || x.languages.includes(quote.requiredLanguage)) &&
+        (quote.nominationType === 'FREE' || x.id === quote.listingId) &&
+        (quote.bookingMode !== 'INSTANT' ||
+          (x.onDuty && this.now() - x.dutyUpdatedAt < 4 * 60 * minute)),
+    );
+    const available: Listing[] = [];
+    for (const candidate of candidates)
+      if (
+        !(await tx.conflicts(
+          candidate.staffId,
+          this.buffered(quote).startAt,
+          this.buffered(quote).endAt,
+          exceptId,
+        ))
+      )
+        available.push(candidate);
+    return available;
+  }
+  async publicCatalog(filters: { area?: string; language?: string; mode?: string } = {}) {
+    return this.read(async (tx) => {
+      const serving = new Set(
+        (await tx.find<Booking>('bookings', { status: ['IN_SERVICE', 'EN_ROUTE', 'ARRIVED'] }))
+          .filter(
+            (b) =>
+              b.status === 'IN_SERVICE' ||
+              (['EN_ROUTE', 'ARRIVED'].includes(b.status) && b.quote.endAt <= this.now()),
+          )
+          .map((b) => b.assignedStaffId),
+      );
+      const stores = (await tx.list<Store>('stores')).filter(
+        (x) => x.active && x.approved && !x.billingBlocked,
+      );
+      const catalogOfferings = await tx.list<Offering>('offerings');
+      const firstInstant = Math.ceil((this.now() + 60 * minute) / (15 * minute)) * 15 * minute;
+      const catalogCounts = new Map<string, number>();
+      if (filters.mode === 'INSTANT')
+        for (const store of stores)
+          catalogCounts.set(store.id, await this.dailyAutomaticCount(tx, store.id, firstInstant));
+      const listings = (await tx.list<Listing>('listings')).filter(
+        (x) =>
+          x.membershipActive &&
+          x.portraitConsent &&
+          x.identityVerified &&
+          x.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+          stores.some(
+            (s) =>
+              s.id === x.storeId &&
+              (!filters.area || s.areas.includes(filters.area)) &&
+              (filters.mode !== 'INSTANT' ||
+                (s.acceptanceMode !== 'MANUAL' &&
+                  !!s.emergencyContact &&
+                  (s.acceptanceMode === 'SOLO' ||
+                    catalogOfferings.some(
+                      (o) =>
+                        o.storeId === s.id &&
+                        o.approved &&
+                        o.active !== false &&
+                        x.offeringIds.includes(o.id) &&
+                        automaticAcceptanceReason(
+                          s,
+                          {
+                            bookingMode: 'INSTANT',
+                            offeringId: o.id,
+                            area: filters.area || s.acceptanceRule?.areas[0] || '',
+                            startAt: firstInstant,
+                            endAt: firstInstant + o.durationMinutes * minute,
+                            total:
+                              o.price + o.transportFee + effectiveBookingRules(s).nominationFee,
+                          },
+                          x.id,
+                          catalogCounts.get(s.id) ?? 0,
+                        ) === 'ELIGIBLE',
+                    )))),
+          ) &&
+          (!filters.language || x.languages.includes(filters.language)) &&
+          (filters.mode !== 'INSTANT' ||
+            (x.onDuty &&
+              !serving.has(x.staffId) &&
+              this.now() - x.dutyUpdatedAt < 4 * 60 * minute)),
+      );
+      const managedStores = new Set(
+        (await tx.list<import('@hogulink/contracts').PartnerApplication>('partnerApplications'))
+          .filter((a) => a.type === 'MERCHANT')
+          .map((a) => a.storeId),
+      );
+      const visibleStores = stores.filter(
+        (s) => !managedStores.has(s.id) || listings.some((l) => l.storeId === s.id),
+      );
+      return {
+        listings: listings.map((x) =>
+          toPublicListing(
+            x,
+            x.onDuty && !serving.has(x.staffId) && this.now() - x.dutyUpdatedAt < 4 * 60 * minute,
+          ),
+        ),
+        stores: visibleStores.map(toPublicStore),
+        offerings: (await tx.list<Offering>('offerings'))
+          .filter(
+            (x) =>
+              x.approved && x.active !== false && visibleStores.some((s) => s.id === x.storeId),
+          )
+          .sort((a, b) => a.durationMinutes - b.durationMinutes),
+        demo: true,
+        bookingRules: {
+          nominationFee: config.nominationFee,
+          cancellationPolicy: { ...config.cancellation },
+        },
+      };
+    });
+  }
+  async availability(
+    listingId: string,
+    offeringId?: string,
+    free = false,
+    language = '',
+    mode = 'SCHEDULED',
+    area = '',
+  ) {
+    return this.read(async (tx) => {
+      const { listing, store } = await this.listing(tx, listingId);
+      const offerings = (await tx.list<Offering>('offerings')).filter(
+        (x) =>
+          x.approved &&
+          x.active !== false &&
+          x.regulatoryCategory === 'RELAXATION' &&
+          x.storeId === store.id &&
+          (free || listing.offeringIds.includes(x.id)),
+      );
+      const offering = offeringId
+        ? offerings.find((x) => x.id === offeringId)
+        : offerings.sort((a, b) => a.durationMinutes - b.durationMinutes)[0];
+      ensure(offering, 'INVALID_OFFERING', 'Select a valid service.');
+      const instant = mode === 'INSTANT';
+      const pool = free
+        ? (await tx.list<Listing>('listings')).filter(
+            (x) =>
+              x.storeId === store.id &&
+              x.membershipActive &&
+              x.portraitConsent &&
+              x.identityVerified &&
+              x.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+              x.offeringIds.includes(offering.id) &&
+              (!language || x.languages.includes(language)),
+          )
+        : [listing];
+      const serving = new Set(
+        instant
+          ? (await tx.find<Booking>('bookings', { status: ['IN_SERVICE', 'EN_ROUTE', 'ARRIVED'] }))
+              .filter(
+                (b) =>
+                  b.status === 'IN_SERVICE' ||
+                  (['EN_ROUTE', 'ARRIVED'].includes(b.status) && b.quote.endAt <= this.now()),
+              )
+              .map((b) => b.assignedStaffId)
+          : [],
+      );
+      const candidates = pool.filter(
+        (x) =>
+          !serving.has(x.staffId) &&
+          (!language || x.languages.includes(language)) &&
+          (!instant ||
+            (store.acceptanceMode !== 'MANUAL' &&
+              !!store.emergencyContact &&
+              x.onDuty &&
+              this.now() - x.dutyUpdatedAt < 4 * 60 * minute)),
+      );
+      const values: number[] = [];
+      for (
+        let value =
+          Math.ceil((this.now() + 60 * minute) / ((instant ? 15 : 30) * minute)) *
+          (instant ? 15 : 30) *
+          minute;
+        value < this.now() + (instant ? 76 * minute : 72 * 60 * minute);
+        value += 30 * minute
+      ) {
+        const jstHour = new Date(value + 9 * 60 * minute).getUTCHours();
+        if (!instant && (jstHour < 9 || jstHour >= 22)) continue;
+        for (const candidate of candidates)
+          if (
+            (!instant ||
+              store.acceptanceMode !== 'AUTO_PREAUTHORIZED' ||
+              automaticAcceptanceReason(
+                store,
+                {
+                  bookingMode: 'INSTANT',
+                  offeringId: offering.id,
+                  area: area || store.acceptanceRule?.areas[0] || '',
+                  startAt: value,
+                  endAt: value + offering.durationMinutes * minute,
+                  total:
+                    offering.price +
+                    offering.transportFee +
+                    (free ? 0 : effectiveBookingRules(store).nominationFee),
+                },
+                candidate.id,
+                await this.dailyAutomaticCount(tx, store.id, value),
+              ) === 'ELIGIBLE') &&
+            !(await tx.conflicts(
+              candidate.staffId,
+              instant ? this.now() : value - config.bufferMinutes * minute,
+              value + (offering.durationMinutes + config.bufferMinutes) * minute,
+            ))
+          ) {
+            values.push(value);
+            break;
+          }
+      }
+      return { slots: values, timezone: 'Asia/Tokyo', arrivalRangeMinutes: [30, 60] };
+    });
+  }
+  async quote(actor: Actor, input: unknown) {
+    this.role(actor, 'CUSTOMER');
+    const data = quoteInput.parse(input);
+    return this.run(async (tx) => {
+      const { listing, store } = await this.listing(tx, data.listingId);
+      await this.allowed(tx, actor, store.id);
+      const offering = await tx.get<Offering>('offerings', data.offeringId);
+      ensure(
+        offering &&
+          offering.approved &&
+          offering.active !== false &&
+          offering.regulatoryCategory === 'RELAXATION' &&
+          offering.storeId === store.id &&
+          listing.offeringIds.includes(offering.id),
+        'INVALID_OFFERING',
+        'Select an available service from this shop.',
+      );
+      ensure(
+        store.areas.includes(data.area),
+        'OUTSIDE_SERVICE_AREA',
+        'The address is outside this shop’s service area.',
+      );
+      ensure(
+        data.startAt > this.now() + 15 * minute &&
+          data.startAt < this.now() + 30 * 24 * 60 * minute,
+        'INVALID_TIME',
+        'Select a future time within 30 days.',
+      );
+      if (data.bookingMode === 'INSTANT')
+        ensure(
+          data.startAt <= this.now() + 180 * minute &&
+            store.acceptanceMode !== 'MANUAL' &&
+            !!store.emergencyContact,
+          'INSTANT_UNAVAILABLE',
+          'Instant booking is not available for this shop.',
+        );
+      const q: Quote = {
+        ...data,
+        id: id('quote'),
+        customerId: actor.id,
+        storeId: store.id,
+        merchantId: store.merchantId,
+        offeringVersion: offering.version,
+        serviceName: { ...offering.name },
+        regulatoryCategory: offering.regulatoryCategory,
+        storeRuleVersion: store.ruleVersion,
+        endAt: data.startAt + offering.durationMinutes * minute,
+        expiresAt: this.now() + config.quoteTtlSeconds * 1000,
+        serviceFee: offering.price,
+        nominationFee:
+          data.nominationType === 'NOMINATED' ? effectiveBookingRules(store).nominationFee : 0,
+        bookingRulesVersion: effectiveBookingRules(store).version,
+        transportFee: offering.transportFee,
+        total: 0,
+        cancellationPolicy: effectiveBookingRules(store).cancellationPolicy,
+      };
+      q.total = q.serviceFee + q.nominationFee + q.transportFee;
+      const availableStaff = await this.freeStaff(tx, q);
+      ensure(
+        availableStaff.length,
+        'SLOT_CONFLICT',
+        'No matching staff are available at this time.',
+        409,
+      );
+      if (q.bookingMode === 'INSTANT' && store.acceptanceMode === 'AUTO_PREAUTHORIZED') {
+        const candidates = availableStaff;
+        const used = await this.dailyAutomaticCount(tx, store.id, q.startAt);
+        ensure(
+          candidates.some(
+            (candidate) => automaticAcceptanceReason(store, q, candidate.id, used) === 'ELIGIBLE',
+          ),
+          'INSTANT_UNAVAILABLE',
+          'No authorized automatic acceptance rule covers this visit.',
+          409,
+        );
+      }
+      await tx.put('quotes', q);
+      return q;
+    });
+  }
+  async hold(actor: Actor, quoteId: string) {
+    this.role(actor, 'CUSTOMER');
+    ensure(
+      actor.verificationLevel >= 1,
+      'VERIFICATION_REQUIRED',
+      'Please sign in before reserving a time.',
+      403,
+    );
+    return this.run(async (tx) => {
+      const q = await tx.get<Quote>('quotes', quoteId);
+      ensure(
+        q && q.customerId === actor.id && q.expiresAt > this.now(),
+        'QUOTE_EXPIRED',
+        'Your quote expired. Please select the service again.',
+        409,
+      );
+      await this.currentQuote(tx, q);
+      await this.allowed(tx, actor, q.storeId);
+      const holds = await tx.find<Hold>('holds', {
+        customerId: actor.id,
+        createdAt: { gte: this.now() - 3600000 },
+      });
+      const existing = holds.find(
+        (x) => x.active && x.quoteId === q.id && x.phase === 'CHECKOUT_HOLD',
+      );
+      if (existing) return existing;
+      ensure(
+        holds.filter((x) => x.active && x.phase === 'CHECKOUT_HOLD').length <
+          config.maxActiveHolds &&
+          holds.filter((x) => x.createdAt > this.now() - 60 * minute).length <
+            config.maxHoldsPerHour,
+        'HOLD_LIMIT',
+        'Too many time reservations. Wait for an existing hold to expire.',
+        429,
+      );
+      const pool = await this.freeStaff(tx, q);
+      const store = (await this.listing(tx, q.listingId)).store;
+      const used =
+        store.acceptanceMode === 'AUTO_PREAUTHORIZED'
+          ? await this.dailyAutomaticCount(tx, store.id, q.startAt)
+          : 0;
+      const authorized = pool.find(
+        (candidate) => automaticAcceptanceReason(store, q, candidate.id, used) === 'ELIGIBLE',
+      );
+      if (q.bookingMode === 'INSTANT' && store.acceptanceMode === 'AUTO_PREAUTHORIZED')
+        ensure(
+          authorized,
+          'INSTANT_UNAVAILABLE',
+          'Automatic acceptance is no longer available.',
+          409,
+        );
+      const staff = authorized ?? pool[0];
+      ensure(staff, 'SLOT_CONFLICT', 'This time was just reserved. Select another time.', 409);
+      const hold: Hold = {
+        id: id('hold'),
+        quoteId: q.id,
+        customerId: actor.id,
+        listingId: staff.id,
+        staffId: staff.staffId,
+        phase: 'CHECKOUT_HOLD',
+        expiresAt: Math.min(this.now() + config.holdTtlSeconds * 1000, q.expiresAt),
+        active: true,
+        createdAt: this.now(),
+      };
+      await tx.interval({
+        id: hold.id,
+        staffId: hold.staffId,
+        ...this.buffered(q),
+        expiresAt: hold.expiresAt,
+      });
+      await tx.put('holds', hold);
+      await this.audit(tx, actor, 'HOLD_CREATED', undefined, hold.id);
+      return hold;
+    });
+  }
+  async checkoutSubmission(actor: Actor, holdId: string) {
+    this.role(actor, 'CUSTOMER');
+    return this.run(async (tx) => {
+      const h = await tx.get<Hold>('holds', holdId);
+      ensure(h?.customerId === actor.id, 'NOT_FOUND', 'Reservation not found.', 404);
+      const b = h.bookingId ? await tx.get<Booking>('bookings', h.bookingId) : undefined;
+      return { bookingId: b?.customerId === actor.id ? b.id : null };
+    });
+  }
+  async checkout(actor: Actor, holdId: string) {
+    // An already submitted hold is recovered through checkoutSubmission, without a new payment.
+    this.role(actor, 'CUSTOMER');
+    return this.run(async (tx) => {
+      const hold = await tx.get<Hold>('holds', holdId);
+      ensure(
+        hold &&
+          hold.customerId === actor.id &&
+          hold.active &&
+          hold.expiresAt > this.now() &&
+          hold.phase === 'CHECKOUT_HOLD',
+        'HOLD_EXPIRED',
+        'This reservation has expired. Select another time.',
+        409,
+      );
+      const quote = await tx.get<Quote>('quotes', hold.quoteId);
+      ensure(quote, 'QUOTE_EXPIRED', 'Quote not found.', 404);
+      await this.currentQuote(tx, quote);
+      const { store, listing } = await this.listing(tx, quote.listingId);
+      const heldListing = await tx.get<Listing>('listings', hold.listingId);
+      const offering = await tx.get<Offering>('offerings', quote.offeringId);
+      const payment = (await tx.find<Payment>('payments', { holdId: hold.id })).find(
+        (x) =>
+          x.holdId === hold.id &&
+          x.customerId === actor.id &&
+          !x.bookingId &&
+          ['AUTHORIZED', 'METHOD_SAVED'].includes(x.status) &&
+          x.expiresAt > this.now(),
+      );
+      return {
+        hold,
+        quote,
+        legalName: store.legalName,
+        storeName: store.name,
+        storeSlug: store.slug,
+        payment: payment ? { id: payment.id, status: payment.status } : undefined,
+        visit: {
+          listingSlug: listing.slug,
+          listingName: quote.nominationType === 'NOMINATED' ? listing.name : undefined,
+          photo: quote.nominationType === 'NOMINATED' ? listing.photo : undefined,
+          offeringName: offering?.name,
+          durationMinutes: (quote.endAt - quote.startAt) / minute,
+          hotelOnly: heldListing?.hotelOnly ?? true,
+          acceptanceMode:
+            store.acceptanceMode === 'AUTO_PREAUTHORIZED' &&
+            automaticAcceptanceReason(
+              store,
+              quote,
+              hold.listingId,
+              await this.dailyAutomaticCount(tx, store.id, quote.startAt),
+            ) !== 'ELIGIBLE'
+              ? 'MANUAL'
+              : store.acceptanceMode,
+        },
+      };
+    });
+  }
+  async releaseCheckoutHold(actor: Actor, holdId: string) {
+    this.role(actor, 'CUSTOMER');
+    return this.run(async (tx) => {
+      const hold = await tx.get<Hold>('holds', holdId);
+      ensure(hold && hold.customerId === actor.id, 'NOT_FOUND', 'Reservation not found.', 404);
+      ensure(
+        hold.phase === 'CHECKOUT_HOLD' && !hold.bookingId,
+        'INVALID_STATE',
+        'This reservation is already submitted.',
+        409,
+      );
+      if (!hold.active) return { released: true };
+      hold.active = false;
+      await tx.put('holds', hold);
+      await tx.releaseInterval(hold.id);
+      for (const payment of await tx.find<Payment>('payments', { holdId: hold.id })) {
+        if (
+          payment.holdId === hold.id &&
+          !payment.bookingId &&
+          ['AUTHORIZED', 'METHOD_SAVED'].includes(payment.status)
+        )
+          await tx.put('payments', { ...payment, status: 'VOIDED' });
+      }
+      await this.audit(tx, actor, 'CHECKOUT_HOLD_RELEASED', undefined, hold.id);
+      return { released: true };
+    });
+  }
+  async authorizeDemo(actor: Actor, holdId: string, passed: boolean) {
+    this.role(actor, 'CUSTOMER');
+    const secured = await this.run(async (tx) => {
+      const hold = await tx.get<Hold>('holds', holdId);
+      ensure(
+        hold &&
+          hold.customerId === actor.id &&
+          hold.active &&
+          hold.phase === 'CHECKOUT_HOLD' &&
+          hold.expiresAt > this.now(),
+        'HOLD_EXPIRED',
+        'The reserved time expired.',
+        409,
+      );
+      if (!passed) {
+        hold.active = false;
+        await tx.put('holds', hold);
+        await tx.releaseInterval(hold.id);
+        for (const p of await tx.find<Payment>('payments', { holdId: hold.id }))
+          if (
+            p.holdId === hold.id &&
+            !p.bookingId &&
+            ['AUTHORIZED', 'METHOD_SAVED'].includes(p.status)
+          )
+            await tx.put('payments', { ...p, status: 'VOIDED' });
+        await this.audit(tx, actor, 'PAYMENT_AUTHENTICATION_FAILED', undefined, hold.id);
+        return null;
+      }
+      const quote = await tx.get<Quote>('quotes', hold.quoteId);
+      ensure(quote && quote.expiresAt > this.now(), 'QUOTE_EXPIRED', 'Quote expired.', 409);
+      await this.currentQuote(tx, quote);
+      const { store } = await this.listing(tx, quote.listingId);
+      const existing = (await tx.find<Payment>('payments', { holdId: hold.id })).find(
+        (p) =>
+          p.holdId === hold.id && !p.bookingId && ['AUTHORIZED', 'METHOD_SAVED'].includes(p.status),
+      );
+      if (existing) return existing;
+      const payment: Payment = {
+        id: id('pay'),
+        customerId: actor.id,
+        quoteId: quote.id,
+        holdId: hold.id,
+        amount: quote.total,
+        account: store.pspAccount,
+        status:
+          quote.startAt - this.now() > config.authorizationDays * 24 * 60 * minute
+            ? 'METHOD_SAVED'
+            : 'AUTHORIZED',
+        verified3ds: true,
+        expiresAt: this.now() + config.authorizationDays * 24 * 60 * minute,
+      };
+      await tx.put('payments', payment);
+      await this.audit(tx, actor, 'DEMO_PAYMENT_SECURED', undefined, payment.id);
+      return payment;
+    });
+    // Release commits before the HTTP layer receives the authentication error.
+    ensure(
+      secured,
+      'PAYMENT_FAILED',
+      'Authentication failed. The reserved time was released.',
+      402,
+    );
+    return secured;
+  }
+  async createBooking(actor: Actor, input: unknown, key: string) {
+    this.role(actor, 'CUSTOMER');
+    const data = bookingInput.parse(input);
+    ensure(
+      key && key.length >= 8 && key.length <= 160,
+      'IDEMPOTENCY_REQUIRED',
+      'An Idempotency-Key is required.',
+    );
+    return this.run(async (tx) => {
+      const idemId = createHash('sha256').update(`${actor.id}:booking:${key}`).digest('hex');
+      const hash = createHash('sha256').update(JSON.stringify(data)).digest('hex');
+      const prior = await tx.get<Idempotency>('idempotency', idemId);
+      if (prior) {
+        ensure(
+          prior.hash === hash,
+          'IDEMPOTENCY_CONFLICT',
+          'This retry key was used for different input.',
+          409,
+        );
+        return this.redact((await tx.get<Booking>('bookings', prior.bookingId))!, actor);
+      }
+      ensure(actor.verificationLevel >= 1, 'VERIFICATION_REQUIRED', 'Sign in first.', 403);
+      const h = await tx.get<Hold>('holds', data.holdId);
+      const q = await tx.get<Quote>('quotes', data.quoteId);
+      ensure(
+        h &&
+          h.customerId === actor.id &&
+          h.active &&
+          h.phase === 'CHECKOUT_HOLD' &&
+          h.expiresAt > this.now() &&
+          q &&
+          q.id === h.quoteId &&
+          q.customerId === actor.id &&
+          q.expiresAt > this.now(),
+        'HOLD_EXPIRED',
+        'Your reserved time or quote expired.',
+        409,
+      );
+      const { listing, store } = await this.listing(tx, q.listingId);
+      await this.currentQuote(tx, q);
+      const heldListing = (await this.listing(tx, h.listingId)).listing;
+      await this.allowed(tx, actor, store.id);
+      const offering = await tx.get<Offering>('offerings', q.offeringId);
+      ensure(
+        offering &&
+          offering.approved &&
+          offering.version === q.offeringVersion &&
+          offering.price === q.serviceFee &&
+          offering.transportFee === q.transportFee,
+        'PRICE_CHANGED',
+        'The service or price changed. Request a new quote.',
+        409,
+      );
+      ensure(
+        data.policyVersion === q.cancellationPolicy.version &&
+          data.address.area === q.area &&
+          store.areas.includes(data.address.area),
+        'POLICY_OR_AREA_CHANGED',
+        'Confirm the current policy and address.',
+      );
+      ensure(
+        !heldListing.hotelOnly || data.address.type === 'HOTEL',
+        'HOTEL_ONLY',
+        'This staff member accepts hotel visits only.',
+      );
+      if (data.address.type === 'HOTEL')
+        ensure(
+          data.address.hotelName && data.address.room && data.address.hotelPermission,
+          'HOTEL_DETAILS_REQUIRED',
+          'Enter hotel name and room, and confirm visitors are allowed.',
+        );
+      const jstHour = new Date(q.startAt + 9 * 60 * minute).getUTCHours();
+      if (
+        data.address.type === 'HOME' &&
+        (jstHour >= 22 || jstHour < 6) &&
+        !(await tx.find<Booking>('bookings', { customerId: actor.id, status: 'COMPLETED' })).some(
+          (b) => b.customerId === actor.id && b.status === 'COMPLETED',
+        )
+      )
+        ensure(
+          actor.verificationLevel >= 3,
+          'L3_REQUIRED',
+          'A first late-night home visit requires identity verification. Choose a hotel or another time.',
+          403,
+        );
+      if (q.bookingMode === 'INSTANT')
+        ensure(
+          store.acceptanceMode !== 'MANUAL' &&
+            !!store.emergencyContact &&
+            heldListing.onDuty &&
+            this.now() - heldListing.dutyUpdatedAt < 4 * 60 * minute,
+          'INSTANT_UNAVAILABLE',
+          'Instant availability changed.',
+          409,
+        );
+      const p = await tx.get<Payment>('payments', data.paymentId);
+      ensure(
+        p &&
+          p.customerId === actor.id &&
+          p.quoteId === q.id &&
+          p.holdId === h.id &&
+          p.account === store.pspAccount &&
+          p.amount === q.total &&
+          p.verified3ds &&
+          !p.bookingId &&
+          ['AUTHORIZED', 'METHOD_SAVED'].includes(p.status) &&
+          p.expiresAt > this.now(),
+        'PAYMENT_REQUIRED',
+        'A valid authenticated payment guarantee is required.',
+        402,
+      );
+      const acceptanceReason = automaticAcceptanceReason(
+        store,
+        q,
+        h.listingId,
+        await this.dailyAutomaticCount(tx, store.id, q.startAt),
+      );
+      const auto = acceptanceReason === 'ELIGIBLE';
+      if (q.bookingMode === 'INSTANT' && store.acceptanceMode === 'AUTO_PREAUTHORIZED')
+        ensure(
+          auto,
+          'INSTANT_UNAVAILABLE',
+          'Automatic acceptance is no longer available. Choose a scheduled visit.',
+          409,
+        );
+      const b: Booking = {
+        id: id('booking'),
+        customerId: actor.id,
+        merchantId: store.merchantId,
+        storeId: store.id,
+        selectedStaffId: q.nominationType === 'NOMINATED' ? listing.staffId : null,
+        selectedStaffListingId: q.nominationType === 'NOMINATED' ? listing.id : null,
+        assignedStaffId: q.nominationType === 'NOMINATED' ? listing.staffId : null,
+        assignedListingId: q.nominationType === 'NOMINATED' ? listing.id : null,
+        status: auto ? 'ACCEPTED' : 'REQUESTED',
+        merchantAcceptance: auto ? 'AUTO_ACCEPTED' : 'PENDING',
+        staffTaskStatus: auto && q.nominationType === 'NOMINATED' ? 'OFFERED' : 'NOT_SENT',
+        acceptanceMode:
+          store.acceptanceMode === 'AUTO_PREAUTHORIZED' && !auto ? 'MANUAL' : store.acceptanceMode,
+        acceptanceDecision:
+          store.acceptanceMode === 'AUTO_PREAUTHORIZED'
+            ? {
+                outcome: auto ? 'AUTO_ACCEPTED' : 'MANUAL_REVIEW',
+                reason: acceptanceReason,
+                evaluatedAt: this.now(),
+                rule: store.acceptanceRule ? structuredClone(store.acceptanceRule) : undefined,
+              }
+            : undefined,
+        paymentStatus: p.status,
+        replacementConsent: 'NOT_REQUIRED',
+        quote: q,
+        address: data.address,
+        legalNameSnapshot: store.legalName,
+        deadline: this.deadline(q),
+        version: 1,
+        createdAt: this.now(),
+        updatedAt: this.now(),
+        capturedAmount: 0,
+        refundedAmount: 0,
+        platformFee: 0,
+        paymentId: p.id,
+        holdId: h.id,
+      };
+      ensure(b.deadline > this.now(), 'TIME_TOO_CLOSE', 'Select a later start time.', 409);
+      h.phase = 'BOOKING_RESERVATION';
+      h.bookingId = b.id;
+      h.expiresAt = b.deadline;
+      await tx.interval({
+        id: h.id,
+        staffId: h.staffId,
+        ...this.buffered(q),
+        expiresAt: h.expiresAt,
+      });
+      p.bookingId = b.id;
+      await tx.put('payments', p);
+      await tx.put('holds', h);
+      await tx.put('bookings', b);
+      await tx.put<Idempotency>('idempotency', { id: idemId, hash, bookingId: b.id });
+      await this.audit(
+        tx,
+        actor,
+        'BOOKING_CREATED',
+        b.id,
+        store.acceptanceMode === 'AUTO_PREAUTHORIZED'
+          ? `rule_version=${store.acceptanceRule?.version ?? 'none'};decision=${acceptanceReason}`
+          : '',
+      );
+      return this.redact(b, actor);
+    });
+  }
+  async bookings(actor: Actor) {
+    if ((actor.role === 'STAFF' || actor.role === 'MERCHANT') && !actor.storeId) return [];
+    return this.run(async (tx) => {
+      const staffVisible = new Set<string>();
+      const bookings = await tx.find<Booking>(
+        'bookings',
+        actor.role === 'CUSTOMER'
+          ? { customerId: actor.id }
+          : actor.role === 'MERCHANT' || actor.role === 'STAFF'
+            ? { storeId: actor.storeId! }
+            : {},
+      );
+      if (actor.role === 'STAFF')
+        for (const b of bookings)
+          if (await staffBookingAccess(tx, actor, b)) staffVisible.add(b.id);
+      return bookings
+        .filter(
+          (b) =>
+            actor.role === 'ADMIN' ||
+            (actor.role === 'CUSTOMER' && b.customerId === actor.id) ||
+            (actor.role === 'MERCHANT' && b.storeId === actor.storeId) ||
+            (actor.role === 'STAFF' && staffVisible.has(b.id)),
+        )
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((b) => this.redact(b, actor));
+    });
+  }
+  redact(b: Booking, actor: Actor): Booking {
+    if (b.acceptanceDecision && !['MERCHANT', 'ADMIN'].includes(actor.role)) {
+      const { rule: _rule, ...decision } = b.acceptanceDecision;
+      b = { ...b, acceptanceDecision: decision };
+    }
+    if (b.completion && (actor.role === 'ADMIN' || actor.role === 'STAFF'))
+      b = {
+        ...b,
+        completion: {
+          ...b.completion,
+          history: b.completion.history.map((h) =>
+            actor.role === 'ADMIN' || h.role === 'CUSTOMER' ? { ...h, note: undefined } : h,
+          ),
+        },
+      };
+    if (actor.role === 'ADMIN' && b.noShow)
+      b = { ...b, noShow: { ...b.noShow, reviewNote: undefined } };
+    const visible =
+      actor.role === 'CUSTOMER' ||
+      actor.role === 'MERCHANT' ||
+      (actor.role === 'STAFF' &&
+        b.staffTaskStatus === 'ACKNOWLEDGED' &&
+        ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status) &&
+        b.replacementConsent !== 'PENDING');
+    return visible ? b : { ...b, address: undefined };
+  }
+  async booking(actor: Actor, bookingId: string) {
+    return this.run(async (tx) => this.redact(await this.getBooking(tx, actor, bookingId), actor));
+  }
+  async accept(actor: Actor, bookingId: string, version: number) {
+    this.role(actor, 'MERCHANT');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      await requireCurrentQualifications(tx, b.storeId, b.assignedListingId, this.now());
+      ensure(
+        b.status === 'REQUESTED',
+        'INVALID_STATE',
+        'Only a pending request can be accepted.',
+        409,
+      );
+      if (b.acceptanceMode === 'SOLO') {
+        const store = await tx.get<Store>('stores', b.storeId);
+        if (store?.acceptanceMode !== 'SOLO') {
+          if (b.quote.bookingMode === 'INSTANT') {
+            await this.closeBooking(tx, b, 'CANCELLED', 'MERCHANT_RULES_CHANGED');
+            return this.save(tx, b, actor, 'SOLO_INSTANT_CANCELLED');
+          }
+          b.acceptanceMode = 'MANUAL';
+        }
+      }
+      if (b.acceptanceMode === 'SOLO') {
+        const store = await tx.get<Store>('stores', b.storeId);
+        const staff = (await tx.list<Listing>('listings')).filter(
+          (x) => x.storeId === b.storeId && x.membershipActive,
+        );
+        ensure(
+          store?.ownerStaffId && staff.length === 1 && staff[0].staffId === store.ownerStaffId,
+          'SOLO_INVALID',
+          'This shop no longer meets SOLO conditions.',
+          409,
+        );
+        b.assignedStaffId = staff[0].staffId;
+        b.assignedListingId = staff[0].id;
+        b.staffTaskStatus = 'ACKNOWLEDGED';
+        b.status = 'CONFIRMED';
+        if (b.quote.bookingMode === 'INSTANT') b.arrival = { promisedAt: this.now() + 60 * minute };
+        await this.confirmHold(tx, b);
+      } else {
+        b.status = 'ACCEPTED';
+        b.staffTaskStatus = b.assignedStaffId ? 'OFFERED' : 'NOT_SENT';
+        b.deadline = this.deadline(b.quote);
+      }
+      b.merchantAcceptance = 'MANUALLY_ACCEPTED';
+      return this.save(tx, b, actor, 'MERCHANT_ACCEPTED');
+    });
+  }
+  private async confirmHold(tx: Records, b: Booking) {
+    ensure(
+      ['AUTHORIZED', 'METHOD_SAVED'].includes(b.paymentStatus),
+      'PAYMENT_REQUIRED',
+      'Payment guarantee is no longer valid.',
+      402,
+    );
+    const h = await tx.get<Hold>('holds', b.holdId);
+    ensure(h?.active, 'HOLD_EXPIRED', 'Reserved time expired.', 409);
+    h.phase = 'CONFIRMED_BLOCK';
+    h.expiresAt = b.quote.endAt + config.bufferMinutes * minute;
+    await tx.interval({
+      id: h.id,
+      staffId: h.staffId,
+      ...this.buffered(b.quote),
+      expiresAt: h.expiresAt,
+    });
+    await tx.put('holds', h);
+  }
+  async assignmentCandidates(actor: Actor, bookingId: string) {
+    this.role(actor, 'MERCHANT');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId);
+      if (
+        !['ACCEPTED', 'CONFIRMED'].includes(b.status) ||
+        (b.replacementConsent === 'PENDING' && b.proposedListingId)
+      )
+        return [];
+      const result: Listing[] = [];
+      for (const x of await tx.list<Listing>('listings')) {
+        if (!(await this.assignmentEligible(tx, b, x))) continue;
+        if (
+          x.storeId !== b.storeId ||
+          x.staffId === b.assignedStaffId ||
+          !x.membershipActive ||
+          !x.identityVerified ||
+          !x.portraitConsent ||
+          x.publicationStatus !== 'PUBLISHED_INDEXABLE' ||
+          !x.offeringIds.includes(b.quote.offeringId) ||
+          (b.quote.requiredLanguage && !x.languages.includes(b.quote.requiredLanguage)) ||
+          (x.hotelOnly && b.address?.type !== 'HOTEL') ||
+          (b.quote.bookingMode === 'INSTANT' &&
+            (!x.onDuty || this.now() - x.dutyUpdatedAt >= 4 * 60 * minute))
+        )
+          continue;
+        if (
+          !(await tx.conflicts(
+            x.staffId,
+            this.buffered(b.quote).startAt,
+            this.buffered(b.quote).endAt,
+            b.holdId,
+          ))
+        )
+          result.push(x);
+      }
+      return result;
+    });
+  }
+  private async assignmentEligible(tx: Records, b: Booking, listing: Listing) {
+    const store = await tx.get<Store>('stores', b.storeId);
+    if (
+      !store?.active ||
+      !store.approved ||
+      !store.pspAccount ||
+      listing.storeId !== b.storeId ||
+      !listing.membershipActive ||
+      !listing.identityVerified ||
+      !listing.portraitConsent ||
+      listing.publicationStatus !== 'PUBLISHED_INDEXABLE' ||
+      !listing.offeringIds.includes(b.quote.offeringId) ||
+      (b.quote.requiredLanguage && !listing.languages.includes(b.quote.requiredLanguage)) ||
+      (listing.hotelOnly && b.address?.type !== 'HOTEL') ||
+      (b.quote.bookingMode === 'INSTANT' &&
+        (!listing.onDuty || this.now() - listing.dutyUpdatedAt >= 4 * 60 * minute))
+    )
+      return false;
+    if (
+      b.quote.bookingMode === 'INSTANT' &&
+      (
+        await tx.find<Booking>('bookings', {
+          assignedStaffId: listing.staffId,
+          status: ['IN_SERVICE', 'EN_ROUTE', 'ARRIVED'],
+        })
+      ).some(
+        (x) =>
+          x.id !== b.id &&
+          x.assignedStaffId === listing.staffId &&
+          (x.status === 'IN_SERVICE' ||
+            (['EN_ROUTE', 'ARRIVED'].includes(x.status) && x.quote.endAt <= this.now())),
+      )
+    )
+      return false;
+    try {
+      await requireCurrentQualifications(tx, b.storeId, listing.id, this.now());
+    } catch (e) {
+      if (e instanceof DomainError && e.code === 'QUALIFICATION_UNAVAILABLE') return false;
+      throw e;
+    }
+    return true;
+  }
+  async assign(
+    actor: Actor,
+    bookingId: string,
+    version: number,
+    listingId: string,
+    replacement = false,
+  ) {
+    this.role(actor, 'MERCHANT');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      ensure(
+        ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+          (b.replacementConsent !== 'PENDING' || !b.proposedListingId),
+        'INVALID_STATE',
+        'Assignment is not available at this stage.',
+        409,
+      );
+      ensure(
+        replacement || b.quote.nominationType === 'FREE',
+        'CONSENT_REQUIRED',
+        'Nominated bookings require a replacement proposal.',
+      );
+      const { listing, store } = await this.listing(tx, listingId, true);
+      ensure(
+        await this.assignmentEligible(tx, b, listing),
+        'INVALID_ASSIGNMENT',
+        'The therapist no longer meets this visit requirements.',
+        409,
+      );
+      ensure(
+        store.id === b.storeId &&
+          listing.offeringIds.includes(b.quote.offeringId) &&
+          (!b.quote.requiredLanguage || listing.languages.includes(b.quote.requiredLanguage)) &&
+          (!listing.hotelOnly || b.address?.type === 'HOTEL') &&
+          (b.quote.bookingMode !== 'INSTANT' ||
+            (listing.onDuty && this.now() - listing.dutyUpdatedAt < 4 * 60 * minute)),
+        'INVALID_ASSIGNMENT',
+        'Choose qualified staff from this shop who meet all conditions.',
+      );
+      ensure(
+        listing.staffId !== b.assignedStaffId,
+        'INVALID_ASSIGNMENT',
+        'Choose another staff member.',
+      );
+      ensure(
+        !(await tx.conflicts(
+          listing.staffId,
+          this.buffered(b.quote).startAt,
+          this.buffered(b.quote).endAt,
+          b.holdId,
+        )),
+        'SLOT_CONFLICT',
+        'This staff member is unavailable.',
+        409,
+      );
+      // Keep the original reservation and protect the proposed replacement too.
+      if (b.quote.nominationType === 'NOMINATED') {
+        const originalDeadline =
+          b.replacementConsent === 'PENDING' ? b.replacementDeadline : undefined;
+        await tx.interval({
+          id: `replacement:${b.id}`,
+          staffId: listing.staffId,
+          ...this.buffered(b.quote),
+          expiresAt: b.quote.endAt + config.bufferMinutes * minute,
+        });
+        b.proposedListingId = listing.id;
+        b.replacementConsent = 'PENDING';
+        b.replacementDeadline = Math.min(
+          originalDeadline ?? Infinity,
+          this.deadline(b.quote, true),
+        );
+        ensure(
+          b.replacementDeadline > this.now(),
+          'TIME_TOO_CLOSE',
+          'No time remains to obtain explicit consent.',
+          409,
+        );
+      } else await this.applyAssignment(tx, b, listing);
+      return this.save(
+        tx,
+        b,
+        actor,
+        b.quote.nominationType === 'NOMINATED' ? 'REPLACEMENT_PROPOSED' : 'STAFF_ASSIGNED',
+      );
+    });
+  }
+  private async applyAssignment(tx: Records, b: Booking, listing: Listing) {
+    const h = await tx.get<Hold>('holds', b.holdId);
+    ensure(h, 'HOLD_EXPIRED', 'Reserved time is unavailable.', 409);
+    await tx.releaseInterval(`replacement:${b.id}`);
+    await tx.interval({
+      id: h.id,
+      staffId: listing.staffId,
+      ...this.buffered(b.quote),
+      expiresAt: h.expiresAt,
+    });
+    h.staffId = listing.staffId;
+    h.listingId = listing.id;
+    await tx.put('holds', h);
+    b.assignedStaffId = listing.staffId;
+    b.assignedListingId = listing.id;
+    b.staffTaskStatus = 'OFFERED';
+    b.deadline = this.deadline(b.quote);
+  }
+  async withdrawProposal(actor: Actor, bookingId: string, input: unknown) {
+    this.role(actor, 'MERCHANT');
+    const d = z
+      .object({ version: z.number().int().positive(), reason: z.string().trim().min(10).max(300) })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, d.version);
+      ensure(
+        ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+          b.replacementConsent === 'PENDING' &&
+          b.proposedListingId,
+        'INVALID_STATE',
+        'No active replacement candidate.',
+        409,
+      );
+      await tx.releaseInterval(`replacement:${b.id}`);
+      b.proposedListingId = undefined;
+      return this.save(tx, b, actor, 'REPLACEMENT_WITHDRAWN', d.reason);
+    });
+  }
+  async consent(actor: Actor, bookingId: string, version: number, approved: boolean) {
+    this.role(actor, 'CUSTOMER');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      ensure(
+        b.replacementConsent === 'PENDING' && b.replacementDeadline! > this.now(),
+        'INVALID_STATE',
+        'No active replacement proposal.',
+        409,
+      );
+      ensure(
+        !approved || b.proposedListingId,
+        'PROPOSAL_REQUIRED',
+        'The shop has not proposed a replacement yet.',
+        409,
+      );
+      b.replacementConsent = approved ? 'APPROVED' : 'DECLINED';
+      if (!approved) await this.closeBooking(tx, b, 'CANCELLED', 'MERCHANT_UNABLE');
+      else {
+        const { listing } = await this.listing(tx, b.proposedListingId!, true);
+        ensure(
+          await this.assignmentEligible(tx, b, listing),
+          'INVALID_ASSIGNMENT',
+          'The proposed therapist is no longer available. Ask the shop to review or cancel without a fee.',
+          409,
+        );
+        await tx.releaseInterval(`replacement:${b.id}`);
+        ensure(
+          !(await tx.conflicts(
+            listing.staffId,
+            this.buffered(b.quote).startAt,
+            this.buffered(b.quote).endAt,
+            b.holdId,
+          )),
+          'SLOT_CONFLICT',
+          'The proposed therapist is no longer available.',
+          409,
+        );
+        await this.applyAssignment(tx, b, listing);
+        b.quote = { ...b.quote, total: b.quote.total - b.quote.nominationFee, nominationFee: 0 };
+      }
+      return this.save(tx, b, actor, approved ? 'REPLACEMENT_APPROVED' : 'REPLACEMENT_DECLINED');
+    });
+  }
+  async ack(actor: Actor, bookingId: string, version: number, arrivalMinutes?: number) {
+    this.role(actor, 'STAFF');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      await requireCurrentQualifications(tx, b.storeId, b.assignedListingId, this.now());
+      ensure(
+        ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+          b.staffTaskStatus === 'OFFERED' &&
+          b.replacementConsent !== 'PENDING',
+        'INVALID_STATE',
+        'This task is not awaiting confirmation.',
+        409,
+      );
+      if (b.quote.bookingMode === 'INSTANT') {
+        ensure(
+          arrivalMinutes && arrivalMinutes >= 30 && arrivalMinutes <= 60,
+          'ARRIVAL_REQUIRED',
+          'Choose an arrival estimate between 30 and 60 minutes.',
+        );
+        b.arrivalMinutes = arrivalMinutes;
+        const estimate = this.now() + arrivalMinutes * minute;
+        b.arrival = b.arrival
+          ? { ...b.arrival, revisedAt: estimate, reportedAt: this.now() }
+          : { promisedAt: estimate };
+      }
+      b.staffTaskStatus = 'ACKNOWLEDGED';
+      b.status = 'CONFIRMED';
+      await this.confirmHold(tx, b);
+      return this.save(tx, b, actor, 'STAFF_ACKNOWLEDGED');
+    });
+  }
+  async decline(actor: Actor, bookingId: string, version: number, reason: string) {
+    this.role(actor, 'STAFF');
+    ensure(reason.trim().length >= 3, 'REASON_REQUIRED', 'Provide a reason.');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      ensure(
+        ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+          ['OFFERED', 'ACKNOWLEDGED'].includes(b.staffTaskStatus),
+        'INVALID_STATE',
+        'This task cannot be declined.',
+        409,
+      );
+      b.staffTaskStatus = b.staffTaskStatus === 'ACKNOWLEDGED' ? 'WITHDRAWN' : 'DECLINED';
+      b.deadline = this.deadline(b.quote, true);
+      if (b.status === 'CONFIRMED' && b.quote.nominationType === 'NOMINATED') {
+        b.replacementConsent = 'PENDING';
+        b.proposedListingId = undefined;
+        b.replacementDeadline = b.deadline;
+      }
+      return this.save(tx, b, actor, 'STAFF_UNAVAILABLE', reason.slice(0, 300));
+    });
+  }
+  async event(actor: Actor, bookingId: string, version: number, event: string) {
+    this.role(actor, 'STAFF');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      if (['EN_ROUTE', 'ARRIVED', 'START'].includes(event))
+        await requireCurrentQualifications(tx, b.storeId, b.assignedListingId, this.now());
+      const next = {
+        EN_ROUTE: ['CONFIRMED', 'EN_ROUTE'],
+        ARRIVED: ['EN_ROUTE', 'ARRIVED'],
+        START: ['ARRIVED', 'IN_SERVICE'],
+        COMPLETE: ['IN_SERVICE', 'COMPLETED'],
+      }[event];
+      ensure(
+        next &&
+          b.status === next[0] &&
+          b.staffTaskStatus === 'ACKNOWLEDGED' &&
+          b.replacementConsent !== 'PENDING',
+        'INVALID_TRANSITION',
+        'Complete the previous step before continuing.',
+        409,
+      );
+      if (event === 'START')
+        ensure(
+          this.now() >= b.quote.startAt && b.arrivedAt !== undefined && this.now() >= b.arrivedAt,
+          'SERVICE_TOO_EARLY',
+          'Service cannot start before the booked time and arrival.',
+          409,
+        );
+      if (event === 'COMPLETE') {
+        const eligibleAt = serviceEligibleAt(b);
+        ensure(
+          eligibleAt !== undefined && b.startedAt! >= b.quote.startAt && this.now() >= eligibleAt,
+          'SERVICE_TOO_SHORT',
+          'The purchased service duration has not elapsed. Report an exception if service ended early.',
+          409,
+        );
+        b.status = 'AWAITING_COMPLETION';
+        b.completion = {
+          status: 'PENDING',
+          eligibleAt,
+          endedAt: this.now(),
+          requestedAt: this.now(),
+          confirmBy: this.now() + completionWindowMs,
+          history: [{ action: 'REQUEST', role: actor.role, at: this.now() }],
+        };
+        await this.release(tx, b);
+        return this.save(tx, b, actor, 'STAFF_COMPLETE');
+      }
+      b.status = next[1] as Booking['status'];
+      if (event === 'ARRIVED') b.arrivedAt = this.now();
+      if (event === 'START') b.startedAt = this.now();
+      if (event === 'START' && b.noShow && ['CONTACTING', 'REPORTED'].includes(b.noShow.status)) {
+        b.noShow.status = 'DISMISSED';
+        b.noShow.resolvedAt = this.now();
+      }
+      return this.save(tx, b, actor, `STAFF_${event}`);
+    });
+  }
+  async completionView(actor: Actor, bookingId: string) {
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId);
+      return {
+        bookingVersion: b.version,
+        serverNow: this.now(),
+        eligibleAt: serviceEligibleAt(b),
+        completion: this.redact(b, actor).completion ?? null,
+      };
+    });
+  }
+  async completionAction(actor: Actor, bookingId: string, input: unknown, key: string) {
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        action: z.enum(['CONFIRM', 'DISPUTE', 'EXCEPTION', 'REVIEW', 'VOID', 'REAUTHORIZE']),
+        note: z.string().trim().max(1000).optional(),
+        expectedAmount: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .parse(input);
+    this.role(
+      actor,
+      ...(['CONFIRM', 'DISPUTE', 'REAUTHORIZE'].includes(data.action)
+        ? ['CUSTOMER' as const]
+        : data.action === 'EXCEPTION'
+          ? ['STAFF' as const, 'MERCHANT' as const]
+          : ['MERCHANT' as const]),
+    );
+    ensure(
+      key.length >= 8 && key.length <= 160,
+      'IDEMPOTENCY_REQUIRED',
+      'A retry key is required.',
+    );
+    if (!['CONFIRM', 'REAUTHORIZE'].includes(data.action))
+      ensure(
+        (data.note?.length ?? 0) >= 10,
+        'REASON_REQUIRED',
+        'Describe the facts in at least 10 characters.',
+      );
+    return this.run(async (tx) => {
+      let b = await this.getBooking(tx, actor, bookingId);
+      const keyId = createHash('sha256').update(`${actor.id}:completion:${key}`).digest('hex');
+      const hash = createHash('sha256')
+        .update(JSON.stringify({ bookingId, ...data }))
+        .digest('hex');
+      const previous = await tx.get<{ id: string; hash: string }>('completionIdempotency', keyId);
+      if (previous) {
+        ensure(
+          previous.hash === hash,
+          'IDEMPOTENCY_CONFLICT',
+          'This retry key was used for different input.',
+          409,
+        );
+        return this.redact(b, actor);
+      }
+      b = await this.getBooking(tx, actor, bookingId, data.version);
+      const now = this.now(),
+        eligibleAt = serviceEligibleAt(b);
+      ensure(
+        ['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status),
+        'INVALID_STATE',
+        'Service is not awaiting completion.',
+        409,
+      );
+      if (data.action === 'EXCEPTION' || data.action === 'DISPUTE') {
+        ensure(
+          actor.role !== 'STAFF' || b.staffTaskStatus === 'ACKNOWLEDGED',
+          'FORBIDDEN',
+          'Task confirmation is required.',
+          403,
+        );
+        b.completion ??= {
+          status: 'DISPUTED',
+          eligibleAt: eligibleAt ?? b.quote.endAt,
+          timingInvalid: eligibleAt === undefined || b.startedAt! < b.quote.startAt,
+          endedAt: now,
+          requestedAt: now,
+          confirmBy: now + completionWindowMs,
+          history: [],
+        };
+        if (b.completion.status === 'PAYMENT_REVIEW') b.completion.reviewStatus = 'DISPUTED';
+        else b.completion.status = 'DISPUTED';
+        b.status = 'AWAITING_COMPLETION';
+        await completionCase(tx, b, now, data.note!);
+        await this.release(tx, b);
+      } else {
+        const c = b.completion;
+        ensure(
+          b.status === 'AWAITING_COMPLETION' && c,
+          'INVALID_STATE',
+          'Wait for the therapist to submit the service end record.',
+          409,
+        );
+        if (data.action === 'REAUTHORIZE') {
+          ensure(
+            c.status === 'PAYMENT_REVIEW',
+            'INVALID_STATE',
+            'Payment review is required before renewing authorization.',
+            409,
+          );
+          ensure(
+            data.expectedAmount === b.quote.total,
+            'COMPLETION_AMOUNT_CHANGED',
+            'Review the order amount before renewing authorization.',
+            409,
+          );
+          const p = await tx.get<Payment>('payments', b.paymentId);
+          ensure(
+            p &&
+              p.bookingId === b.id &&
+              p.customerId === actor.id &&
+              p.verified3ds &&
+              !p.capturedAmount &&
+              p.amount >= b.quote.total &&
+              ['AUTHORIZED', 'METHOD_SAVED'].includes(p.status),
+            'PAYMENT_REQUIRED',
+            'The saved demo payment method is unavailable.',
+            402,
+          );
+          p.status = 'AUTHORIZED';
+          p.expiresAt = now + config.authorizationDays * 24 * 60 * minute;
+          await tx.put('payments', p);
+          b.paymentStatus = 'AUTHORIZED';
+          c.status = c.reviewStatus ?? (c.endedAt < c.eligibleAt ? 'DISPUTED' : 'TIMED_OUT');
+          c.reviewStatus = undefined;
+          if (c.status === 'PENDING') c.confirmBy = now + completionWindowMs;
+          await completionReceipt(
+            tx,
+            b,
+            actor,
+            now,
+            'Customer renewed the demo payment authorization. No capture was made; service confirmation is still required.',
+          );
+        } else if (data.action === 'CONFIRM' || data.action === 'REVIEW') {
+          ensure(
+            !c.timingInvalid &&
+              eligibleAt !== undefined &&
+              c.endedAt >= eligibleAt &&
+              now >= c.endedAt &&
+              b.startedAt! >= b.quote.startAt,
+            'SERVICE_TOO_SHORT',
+            'Shortened or invalid service records require exception handling.',
+            409,
+          );
+          if (data.action === 'CONFIRM') {
+            ensure(
+              data.expectedAmount === b.quote.total,
+              'COMPLETION_AMOUNT_CHANGED',
+              'Review the current order amount before confirming.',
+              409,
+            );
+            ensure(
+              c.status === 'PENDING' && now < c.confirmBy,
+              'COMPLETION_REVIEW_REQUIRED',
+              'The shop must review this exception before requesting confirmation again.',
+              409,
+            );
+            const p = await tx.get<Payment>('payments', b.paymentId);
+            if (
+              !p ||
+              p.status !== 'AUTHORIZED' ||
+              p.expiresAt <= now ||
+              !p.verified3ds ||
+              p.bookingId !== b.id ||
+              p.amount < b.quote.total
+            ) {
+              c.reviewStatus = 'PENDING';
+              c.status = 'PAYMENT_REVIEW';
+              await completionCase(
+                tx,
+                b,
+                now,
+                'Payment authorization is unavailable. No charge was made; the shop must review or close without charge.',
+              );
+            } else {
+              c.status = 'CONFIRMED';
+              c.confirmedAt = now;
+              await this.captureCompleted(tx, b);
+              await completionReceipt(
+                tx,
+                b,
+                actor,
+                now,
+                'Customer confirmed service completion; the authorized order amount was captured once.',
+              );
+            }
+          } else {
+            ensure(
+              ['DISPUTED', 'TIMED_OUT'].includes(c.status),
+              'INVALID_STATE',
+              'Only disputed or timed out confirmations can be reviewed.',
+              409,
+            );
+            c.status = 'PENDING';
+            c.requestedAt = now;
+            c.confirmBy = now + completionWindowMs;
+            await completionReceipt(tx, b, actor, now, data.note!);
+          }
+        } else {
+          ensure(
+            b.capturedAmount === 0,
+            'INVALID_STATE',
+            'Use the refund process for captured orders.',
+            409,
+          );
+          c.status = 'VOIDED';
+          await this.closeBooking(tx, b, 'CANCELLED', 'SERVICE_EXCEPTION');
+          await completionReceipt(tx, b, actor, now, `Closed without charge: ${data.note}`);
+        }
+      }
+      b.completion!.history.push({
+        action: data.action,
+        at: now,
+        role: actor.role,
+        note: data.note,
+      });
+      await tx.put('completionIdempotency', { id: keyId, hash });
+      return this.save(tx, b, actor, `COMPLETION_${data.action}`);
+    });
+  }
+  private async captureCompleted(tx: Records, b: Booking) {
+    b.status = 'COMPLETED';
+    b.completedAt = this.now();
+    const p = await tx.get<Payment>('payments', b.paymentId);
+    const store = await tx.get<Store>('stores', b.storeId);
+    ensure(p && store, 'PAYMENT_REQUIRED', 'Payment is unavailable.', 402);
+    p.status = 'PAID';
+    p.capturedAmount = b.quote.total;
+    p.voidedAmount = Math.max(0, p.amount - b.quote.total);
+    b.paymentStatus = 'PAID';
+    b.capturedAmount = b.quote.total;
+    const repeat = (
+      await tx.find<Booking>('bookings', {
+        customerId: b.customerId,
+        storeId: b.storeId,
+        status: 'COMPLETED',
+      })
+    ).some(
+      (x) =>
+        x.id !== b.id &&
+        x.customerId === b.customerId &&
+        x.storeId === b.storeId &&
+        x.status === 'COMPLETED' &&
+        x.capturedAmount > x.refundedAmount,
+    );
+    const rate =
+      (store.plan === 'TRIAL'
+        ? 0
+        : store.plan === 'ANNUAL'
+          ? config.annualFeeBps
+          : config.standardFeeBps) * (repeat ? 0.5 : 1);
+    b.captureFeeRateBps = rate;
+    b.platformFee = Math.floor(((b.quote.total - b.quote.transportFee) * rate) / 10000);
+    await tx.put('payments', p);
+    const feeId = id('fee');
+    await tx.put('feeEntries', {
+      id: feeId,
+      bookingId: b.id,
+      storeId: b.storeId,
+      amount: b.platformFee,
+      type: 'CAPTURE',
+      createdAt: this.now(),
+    });
+    await recordMoney(tx, b, feeId, 'CAPTURE', b.capturedAmount, 0, b.platformFee, this.now());
+    await this.release(tx, b);
+  }
+  private async release(tx: Records, b: Booking) {
+    const h = await tx.get<Hold>('holds', b.holdId);
+    if (h) {
+      h.active = false;
+      await tx.put('holds', h);
+    }
+    await tx.releaseInterval(b.holdId);
+    await tx.releaseInterval(`replacement:${b.id}`);
+  }
+  async noShowAction(actor: Actor, bookingId: string, input: unknown, key: string) {
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        action: z.enum(['CONTACT', 'REPORT', 'CONFIRM', 'DISMISS']),
+        text: z.string().trim().min(10).max(500),
+      })
+      .strict()
+      .parse(input);
+    this.role(
+      actor,
+      ...(data.action === 'CONTACT' || data.action === 'REPORT'
+        ? ['STAFF' as const]
+        : ['MERCHANT' as const]),
+    );
+    ensure(
+      key.length >= 8 && key.length <= 160,
+      'IDEMPOTENCY_REQUIRED',
+      'A retry key is required.',
+    );
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId);
+      const requestId = createHash('sha256')
+        .update(`${actor.id}:${bookingId}:${key}`)
+        .digest('hex');
+      const hash = createHash('sha256')
+        .update(JSON.stringify({ action: data.action, text: data.text }))
+        .digest('hex');
+      const prior = await tx.get<{ id: string; hash: string }>('noShowRequests', requestId);
+      if (prior) {
+        ensure(
+          prior.hash === hash,
+          'IDEMPOTENCY_CONFLICT',
+          'This retry key has different input.',
+          409,
+        );
+        return this.redact(b, actor);
+      }
+      ensure(
+        b.version === data.version,
+        'VERSION_CONFLICT',
+        'The booking changed. Refresh first.',
+        409,
+      );
+      ensure(
+        b.status === 'ARRIVED' &&
+          b.staffTaskStatus === 'ACKNOWLEDGED' &&
+          b.replacementConsent !== 'PENDING',
+        'INVALID_STATE',
+        'No-show handling requires an acknowledged arrival.',
+        409,
+      );
+      const policy = b.quote.cancellationPolicy.noShow;
+      ensure(
+        policy && b.arrivedAt !== undefined,
+        'NO_SHOW_POLICY_REQUIRED',
+        'This booking has no agreed no-show policy or recorded arrival.',
+        409,
+      );
+      const now = this.now();
+      const response = (await tx.list<Message>('messages')).some(
+        (m) => m.bookingId === b.id && m.role === 'CUSTOMER' && m.createdAt >= b.arrivedAt!,
+      );
+      if (data.action !== 'DISMISS')
+        ensure(
+          !response,
+          'CUSTOMER_RESPONDED',
+          'The customer responded. Resolve the visit with the shop.',
+          409,
+        );
+      if (data.action === 'CONTACT') {
+        ensure(
+          !b.noShow || b.noShow.status === 'CONTACTING',
+          'INVALID_STATE',
+          'This report is already awaiting review or closed.',
+          409,
+        );
+        const last = b.noShow?.contacts.at(-1);
+        ensure(
+          !last || now >= last.at + policy.contactGapMinutes * minute,
+          'CONTACT_TOO_SOON',
+          'Wait before recording another contact attempt.',
+          409,
+        );
+        ensure(
+          !/(happy\s*ending|erotic|nuru|特殊服务|全套|ヌキ|回春)/i.test(data.text),
+          'CONTENT_BLOCKED',
+          'This message requires safety review.',
+        );
+        ensure(
+          (b.noShow?.contacts.length ?? 0) < 10,
+          'CONTACT_LIMIT',
+          'Contact limit reached. Ask your shop for help.',
+          409,
+        );
+        const messageId = id('msg');
+        await tx.put<Message>('messages', {
+          id: messageId,
+          bookingId,
+          actorId: actor.id,
+          role: 'STAFF',
+          text: data.text,
+          createdAt: now,
+        });
+        b.noShow ??= {
+          status: 'CONTACTING',
+          startedAt: now,
+          waitUntil: Math.max(now, b.arrivedAt, b.quote.startAt) + policy.waitMinutes * minute,
+          contacts: [],
+        };
+        b.noShow.contacts.push({ id: id('contact'), messageId, at: now, actorId: actor.id });
+      } else {
+        ensure(b.noShow, 'CONTACTS_REQUIRED', 'Record contact attempts first.', 409);
+        if (data.action === 'DISMISS') {
+          ensure(
+            ['CONTACTING', 'REPORTED'].includes(b.noShow.status),
+            'INVALID_STATE',
+            'This report is already closed.',
+            409,
+          );
+          b.noShow.status = 'DISMISSED';
+          b.noShow.resolvedAt = now;
+        } else {
+          ensure(
+            b.noShow.contacts.length >= policy.minContacts && now >= b.noShow.waitUntil,
+            'NO_SHOW_NOT_READY',
+            'Contact evidence or the waiting period is incomplete.',
+            409,
+          );
+          if (data.action === 'REPORT') {
+            ensure(
+              b.noShow.status === 'CONTACTING',
+              'INVALID_STATE',
+              'This report is already submitted.',
+              409,
+            );
+            b.noShow.status = 'REPORTED';
+            b.noShow.reportedAt = now;
+          } else {
+            ensure(
+              b.noShow.status === 'REPORTED',
+              'INVALID_STATE',
+              'The therapist must submit a report first.',
+              409,
+            );
+            const payment = await tx.get<Payment>('payments', b.paymentId);
+            ensure(
+              payment &&
+                payment.bookingId === b.id &&
+                payment.expiresAt > now &&
+                ['AUTHORIZED', 'METHOD_SAVED'].includes(payment.status),
+              'PAYMENT_REQUIRED',
+              'A payment guarantee is required.',
+              402,
+            );
+            const fee = Math.floor(
+              ((b.quote.total - b.quote.transportFee) * policy.feeBps) / 10000,
+            );
+            ensure(
+              fee <= payment.amount,
+              'PAYMENT_REQUIRED',
+              'The fee exceeds the agreed guarantee.',
+              402,
+            );
+            b.noShow.status = 'CONFIRMED';
+            b.noShow.resolvedAt = now;
+            b.noShow.fee = fee;
+            await this.closeBooking(tx, b, 'CANCELLED', 'CUSTOMER_NO_SHOW', fee, 'NO_SHOW');
+          }
+        }
+      }
+      await tx.put('noShowRequests', { id: requestId, hash });
+      if (data.action !== 'CONTACT') {
+        b.noShow!.reviewNote = data.text;
+        await tx.put('noShowDecisions', {
+          id: requestId,
+          bookingId,
+          actorId: actor.id,
+          action: data.action,
+          note: data.text,
+          at: now,
+        });
+      }
+      // Message body stays in the access-controlled conversation, not the shared audit/outbox.
+      return this.save(tx, b, actor, `NO_SHOW_${data.action}`, b.noShow?.status);
+    });
+  }
+  private async closeBooking(
+    tx: Records,
+    b: Booking,
+    status: 'CANCELLED' | 'REJECTED' | 'EXPIRED',
+    reason: string,
+    fee = 0,
+    feeType = 'CANCELLATION',
+  ) {
+    b.status = status;
+    b.cancelReason = reason;
+    if (b.noShow && ['CONTACTING', 'REPORTED'].includes(b.noShow.status)) {
+      b.noShow.status = 'DISMISSED';
+      b.noShow.resolvedAt = this.now();
+    }
+    const p = await tx.get<Payment>('payments', b.paymentId);
+    if (fee > 0) {
+      b.capturedAmount = fee;
+      b.paymentStatus = 'PAID';
+      if (p) {
+        p.status = 'PAID';
+        p.capturedAmount = fee;
+        p.voidedAmount = p.amount - fee;
+      }
+      const feeId = id('fee');
+      await tx.put('feeEntries', {
+        id: feeId,
+        bookingId: b.id,
+        storeId: b.storeId,
+        amount: 0,
+        type: feeType,
+        createdAt: this.now(),
+      });
+      await recordMoney(tx, b, feeId, 'CANCELLATION', fee, 0, 0, this.now());
+    } else {
+      b.paymentStatus = 'VOIDED';
+      if (p) {
+        p.status = 'VOIDED';
+        p.capturedAmount = 0;
+        p.voidedAmount = p.amount;
+      }
+    }
+    if (p) await tx.put('payments', p);
+    await this.release(tx, b);
+  }
+  private cancellationCost(actor: Actor, b: Booking) {
+    const provider =
+      actor.role === 'MERCHANT' ||
+      b.replacementConsent === 'PENDING' ||
+      ['DECLINED', 'WITHDRAWN'].includes(b.staffTaskStatus) ||
+      lateInstant(b, this.now());
+    const late =
+      !provider &&
+      b.quote.startAt - this.now() < b.quote.cancellationPolicy.freeBeforeMinutes * minute;
+    const instant =
+      b.quote.bookingMode === 'INSTANT' && b.quote.cancellationPolicy.instantTravelOnly;
+    const fee = instant
+      ? !provider && ['EN_ROUTE', 'ARRIVED'].includes(b.status)
+        ? b.quote.transportFee
+        : 0
+      : late
+        ? Math.floor(
+            ((b.quote.total - b.quote.transportFee) *
+              scheduledCancellationBps(
+                b.quote.cancellationPolicy,
+                (b.quote.startAt - this.now()) / minute,
+              )) /
+              10000,
+          )
+        : 0;
+    return {
+      fee,
+      reason: lateInstant(b, this.now())
+        ? 'PROVIDER_ARRIVAL_DELAY'
+        : provider
+          ? 'MERCHANT_UNABLE'
+          : 'CUSTOMER_REQUEST',
+    };
+  }
+  async cancellationPreview(actor: Actor, bookingId: string) {
+    this.role(actor, 'CUSTOMER', 'MERCHANT');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId);
+      ensure(!terminal.has(b.status), 'INVALID_STATE', 'This booking has already ended.', 409);
+      ensure(
+        !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status),
+        'SERVICE_IN_PROGRESS',
+        'Contact support to end a service already in progress.',
+        409,
+      );
+      return {
+        ...this.cancellationCost(actor, b),
+        bookingVersion: b.version,
+        serverNow: this.now(),
+      };
+    });
+  }
+  async cancel(
+    actor: Actor,
+    bookingId: string,
+    version: number,
+    reject = false,
+    expectedFee?: number,
+  ) {
+    this.role(actor, 'CUSTOMER', 'MERCHANT');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      ensure(!terminal.has(b.status), 'INVALID_STATE', 'This booking has already ended.', 409);
+      ensure(
+        !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status),
+        'SERVICE_IN_PROGRESS',
+        'Contact the shop or support to end a service that has already started.',
+        409,
+      );
+      if (reject)
+        ensure(
+          actor.role === 'MERCHANT' && b.status === 'REQUESTED',
+          'INVALID_STATE',
+          'Only pending requests can be rejected.',
+          409,
+        );
+      const { fee, reason } = this.cancellationCost(actor, b);
+      ensure(
+        expectedFee === undefined || expectedFee === fee,
+        'CANCELLATION_PRICE_CHANGED',
+        'Cancellation fee changed. Review the current fee before confirming.',
+        409,
+      );
+      await this.closeBooking(
+        tx,
+        b,
+        reject ? 'REJECTED' : 'CANCELLED',
+        reject ? 'MERCHANT_REJECTED' : reason,
+        fee,
+      );
+      if (reject) b.merchantAcceptance = 'REJECTED';
+      return this.save(tx, b, actor, 'BOOKING_CANCELLED', `fee=${fee}`);
+    });
+  }
+  async refund(actor: Actor, bookingId: string, version: number, amount: number) {
+    this.role(actor, 'MERCHANT');
+    ensure(
+      Number.isSafeInteger(amount) && amount > 0,
+      'INVALID_AMOUNT',
+      'Enter a positive amount in yen.',
+    );
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      return this.applyRefund(tx, actor, b, amount);
+    });
+  }
+  private async applyRefund(tx: Records, actor: Actor, b: Booking, amount: number) {
+    ensure(
+      b.capturedAmount > 0 && amount <= b.capturedAmount - b.refundedAmount,
+      'INVALID_AMOUNT',
+      'The refund exceeds the remaining captured amount.',
+    );
+    await ensureMoneyOpening(tx, b, this.now());
+    const oldReversal = Math.floor((b.platformFee * b.refundedAmount) / b.capturedAmount);
+    b.refundedAmount += amount;
+    b.paymentStatus = b.refundedAmount === b.capturedAmount ? 'REFUNDED' : 'PARTIALLY_REFUNDED';
+    const p = await tx.get<Payment>('payments', b.paymentId);
+    if (p) {
+      p.status = b.paymentStatus;
+      p.refundedAmount = b.refundedAmount;
+      await tx.put('payments', p);
+    }
+    const feeId = id('fee'),
+      reversal = -(Math.floor((b.platformFee * b.refundedAmount) / b.capturedAmount) - oldReversal);
+    await tx.put('feeEntries', {
+      id: feeId,
+      bookingId: b.id,
+      storeId: b.storeId,
+      amount: reversal,
+      type: 'REFUND',
+      createdAt: this.now(),
+    });
+    await recordMoney(tx, b, feeId, 'REFUND', 0, amount, reversal, this.now());
+    return this.save(tx, b, actor, 'DEMO_REFUND_SUCCEEDED', `amount=${amount}`);
+  }
+  async safety(actor: Actor, bookingId: string, type: SafetyEvent['type'], version: number) {
+    this.role(actor, 'STAFF');
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, version);
+      ensure(!terminal.has(b.status), 'INVALID_STATE', 'This task has ended.', 409);
+      const existing = (await tx.list<SafetyEvent>('safety')).find(
+        (x) => x.bookingId === b.id && x.type === type && x.status === 'OPEN',
+      );
+      if (existing) return this.redact(b, actor);
+      await tx.put<SafetyEvent>('safety', {
+        id: id('safety'),
+        bookingId: b.id,
+        staffId: actor.staffId!,
+        storeId: b.storeId,
+        type,
+        status: 'OPEN',
+        createdAt: this.now(),
+      });
+      if (type === 'SAFETY_TERMINATION')
+        await this.closeBooking(tx, b, 'CANCELLED', 'SAFETY_TERMINATION');
+      return this.save(tx, b, actor, type);
+    });
+  }
+  async messages(actor: Actor, bookingId: string, text?: string) {
+    const result = await this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId);
+      if (actor.role === 'STAFF')
+        ensure(
+          b.staffTaskStatus === 'ACKNOWLEDGED' &&
+            ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status) &&
+            b.replacementConsent !== 'PENDING',
+          'FORBIDDEN',
+          'Messages are not available for this task.',
+          403,
+        );
+      if (text !== undefined) {
+        ensure(
+          text.trim().length > 0 && text.length <= 1000,
+          'INVALID_MESSAGE',
+          'Enter a message of up to 1,000 characters.',
+        );
+        const matched = contentRuleIds(text);
+        if (matched.length) {
+          await queueContentReview(tx, actor, b.id, text, matched, this.now());
+          return { blocked: true as const };
+        }
+        let safe = text.trim();
+        if (!['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE', 'COMPLETED'].includes(b.status))
+          safe = safe.replace(
+            /(?:\+?\d[\d\s().-]{6,}\d)|(?:[\w.+-]+@[\w.-]+\.[a-z]{2,})|(?:(?:line|ライン|微信|wechat)\s*[:：@]?\s*[\w.-]+)/gi,
+            '[contact hidden]',
+          );
+        await tx.put<Message>('messages', {
+          id: id('msg'),
+          bookingId: b.id,
+          actorId: actor.id,
+          role: actor.role,
+          text: safe,
+          createdAt: this.now(),
+        });
+        await this.audit(tx, actor, 'MESSAGE_SENT', b.id);
+      }
+      return {
+        messages: (await tx.find<Message>('messages', { bookingId: b.id })).sort(
+          (a, b) => a.createdAt - b.createdAt,
+        ),
+      };
+    });
+    ensure(
+      !result.blocked,
+      'CONTENT_BLOCKED',
+      'This message was not sent and has been queued for safety review.',
+    );
+    return result.messages!;
+  }
+  async dashboard(actor: Actor) {
+    this.role(actor, 'MERCHANT', 'ADMIN');
+    return this.run(async (tx) => ({
+      stores: (await tx.list<Store>('stores')).filter(
+        (s) => actor.role === 'ADMIN' || s.id === actor.storeId,
+      ),
+      listings: (await tx.list<Listing>('listings')).filter(
+        (l) => actor.role === 'ADMIN' || l.storeId === actor.storeId,
+      ),
+      safety: (await tx.list<SafetyEvent>('safety'))
+        .filter((x) => actor.role === 'ADMIN' || x.storeId === actor.storeId)
+        .map((event) => safetyEventView(actor, event)),
+      audit: (await tx.list<Audit>('audit'))
+        .filter((x) => actor.role === 'ADMIN')
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 100),
+      feeEntries: (
+        await tx.list<{
+          id: string;
+          storeId: string;
+          amount: number;
+          bookingId: string;
+          type: string;
+        }>('feeEntries')
+      ).filter((x) => actor.role === 'ADMIN' || x.storeId === actor.storeId),
+      outboxPending:
+        actor.role === 'ADMIN'
+          ? (await tx.list<{ status: string }>('outbox')).filter((x) => x.status === 'PENDING')
+              .length
+          : 0,
+    }));
+  }
+  async duty(actor: Actor, onDuty: boolean, expectedAt?: number) {
+    return this.staff.duty(actor, onDuty, expectedAt);
+  }
+  async enforce(actor: Actor, listingId: string, suspend: boolean, reason: string) {
+    requireAdmin(actor, 'supply.write');
+    this.role(actor, 'ADMIN');
+    ensure(reason.trim().length >= 3, 'REASON_REQUIRED', 'Record the moderation reason.');
+    return this.run(async (tx) => {
+      const l = await tx.get<Listing>('listings', listingId);
+      ensure(l, 'NOT_FOUND', 'Listing not found.', 404);
+      if (!suspend) {
+        const store = await tx.get<Store>('stores', l.storeId);
+        ensure(
+          l.membershipActive &&
+            l.identityVerified &&
+            l.portraitConsent &&
+            store?.active &&
+            store.approved &&
+            store.pspAccount,
+          'LISTING_UNAVAILABLE',
+          'Publication requirements are incomplete.',
+          409,
+        );
+      }
+      l.publicationStatus = suspend ? 'SUSPENDED' : 'PUBLISHED_INDEXABLE';
+      l.moderationVersion = (l.moderationVersion ?? 1) + 1;
+      await tx.put('listings', l);
+      await this.audit(
+        tx,
+        actor,
+        suspend ? 'CONTENT_SUSPENDED' : 'CONTENT_RESTORED',
+        undefined,
+        `${listingId}:${reason.slice(0, 300)}`,
+      );
+      return l;
+    });
+  }
+  async sweep(tx: Records) {
+    await sweepOnboarding(tx, this.now());
+    await sweepSubscriptions(tx, this.now());
+    const stores = await tx.list<Store>('stores'),
+      listings = await tx.list<Listing>('listings');
+    for (const store of stores.filter((s) => s.acceptanceMode === 'SOLO')) {
+      const team = listings.filter((l) => l.storeId === store.id && l.membershipActive);
+      const shopCount = stores.filter((s) => s.merchantId === store.merchantId && s.active).length;
+      if (
+        shopCount === 1 &&
+        team.length === 1 &&
+        team[0].staffId === store.ownerStaffId &&
+        team[0].identityVerified
+      )
+        continue;
+      await tx.put('stores', {
+        ...store,
+        acceptanceMode: 'MANUAL',
+        ruleVersion: store.ruleVersion + 1,
+      });
+      await this.audit(
+        tx,
+        { id: 'system', role: 'ADMIN', verificationLevel: 3 },
+        'SOLO_EXITED',
+        undefined,
+        store.id,
+      );
+    }
+    for (const block of await tx.find<TimeBlock>('timeBlocks', {
+      active: true,
+      endAt: { lte: this.now() },
+    })) {
+      if (block.active && block.endAt <= this.now()) {
+        await tx.releaseInterval(`block:${block.id}`);
+        await tx.put('timeBlocks', { ...block, active: false, version: block.version + 1 });
+      }
+    }
+    await this.care.sweep(tx);
+    const system: Actor = { id: 'system', role: 'ADMIN', verificationLevel: 3 };
+    for (const request of await tx.find<TimeOffRequest>('timeOffRequests', {
+      status: 'PENDING',
+      startAt: { lte: this.now() },
+    })) {
+      if (request.status === 'PENDING' && request.startAt <= this.now()) {
+        request.status = 'EXPIRED';
+        request.version++;
+        request.updatedAt = this.now();
+        await tx.put('timeOffRequests', request);
+        await this.audit(tx, system, 'TIME_OFF_EXPIRED', undefined, request.id);
+      }
+    }
+    for (const h of await tx.find<Hold>('holds', { active: true, expiresAt: { lte: this.now() } }))
+      if (h.active && h.phase === 'CHECKOUT_HOLD' && h.expiresAt <= this.now()) {
+        h.active = false;
+        await tx.put('holds', h);
+        await tx.releaseInterval(h.id);
+        for (const p of await tx.find<Payment>('payments', { holdId: h.id }))
+          if (
+            p.holdId === h.id &&
+            !p.bookingId &&
+            ['AUTHORIZED', 'METHOD_SAVED'].includes(p.status)
+          ) {
+            p.status = 'VOIDED';
+            await tx.put('payments', p);
+          }
+      }
+    for (const b of await tx.find<Booking>('bookings', { status: activeBookingStatuses })) {
+      if (terminal.has(b.status)) continue;
+      if (b.status === 'AWAITING_COMPLETION' && b.completion) {
+        const c = b.completion;
+        const p = await tx.get<Payment>('payments', b.paymentId);
+        const paymentUnavailable = !p || p.status !== 'AUTHORIZED' || p.expiresAt <= this.now();
+        if (c.status !== 'PAYMENT_REVIEW' && paymentUnavailable) {
+          if (['PENDING', 'DISPUTED', 'TIMED_OUT'].includes(c.status))
+            c.reviewStatus =
+              c.status === 'PENDING' && c.confirmBy <= this.now()
+                ? 'TIMED_OUT'
+                : (c.status as 'PENDING' | 'DISPUTED' | 'TIMED_OUT');
+          c.status = 'PAYMENT_REVIEW';
+          c.history.push({ action: 'PAYMENT_REVIEW', role: 'ADMIN', at: this.now() });
+          b.paymentStatus =
+            p && p.expiresAt <= this.now()
+              ? 'AUTH_EXPIRED'
+              : p?.status === 'METHOD_SAVED'
+                ? 'METHOD_SAVED'
+                : 'FAILED';
+          await completionCase(
+            tx,
+            b,
+            this.now(),
+            'Payment authorization expired or is unavailable. No automatic charge; manual review is required.',
+          );
+          await this.save(tx, b, system, 'COMPLETION_PAYMENT_REVIEW');
+        } else if (c.status === 'PENDING' && c.confirmBy <= this.now()) {
+          c.status = 'TIMED_OUT';
+          c.history.push({ action: 'TIMED_OUT', role: 'ADMIN', at: this.now() });
+          await completionCase(
+            tx,
+            b,
+            this.now(),
+            'Customer completion confirmation timed out. No automatic charge; the shop must follow up with the customer.',
+          );
+          await this.save(tx, b, system, 'COMPLETION_TIMED_OUT');
+        }
+      }
+      const replacementExpired =
+        b.replacementConsent === 'PENDING' && b.replacementDeadline! <= this.now();
+      const taskExpired =
+        (['REQUESTED', 'ACCEPTED'].includes(b.status) && b.deadline <= this.now()) ||
+        (b.status === 'CONFIRMED' &&
+          b.staffTaskStatus !== 'ACKNOWLEDGED' &&
+          b.deadline <= this.now());
+      if (replacementExpired || taskExpired) {
+        if (replacementExpired) b.replacementConsent = 'EXPIRED';
+        if (b.merchantAcceptance === 'PENDING') b.merchantAcceptance = 'EXPIRED';
+        if (b.staffTaskStatus === 'OFFERED') b.staffTaskStatus = 'EXPIRED';
+        await this.closeBooking(tx, b, 'EXPIRED', 'TIMEOUT');
+        await this.save(tx, b, system, 'BOOKING_EXPIRED');
+      }
+    }
+    await sweepFulfillment(tx, this.now());
+    await tx.clearDue(this.now());
+  }
+}

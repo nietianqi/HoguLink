@@ -1,0 +1,408 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { acceptanceScopeInput, type AcceptanceRule } from '@hogulink/contracts';
+import {
+  makeCancellationPolicy,
+  storeBookingRulesInput,
+  type BookingRulesHistory,
+} from '@hogulink/contracts';
+import { effectiveBookingRules } from './booking-rules.js';
+import type {
+  Actor,
+  Audit,
+  Booking,
+  Listing,
+  Offering,
+  Store,
+  TimeOffRequest,
+} from '@hogulink/contracts';
+import type { Records } from './repository.js';
+import { ensure } from './errors.js';
+import { config } from './config.js';
+import { timeOffHistory } from './staff.js';
+
+export type TimeBlock = {
+  id: string;
+  storeId: string;
+  listingId: string;
+  staffId: string;
+  startAt: number;
+  endAt: number;
+  reason: 'BREAK' | 'TIME_OFF' | 'TRAINING';
+  active: boolean;
+  version: number;
+  createdAt: number;
+};
+export class MerchantService {
+  constructor(
+    private run: <T>(fn: (tx: Records) => Promise<T>) => Promise<T>,
+    private now: () => number,
+  ) {}
+  private async shop(tx: Records, actor: Actor) {
+    ensure(actor.role === 'MERCHANT' && actor.storeId, 'FORBIDDEN', 'Shop account required.', 403);
+    const store = await tx.get<Store>('stores', actor.storeId);
+    ensure(store, 'NOT_FOUND', 'Shop not found.', 404);
+    return store;
+  }
+  private async audit(tx: Records, actor: Actor, action: string, target: string) {
+    await tx.put<Audit>('audit', {
+      id: randomUUID(),
+      actorId: actor.id,
+      action,
+      detail: target,
+      at: this.now(),
+    });
+  }
+  async snapshot(actor: Actor) {
+    return this.run(async (tx) => {
+      const { pspAccount: _account, ...store } = await this.shop(tx, actor);
+      const orders = await tx.find<Booking>('bookings', { storeId: store.id });
+      const feeEntries = (
+        await tx.list<{
+          id: string;
+          storeId: string;
+          bookingId: string;
+          amount: number;
+          type: string;
+          createdAt?: number;
+        }>('feeEntries')
+      )
+        .filter((f) => f.storeId === store.id)
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+      const captured = orders.reduce((n, b) => n + b.capturedAmount, 0),
+        refunded = orders.reduce((n, b) => n + b.refundedAmount, 0),
+        platform = feeEntries.reduce((n, f) => n + f.amount, 0);
+      return {
+        store,
+        bookingRules: effectiveBookingRules(store),
+        bookingRulesHistory: (await tx.list<BookingRulesHistory>('bookingRulesHistory'))
+          .filter((r) => r.storeId === store.id)
+          .sort((a, b) => b.version - a.version)
+          .slice(0, 5),
+        acceptanceHistory: (
+          await tx.list<AcceptanceRule & { id: string; storeId: string }>('acceptanceRules')
+        )
+          .filter((r) => r.storeId === store.id)
+          .sort((a, b) => b.version - a.version)
+          .slice(0, 5),
+        timeOffRequests: timeOffHistory(
+          (await tx.list<TimeOffRequest>('timeOffRequests')).filter((r) => r.storeId === store.id),
+        ),
+        billingRates: { TRIAL: 0, STANDARD: config.standardFeeBps, ANNUAL: config.annualFeeBps },
+        totals: {
+          captured,
+          refunded,
+          net: captured - refunded,
+          platform,
+          afterFees: captured - refunded - platform,
+        },
+        listings: (await tx.list<Listing>('listings')).filter((x) => x.storeId === store.id),
+        offerings: (await tx.list<Offering>('offerings'))
+          .filter((x) => x.storeId === store.id)
+          .sort((a, b) => a.durationMinutes - b.durationMinutes),
+        blocks: (await tx.list<TimeBlock>('timeBlocks'))
+          .filter((x) => x.storeId === store.id && x.active && x.endAt > this.now())
+          .sort((a, b) => a.startAt - b.startAt),
+        feeEntries,
+      };
+    });
+  }
+  async block(actor: Actor, input: unknown, key: string) {
+    const data = z
+      .object({
+        listingId: z.string(),
+        startAt: z.number().int(),
+        endAt: z.number().int(),
+        reason: z.enum(['BREAK', 'TIME_OFF', 'TRAINING']),
+      })
+      .strict()
+      .parse(input);
+    ensure(
+      key.length >= 8 && key.length <= 160,
+      'IDEMPOTENCY_REQUIRED',
+      'A retry key is required.',
+    );
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor);
+      const listing = await tx.get<Listing>('listings', data.listingId);
+      ensure(
+        listing?.storeId === store.id && listing.membershipActive,
+        'NOT_FOUND',
+        'Team member not found.',
+        404,
+      );
+      const id = createHash('sha256').update(`${store.id}:${key}`).digest('hex');
+      const prior = await tx.get<TimeBlock>('timeBlocks', id);
+      if (prior) {
+        ensure(
+          prior.listingId === data.listingId &&
+            prior.startAt === data.startAt &&
+            prior.endAt === data.endAt &&
+            prior.reason === data.reason,
+          'IDEMPOTENCY_CONFLICT',
+          'This retry key has different input.',
+          409,
+        );
+        return prior;
+      }
+      ensure(
+        data.startAt >= this.now() &&
+          data.startAt < this.now() + 90 * 86400_000 &&
+          data.endAt > data.startAt &&
+          data.endAt - data.startAt <= 14 * 86400_000,
+        'INVALID_TIME',
+        'Choose a future period of up to 14 days within 90 days.',
+      );
+      ensure(
+        !(await tx.conflicts(listing.staffId, data.startAt, data.endAt)),
+        'SLOT_CONFLICT',
+        'This period overlaps a booking, travel buffer, or blocked time.',
+        409,
+      );
+      const block: TimeBlock = {
+        id,
+        storeId: store.id,
+        staffId: listing.staffId,
+        ...data,
+        active: true,
+        version: 1,
+        createdAt: this.now(),
+      };
+      await tx.interval({
+        id: `block:${id}`,
+        staffId: block.staffId,
+        startAt: block.startAt,
+        endAt: block.endAt,
+        expiresAt: block.endAt,
+      });
+      await tx.put('timeBlocks', block);
+      await this.audit(tx, actor, 'TEAM_TIME_BLOCKED', id);
+      return block;
+    });
+  }
+  async releaseBlock(actor: Actor, id: string, input: unknown) {
+    const { version } = z.object({ version: z.number().int().positive() }).strict().parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor),
+        block = await tx.get<TimeBlock>('timeBlocks', id);
+      ensure(block?.storeId === store.id, 'NOT_FOUND', 'Blocked time not found.', 404);
+      ensure(
+        block.version === version,
+        'VERSION_CONFLICT',
+        'This record changed. Refresh first.',
+        409,
+      );
+      await tx.releaseInterval(`block:${id}`);
+      const next = { ...block, active: false, version: block.version + 1 };
+      await tx.put('timeBlocks', next);
+      await this.audit(tx, actor, 'TEAM_TIME_RELEASED', id);
+      return next;
+    });
+  }
+  async service(actor: Actor, id: string, input: unknown) {
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        price: z.number().int().min(1000).max(200000),
+        transportFee: z.number().int().min(0).max(20000),
+        active: z.boolean(),
+      })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor),
+        service = await tx.get<Offering>('offerings', id);
+      ensure(service?.storeId === store.id, 'NOT_FOUND', 'Service not found.', 404);
+      ensure(
+        service.version === data.version,
+        'VERSION_CONFLICT',
+        'This service changed. Refresh first.',
+        409,
+      );
+      ensure(
+        service.approved && service.regulatoryCategory === 'RELAXATION',
+        'FORBIDDEN',
+        'Only approved relaxation services can be edited.',
+        403,
+      );
+      if (
+        service.price === data.price &&
+        service.transportFee === data.transportFee &&
+        (service.active !== false) === data.active
+      )
+        return service;
+      const next = { ...service, ...data, version: service.version + 1 };
+      await tx.put('offerings', next);
+      await this.audit(tx, actor, 'SERVICE_PRICING_UPDATED', id);
+      return next;
+    });
+  }
+  async settings(actor: Actor, input: unknown) {
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        acceptanceMode: z.enum(['MANUAL', 'AUTO_PREAUTHORIZED', 'SOLO']),
+        emergencyContact: z.string().trim().min(5).max(120),
+        acceptanceRule: acceptanceScopeInput.optional(),
+        confirmAuthorization: z.boolean().optional(),
+      })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor);
+      ensure(
+        store.ruleVersion === data.version,
+        'VERSION_CONFLICT',
+        'Shop rules changed. Refresh first.',
+        409,
+      );
+      ensure(
+        store.acceptanceMode === 'SOLO'
+          ? data.acceptanceMode === 'SOLO'
+          : data.acceptanceMode !== 'SOLO',
+        'INVALID_STATE',
+        'Solo ownership requires a separate review.',
+        409,
+      );
+      if (data.acceptanceRule) {
+        ensure(
+          store.acceptanceMode !== 'SOLO',
+          'INVALID_STATE',
+          'SOLO uses owner acceptance.',
+          409,
+        );
+        const offerings = (await tx.list<Offering>('offerings')).filter(
+          (o) =>
+            o.storeId === store.id &&
+            (!data.acceptanceRule!.active ||
+              (o.approved && o.active !== false && o.regulatoryCategory === 'RELAXATION')),
+        );
+        const listings = (await tx.list<Listing>('listings')).filter(
+          (l) =>
+            l.storeId === store.id &&
+            (!data.acceptanceRule!.active ||
+              (l.membershipActive &&
+                l.identityVerified &&
+                l.portraitConsent &&
+                l.publicationStatus === 'PUBLISHED_INDEXABLE')),
+        );
+        ensure(
+          data.acceptanceRule.offeringIds.every((id) => offerings.some((o) => o.id === id)) &&
+            data.acceptanceRule.listingIds.every((id) => listings.some((l) => l.id === id)) &&
+            data.acceptanceRule.areas.every((area) => store.areas.includes(area)),
+          'INVALID_ACCEPTANCE_SCOPE',
+          'Choose approved services, team members and areas from this shop.',
+        );
+      }
+      const priorScope = store.acceptanceRule
+        ? acceptanceScopeInput.parse(
+            Object.fromEntries(
+              Object.keys(acceptanceScopeInput.shape).map((key) => [
+                key,
+                store.acceptanceRule![key as keyof AcceptanceRule],
+              ]),
+            ),
+          )
+        : undefined;
+      const changed =
+        data.acceptanceRule !== undefined &&
+        JSON.stringify(data.acceptanceRule) !== JSON.stringify(priorScope);
+      const enabling =
+        data.acceptanceMode === 'AUTO_PREAUTHORIZED' &&
+        store.acceptanceMode !== 'AUTO_PREAUTHORIZED';
+      if (changed || enabling)
+        ensure(
+          data.confirmAuthorization === true ||
+            (changed && !data.acceptanceRule!.active && !enabling),
+          'ACCEPTANCE_AUTHORIZATION_REQUIRED',
+          'Confirm the shop authorization before enabling or changing these rules.',
+        );
+      if (data.acceptanceMode === 'AUTO_PREAUTHORIZED')
+        ensure(
+          data.acceptanceRule || store.acceptanceRule,
+          'ACCEPTANCE_AUTHORIZATION_REQUIRED',
+          'Define and authorize a bounded acceptance rule first.',
+        );
+      if (
+        store.acceptanceMode === data.acceptanceMode &&
+        store.emergencyContact === data.emergencyContact &&
+        !changed
+      ) {
+        const { pspAccount: _account, ...view } = store;
+        return view;
+      }
+      const next = {
+        ...store,
+        acceptanceMode: data.acceptanceMode,
+        emergencyContact: data.emergencyContact,
+        ruleVersion: store.ruleVersion + 1,
+        acceptanceRule:
+          changed || enabling
+            ? {
+                ...(data.acceptanceRule ?? priorScope)!,
+                version: store.ruleVersion + 1,
+                authorizedBy: actor.id,
+                authorizedAt: this.now(),
+              }
+            : store.acceptanceRule,
+      };
+      if (changed || enabling)
+        await tx.put('acceptanceRules', {
+          id: `${store.id}:v${next.ruleVersion}`,
+          storeId: store.id,
+          ...next.acceptanceRule!,
+        });
+      await tx.put('stores', next);
+      await this.audit(tx, actor, 'SHOP_RULES_UPDATED', store.id);
+      const { pspAccount: _account, ...view } = next;
+      return view;
+    });
+  }
+  async bookingRules(actor: Actor, input: unknown) {
+    const data = storeBookingRulesInput.parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor);
+      const prior = effectiveBookingRules(store);
+      ensure(
+        data.version === prior.version,
+        'VERSION_CONFLICT',
+        'Booking prices and policies changed. Refresh first.',
+        409,
+      );
+      const policy = makeCancellationPolicy(
+        data.templateId,
+        `${store.id}-policy-v${prior.version + 1}`,
+        data.customPolicy,
+      );
+      const { version: _priorVersion, ...priorPolicy } = prior.cancellationPolicy;
+      const { version: _nextVersion, ...nextPolicy } = policy;
+      if (
+        data.nominationFee === prior.nominationFee &&
+        data.templateId === prior.templateId &&
+        JSON.stringify(priorPolicy) === JSON.stringify(nextPolicy)
+      )
+        return prior;
+      const next = {
+        version: prior.version + 1,
+        nominationFee: data.nominationFee,
+        templateId: data.templateId,
+        cancellationPolicy: policy,
+      };
+      await tx.put('stores', { ...store, bookingRules: next, ruleVersion: store.ruleVersion + 1 });
+      await tx.put<BookingRulesHistory>('bookingRulesHistory', {
+        ...next,
+        id: `${store.id}:booking-rules:v${next.version}`,
+        storeId: store.id,
+        changedBy: actor.id,
+        changedAt: this.now(),
+      });
+      await this.audit(
+        tx,
+        actor,
+        'SHOP_BOOKING_PRICES_POLICY_UPDATED',
+        `${store.id}:v${next.version}`,
+      );
+      return next;
+    });
+  }
+}

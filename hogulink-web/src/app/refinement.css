@@ -1,0 +1,3071 @@
+/* Shared finish layer. Layout and semantic state rules remain in each feature sheet.
+   Forest establishes hierarchy; warm stone separates surfaces; brass is an accent.
+   Keep desktop enhancements inside their breakpoint so H5 keeps its own structure. */
+/* Tokens are defined once in globals.css (:root, --hl-*). */
+body {
+  background: var(--hl-canvas);
+  color: var(--hl-ink);
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.hero h1,
+.visit-page-heading h1,
+.consumer-intro h1,
+.shop-detail-hero h1,
+.merchant-heading h1,
+.staff-heading h1,
+.admin-heading h1,
+.workspace-title h1 {
+  text-wrap: balance;
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+.button {
+  min-height: 48px;
+  border-radius: 10px;
+  font-weight: 550;
+  box-shadow: none;
+}
+.button.small {
+  min-height: 40px;
+  font-size: 13px;
+}
+.button.secondary {
+  color: var(--green);
+  border-color: var(--hl-line-strong);
+}
+.button:hover:not(:disabled) {
+  box-shadow: 0 4px 12px #173f3610;
+}
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--hl-gold);
+  outline-offset: 4px;
+}
+.eyebrow,
+.eyebrow.small {
+  color: var(--hl-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+.main-nav a[aria-current='page'] {
+  color: var(--green);
+  font-weight: 650;
+}
+.main-nav a[aria-current='page']::after {
+  content: '';
+  display: block;
+  height: 2px;
+  background: var(--brass);
+  margin-top: 7px;
+  width: 24px;
+}
+.logo-icon {
+  border-color: var(--hl-line-strong);
+  border-radius: 12px 12px 12px 2px;
+}
+.demo-bar {
+  background: var(--green-dark);
+  color: #e6eee7;
+}
+.header {
+  background: var(--cream);
+}
+.account-link {
+  background: #fff;
+  border-color: var(--hl-line);
+  border-radius: 10px;
+}
+
+/* Consumer browsing, profile and reservation surfaces. */
+.hero {
+  background: var(--green-dark);
+  color: #f9f7ef;
+  border-radius: 24px;
+}
+.hero h1 {
+  color: #f9f7ef;
+}
+.hero h1 em {
+  color: #d7c6a5;
+  font-style: normal;
+}
+.hero .eyebrow {
+  color: #d8dfd4;
+}
+.hero p {
+  color: #d7e0d9;
+}
+.hero-discover {
+  color: #fbf7ed;
+  border-color: var(--hl-line-strong);
+}
+.hero-location,
+.hero-location > span {
+  color: #d4ded3;
+}
+.hero-art::before {
+  background: linear-gradient(90deg, var(--green-dark), transparent 35%);
+}
+.hero-image-caption {
+  bottom: 56px;
+}
+.search-panel {
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 40px #20352b0c;
+}
+.mode-tabs button {
+  color: var(--hl-ink-2);
+}
+.mode-tabs button.active {
+  color: var(--green);
+}
+.discovery-sidebar form {
+  border-radius: 16px;
+}
+.therapist-card {
+  border-radius: 18px;
+}
+.card-description,
+.shop-link {
+  color: var(--hl-ink-2);
+}
+.card-language {
+  color: var(--hl-ink-2);
+}
+.service-setting {
+  color: var(--hl-ink-2);
+  background: var(--hl-tint);
+}
+.price {
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+.detail-panel,
+.visit-section,
+.visit-summary,
+.address-card {
+  border-color: var(--line);
+  border-radius: 18px;
+}
+.detail-breadcrumb {
+  color: var(--hl-ink-2);
+}
+.detail-verified {
+  background: var(--hl-tint);
+  color: var(--hl-pine-900);
+  border-radius: 6px;
+}
+.detail-anchor-nav {
+  border-color: var(--hl-line);
+}
+.detail-anchor-nav a {
+  font-weight: 550;
+}
+.consumer-account-hero {
+  background: var(--hl-tint);
+  border-color: var(--line);
+}
+.consumer-service-card,
+.consumer-orders,
+.consumer-utilities {
+  border-color: var(--line);
+  border-radius: 18px;
+}
+.consumer-section-head h2,
+.section-heading h2 {
+  color: var(--ink);
+  letter-spacing: -0.025em;
+}
+.consumer-service-info p,
+.consumer-price-note,
+.consumer-account-hero p {
+  color: var(--hl-ink-2);
+}
+.workday-customer .consumer-account-hero {
+  background: transparent;
+  border: 0;
+  padding-inline: 0;
+}
+.workday-customer-focus {
+  background: #fff;
+  border-color: var(--line);
+  border-inline-start: 4px solid var(--green);
+  border-radius: 18px;
+}
+.trust-section {
+  border-color: var(--line);
+}
+.trust-icon {
+  color: var(--brass);
+  background: var(--hl-gold-100);
+}
+.how-section {
+  background: var(--hl-tint);
+}
+
+/* Workspaces: legible navigation, restrained state colors and clear panel hierarchy. */
+.merchant-heading p,
+.staff-heading p,
+.admin-heading p,
+.workspace-title p {
+  color: var(--hl-ink-2);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.merchant-heading h1,
+.staff-heading h1,
+.admin-heading h1,
+.workspace-title h1 {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+.merchant-heading .eyebrow,
+.staff-heading .eyebrow,
+.admin-heading .eyebrow {
+  color: var(--hl-gold-700);
+}
+.workday-account-switch > summary,
+.workday-resources > summary,
+.staff-account,
+.admin-account {
+  background: var(--hl-tint);
+  border-color: var(--hl-line);
+  color: var(--hl-ink-2);
+}
+.workday-account-switch > summary {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding-inline: 0;
+}
+.workday-action-center {
+  border: 1px solid var(--hl-line);
+  border-top: 3px solid var(--green);
+  border-radius: 20px;
+}
+.workday-focus-heading {
+  color: var(--hl-ink-2);
+}
+.workday-action-center h2,
+.workday-customer-focus h2 {
+  font-weight: 550;
+}
+.workday-counts > a {
+  background: var(--hl-tint);
+  border: 1px solid var(--hl-line);
+  border-radius: 12px;
+}
+.workday-counts > a:hover {
+  background: var(--hl-tint);
+  border-color: var(--hl-line-strong);
+}
+.workday-counts span {
+  color: var(--hl-ink-2);
+}
+.workday-counts strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+}
+.workday-tools a {
+  border-radius: 12px;
+  border-color: var(--hl-line);
+  font-weight: 550;
+}
+.workday-tools a > svg:first-child {
+  color: var(--hl-muted);
+}
+.workday-tools a:hover {
+  background: #fff;
+  border-color: #80977d;
+}
+.merchant-metrics > div,
+.admin-stat-grid > div,
+.workspace-stats > div {
+  border-color: var(--line);
+  border-radius: 16px;
+}
+.merchant-metrics > div > span,
+.admin-stat-grid > div > span,
+.workspace-stats span {
+  font-size: 13px;
+  color: var(--hl-ink-2);
+}
+.merchant-metrics small,
+.admin-stat-grid > div > small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.merchant-metrics > div:first-child > span,
+.merchant-metrics > div:first-child small,
+.workspace-stats > div:first-child span {
+  color: #e1e9dd;
+}
+.merchant-metrics strong,
+.admin-stat-grid strong,
+.workspace-stats strong,
+.staff-stat-grid strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 550;
+}
+.merchant-panel,
+.admin-panel,
+.staff-panel,
+.queue-panel {
+  border-color: var(--line);
+  border-radius: 18px;
+}
+.merchant-panel-heading h2,
+.admin-panel-heading h2,
+.staff-panel-title h2 {
+  font-weight: 600;
+  font-size: 18px;
+}
+.merchant-panel-heading > a,
+.admin-panel-heading > a,
+.staff-panel-title a {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+}
+.staff-focus {
+  background: var(--green-dark);
+  border-radius: 20px;
+}
+.staff-focus::after {
+  display: none;
+}
+.staff-focus-label,
+.staff-focus p {
+  color: #d3dfd1;
+}
+.staff-focus .button {
+  background: var(--hl-gold-100);
+  border-color: var(--hl-line-strong);
+  color: var(--hl-pine-900);
+}
+.staff-stat-grid {
+  border-color: var(--line);
+  border-radius: 16px;
+}
+.workday-staff .staff-stat-grid > div > span,
+.workday-staff .staff-stat-grid > div > small {
+  color: var(--hl-ink-2);
+}
+.staff-content :is(input, select, textarea) {
+  color: var(--ink);
+  background: white;
+  border-color: var(--hl-line-strong);
+}
+.queue-table th {
+  color: var(--hl-ink-2);
+  background: var(--hl-tint);
+  font-size: 12px;
+}
+.queue-table td {
+  font-size: 14px;
+}
+.queue-table td small,
+.queue-footer {
+  font-size: 12px;
+}
+.queue-table tr[data-selected='true'] {
+  background: var(--hl-tint);
+}
+.queue-table tr[data-selected='true'] td:first-child {
+  box-shadow: inset 3px 0 var(--green);
+}
+.queue-open {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 8px;
+}
+.reference-button {
+  font-size: 13px;
+  min-height: 40px;
+}
+.queue-tabs button {
+  min-height: 44px;
+  font-size: 13px;
+}
+.queue-toolbar select,
+.queue-search input {
+  min-height: 44px;
+  font-size: 14px;
+}
+.status-badge {
+  font-size: 11px;
+}
+.admin-control {
+  background: var(--hl-tint);
+  border-color: var(--hl-line);
+  border-radius: 18px;
+  color: var(--hl-pine-900);
+}
+.admin-control-top {
+  color: var(--hl-ink-2);
+}
+.admin-control-top > span {
+  font-size: 11px;
+}
+.admin-control > p {
+  color: var(--hl-ink-2);
+  font-size: 14px;
+}
+.admin-control-metrics span {
+  color: var(--hl-ink-2);
+  font-size: 12px;
+}
+
+@media (min-width: 761px) {
+  .wrap {
+    width: min(1400px, calc(100% - 96px));
+  }
+  .header {
+    height: 100px;
+  }
+  .workspace-header {
+    height: 84px;
+    border-bottom: 1px solid var(--hl-line);
+  }
+  .main-nav {
+    gap: 30px;
+  }
+  .main-nav a {
+    font-size: 14px;
+  }
+  .hero {
+    grid-template-columns: 1fr 1.02fr;
+    min-height: 480px;
+  }
+  .hero-copy {
+    padding: 54px 32px 65px 56px;
+  }
+  .hero h1 {
+    font-size: clamp(36px, 3.65vw, 56px);
+    line-height: 1.45;
+    margin: 24px 0 20px;
+    letter-spacing: 0.015em;
+  }
+  .hero p {
+    font-size: 15px;
+    line-height: 1.95;
+  }
+  .hero-art {
+    min-height: 480px;
+  }
+  .hero-art::before {
+    background: linear-gradient(90deg, var(--green-dark), #102f2930 22%, transparent 45%);
+  }
+  .hero-discover {
+    min-height: 44px;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+  .hero-location {
+    margin-top: 25px;
+    font-size: 11px;
+  }
+  .search-position {
+    padding-inline: 40px;
+    margin-top: -28px;
+  }
+  .mode-tabs {
+    height: 56px;
+  }
+  .search-fields {
+    padding: 22px 28px;
+  }
+  .search-fields label span {
+    font-size: 12px;
+  }
+  .search-fields select {
+    font-size: 16px;
+  }
+  .search-fields .button {
+    min-width: 176px;
+    min-height: 52px;
+  }
+  .discovery {
+    padding-block: 72px;
+  }
+  .section-heading h2 {
+    font-size: 32px;
+    line-height: 1.45;
+  }
+  .section-heading p {
+    font-size: 15px;
+  }
+  .discovery-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .discovery-sidebar h3 {
+    font-size: 15px;
+  }
+  .discovery-sidebar .field {
+    font-size: 13px;
+  }
+  .filter-pills a {
+    font-size: 13px;
+    min-height: 40px;
+  }
+  .therapist-grid {
+    gap: 24px;
+  }
+  .card-body {
+    padding: 20px;
+  }
+  .card-title h3 {
+    font-size: 22px;
+  }
+  .shop-link,
+  .card-description {
+    font-size: 13px;
+  }
+  .card-language,
+  .service-setting {
+    font-size: 12px;
+  }
+  .card-bottom {
+    padding-top: 18px;
+  }
+  .price {
+    font-size: 26px;
+  }
+  .price-suffix,
+  .card-bottom small {
+    font-size: 11px;
+  }
+  .detail-page,
+  .visit-page {
+    padding-top: 32px;
+  }
+  .detail-page-heading h1,
+  .shop-detail-hero h1,
+  .visit-page-heading h1 {
+    font-size: 48px;
+  }
+  .detail-anchor-nav a {
+    font-size: 14px;
+  }
+  .detail-columns {
+    gap: 40px;
+  }
+  .therapist-intro {
+    padding: 32px;
+  }
+  .trust-section {
+    padding-block: 44px;
+  }
+  .trust-section h3 {
+    font-size: 19px;
+  }
+  .trust-section p {
+    font-size: 14px;
+    line-height: 1.9;
+  }
+
+  .merchant-page,
+  .staff-page,
+  .admin-page,
+  .page-section:has(.workspace-layout) {
+    width: min(1600px, calc(100% - 64px));
+    padding-top: 28px;
+  }
+  .merchant-layout,
+  .staff-layout,
+  .admin-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .workspace-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .merchant-heading,
+  .staff-heading,
+  .admin-heading,
+  .workspace-title {
+    margin-bottom: 26px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .merchant-heading h1,
+  .staff-heading h1,
+  .admin-heading h1,
+  .workspace-title h1 {
+    font-size: 34px;
+    line-height: 1.45;
+    margin-block: 10px;
+  }
+  .merchant-sidebar,
+  .staff-sidebar,
+  .admin-sidebar,
+  .workspace-nav[data-role='MERCHANT'],
+  .workspace-nav[data-role='STAFF'],
+  .workspace-nav[data-role='ADMIN'] {
+    background: var(--green-dark);
+    border: 1px solid var(--green-dark);
+    border-radius: 18px;
+    color: #dbe5d8;
+    padding: 26px 14px;
+  }
+  .merchant-sidebar nav a,
+  .staff-sidebar nav a,
+  .admin-sidebar nav a,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) a {
+    color: #d0ddce;
+    font-size: 14px;
+    border-radius: 10px;
+    min-height: 46px;
+  }
+  .merchant-sidebar nav a:hover,
+  .staff-sidebar nav a:hover,
+  .admin-sidebar nav a:hover,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) a:hover {
+    background: #ffffff12;
+  }
+  .merchant-sidebar nav a[aria-current],
+  .staff-sidebar nav a[aria-current],
+  .admin-sidebar nav a[aria-current],
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) a.active {
+    background: var(--hl-gold-100);
+    color: var(--hl-pine-900);
+    border-color: transparent;
+    font-weight: 650;
+    box-shadow: none;
+  }
+  .merchant-wordmark,
+  .staff-wordmark,
+  .admin-wordmark,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+    .workspace-brand {
+    color: #f4f4e8;
+  }
+  .merchant-wordmark small,
+  .staff-wordmark small,
+  .admin-wordmark small,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+    .workspace-brand
+    small {
+    color: var(--hl-subtle);
+    font-size: 10px;
+  }
+  .merchant-shop-stamp,
+  .staff-identity,
+  .admin-space-label {
+    border-color: #ffffff24;
+    color: #e1e9da;
+  }
+  .merchant-shop-stamp svg,
+  .merchant-shop-stamp small,
+  .staff-identity > small,
+  .merchant-sidebar-note,
+  .admin-sidebar-bottom,
+  .admin-sidebar-bottom p,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+    .workspace-nav-bottom
+    small {
+    color: var(--hl-subtle);
+  }
+  .merchant-sidebar-note,
+  .admin-sidebar-bottom,
+  .workspace-nav-bottom a {
+    border-color: #ffffff24;
+  }
+  .merchant-sidebar-note a,
+  .admin-sidebar-bottom a {
+    color: #e1e9db;
+    font-size: 12px;
+  }
+  .workday-action-center {
+    padding: 28px 32px;
+  }
+  .workday-action-center h2 {
+    font-size: 28px;
+  }
+  .workday-counts {
+    gap: 12px;
+  }
+  .workday-counts > a {
+    padding: 18px 16px;
+    min-height: 82px;
+  }
+  .workday-counts strong {
+    font-size: 34px;
+  }
+  .workday-tools {
+    gap: 14px;
+    margin-block: 24px;
+  }
+  .workday-tools a {
+    padding: 18px;
+    min-height: 64px;
+  }
+  .merchant-metrics > div,
+  .admin-stat-grid > div,
+  .workspace-stats > div {
+    padding: 24px;
+  }
+  .merchant-metrics strong,
+  .admin-stat-grid strong {
+    font-size: 34px;
+  }
+  .workday-staff .staff-focus {
+    padding: 30px 34px;
+  }
+  .workday-staff .staff-focus h2 {
+    font-size: 32px;
+  }
+  .merchant-panel-heading {
+    padding: 24px 28px;
+  }
+}
+
+@media (min-width: 1101px) {
+  .booking-preview .visit-service-picker.compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .booking-preview .visit-service-picker.compact > button {
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 10px;
+    gap: 12px;
+    min-height: 106px;
+  }
+  .booking-preview .compact .service-duration {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    flex: initial;
+    font-size: 24px;
+  }
+  .booking-preview .visit-service-picker.compact strong {
+    font-size: 15px;
+    letter-spacing: -0.04em;
+  }
+  .booking-preview .compact .selection-dot {
+    position: absolute;
+    right: 8px;
+    top: 12px;
+    width: 14px;
+    height: 14px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .wrap {
+    width: calc(100% - 48px);
+  }
+  .main-nav {
+    gap: 18px;
+  }
+  .header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: auto;
+    min-height: 96px;
+    padding-block: 16px 0;
+    row-gap: 12px;
+  }
+  .header-actions {
+    gap: 14px;
+  }
+  .header .main-nav {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 16px;
+    gap: 28px;
+  }
+  .header .main-nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .hero-copy {
+    padding: 40px 24px;
+  }
+  .hero h1 {
+    font-size: 36px;
+  }
+  .merchant-layout,
+  .staff-layout,
+  .admin-layout,
+  .workspace-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Tablet navigation stays horizontal; a full-height rail must not sit above content. */
+  .merchant-sidebar,
+  .staff-sidebar,
+  .admin-sidebar,
+  .workspace-nav {
+    padding: 12px;
+  }
+  .merchant-sidebar,
+  .staff-sidebar {
+    position: static;
+    min-height: 0;
+  }
+  .merchant-sidebar :is(.merchant-wordmark, .merchant-shop-stamp, .merchant-sidebar-note),
+  .staff-sidebar :is(.staff-wordmark, .staff-identity, .staff-sidebar-foot) {
+    display: none;
+  }
+  .merchant-sidebar nav,
+  .staff-sidebar nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+  }
+  .merchant-sidebar nav a,
+  .staff-sidebar nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .discovery-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 20px;
+  }
+  .therapist-grid:not(.therapist-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workday-tools a {
+    padding: 14px 12px;
+  }
+}
+@media (max-width: 1100px) {
+  .admin-mobile-tabs > a {
+    color: var(--hl-ink-2);
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .admin-mobile-tabs > a[aria-current] {
+    color: #f0f3e9;
+    background: var(--green);
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    border-bottom: 1px solid var(--hl-line);
+  }
+  .main-nav a[aria-current='page']::after {
+    display: none;
+  }
+  .button {
+    border-radius: 10px;
+  }
+  .market-page:has(.consumer-mobile-home) > .hero {
+    min-height: 178px;
+    border-radius: 18px;
+    margin-top: 14px;
+  }
+  .market-page:has(.consumer-mobile-home) .hero-copy {
+    width: 92%;
+    padding: 23px 20px;
+  }
+  .market-page:has(.consumer-mobile-home) .hero h1 {
+    font-size: clamp(25px, 6.8vw, 31px);
+    line-height: 1.42;
+    margin: 13px 0 0;
+  }
+  .hero .eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.09em;
+  }
+  .hero-art {
+    inset-inline-start: 28%;
+    opacity: 0.62;
+  }
+  .hero-art::before {
+    background: linear-gradient(90deg, var(--green-dark) 5%, #102f29c9 42%, #102f2910 100%);
+  }
+  .search-position {
+    margin-top: 12px;
+  }
+  .search-panel {
+    border-radius: 16px;
+    box-shadow: none;
+  }
+  .mode-tabs button {
+    font-size: 14px;
+  }
+  .search-fields {
+    padding: 12px 14px;
+  }
+  .search-fields label span {
+    font-size: 11px;
+  }
+  .consumer-shortcuts {
+    margin-block: 24px;
+    gap: 12px;
+  }
+  .consumer-shortcuts > a > span {
+    background: #fff;
+    border-color: var(--hl-line);
+    color: var(--green);
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+  }
+  .consumer-shortcuts strong {
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .consumer-duration-cards > a {
+    background: #fff;
+    border-color: var(--hl-line);
+    padding: 16px 12px;
+    border-radius: 14px;
+    gap: 12px;
+  }
+  .consumer-duration-cards > a:nth-child(2) {
+    background: var(--hl-gold-100);
+    border-color: var(--hl-line-strong);
+  }
+  .consumer-duration-cards > a:nth-child(3) {
+    background: var(--hl-tint);
+    border-color: var(--hl-line);
+  }
+  .consumer-duration-cards strong {
+    font-size: 13px;
+  }
+  .consumer-duration-cards > a > small {
+    font-size: 11px;
+    color: var(--hl-ink-2);
+  }
+  .consumer-mobile-home .consumer-section-head small {
+    color: var(--hl-ink-2);
+    font-size: 11px;
+  }
+  .consumer-mobile-home > .consumer-price-note {
+    font-size: 11px;
+    color: var(--hl-ink-2);
+  }
+  .section-heading h2 {
+    font-size: 23px;
+  }
+  .therapist-card {
+    border-radius: 16px;
+  }
+  .card-title h3 {
+    font-size: 20px;
+  }
+  .service-setting {
+    font-size: 11px;
+  }
+  .card-language,
+  .card-bottom small {
+    font-size: 11px;
+  }
+  .price {
+    font-size: 24px;
+  }
+  .mobile-nav {
+    background: #fffffffa;
+    border-color: var(--hl-line);
+    box-shadow: 0 -4px 22px #21363006;
+  }
+  .detail-panel,
+  .visit-section,
+  .visit-summary,
+  .address-card {
+    border-radius: 16px;
+  }
+  .merchant-heading,
+  .staff-heading,
+  .admin-heading,
+  .workspace-title {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 18px;
+  }
+  .merchant-heading h1,
+  .staff-heading h1,
+  .admin-heading h1,
+  .workspace-title h1 {
+    font-size: 27px;
+    line-height: 1.4;
+  }
+  .merchant-heading p,
+  .staff-heading p,
+  .admin-heading p,
+  .workspace-title p {
+    font-size: 13px;
+  }
+  .workday-action-center {
+    padding: 22px 18px;
+    border-radius: 18px;
+  }
+  .workday-action-center h2,
+  .workday-customer-focus h2 {
+    font-size: 22px;
+    line-height: 1.5;
+  }
+  .workday-counts {
+    gap: 10px;
+  }
+  .workday-counts > a {
+    padding: 14px 12px;
+    border-radius: 12px;
+  }
+  .workday-counts strong {
+    font-size: 28px;
+  }
+  .workday-counts span {
+    font-size: 12px;
+  }
+  .workday-tools a {
+    min-height: 56px;
+    padding: 14px 12px;
+    font-size: 13px;
+  }
+  .merchant-metrics > div,
+  .admin-stat-grid > div {
+    padding: 18px 15px;
+    border-radius: 14px;
+  }
+  .merchant-metrics > div > span,
+  .admin-stat-grid > div > span {
+    font-size: 12px;
+  }
+  .merchant-metrics small,
+  .admin-stat-grid > div > small {
+    font-size: 11px;
+  }
+  .merchant-metrics strong,
+  .admin-stat-grid strong {
+    font-size: 28px;
+  }
+  .admin-stat-grid .money {
+    font-size: 23px;
+  }
+  .merchant-panel,
+  .admin-panel,
+  .staff-panel {
+    border-radius: 16px;
+  }
+  .merchant-panel-heading h2,
+  .admin-panel-heading h2,
+  .staff-panel-title h2 {
+    font-size: 18px;
+  }
+  .workday-staff .staff-focus {
+    padding: 24px 20px;
+  }
+  .workday-staff .staff-focus h2 {
+    font-size: 26px;
+  }
+}
+/* Detail → reservation → care: one visual hierarchy across the customer journey. */
+@media (min-width: 761px) {
+  .detail-booking-sidebar {
+    max-height: calc(100dvh - 220px);
+  }
+  .booking-preview .preview-checkout {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: #fff;
+    padding: 12px 0 16px;
+    margin-bottom: -16px;
+    border-top: 1px solid var(--line);
+  }
+  .booking-preview .preview-checkout .preview-total {
+    margin-top: 0;
+  }
+}
+.therapist-detail-page .detail-breadcrumb {
+  margin-bottom: 24px;
+}
+.therapist-detail-page .therapist-intro {
+  background: var(--green-dark);
+  border: 0;
+  border-radius: 22px;
+  grid-template-columns: 205px minmax(0, 1fr);
+  gap: 30px;
+  padding: 32px;
+  color: #f6f5ec;
+}
+.therapist-identity h1 {
+  font:
+    500 48px/1.3 Georgia,
+    'Yu Mincho',
+    SimSun,
+    serif;
+  margin: 12px 0 18px;
+  color: #f6f5ec;
+}
+.therapist-identity .eyebrow {
+  color: #d1dacb;
+}
+.profile-identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.therapist-identity .detail-verified {
+  color: #e1e9d7;
+  background: #ffffff12;
+  border: 1px solid #ffffff24;
+}
+.therapist-detail-page .profile-description {
+  color: #dce5d9;
+  font-size: 14px;
+  line-height: 1.9;
+  margin: 22px 0;
+}
+.therapist-detail-page .detail-portrait {
+  max-width: none;
+  border-radius: 14px;
+}
+.therapist-detail-page .detail-portrait img {
+  height: 300px;
+}
+.therapist-detail-page .detail-facts {
+  margin: 0;
+}
+.therapist-detail-page .detail-facts > div {
+  border-color: #ffffff24;
+  padding-block: 13px;
+}
+.therapist-detail-page .detail-facts dt {
+  color: var(--hl-subtle);
+  font-size: 12px;
+}
+.therapist-detail-page .detail-facts dd {
+  color: #f0f3e8;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.therapist-detail-page .detail-anchor-nav {
+  margin: 24px 0;
+  gap: 26px;
+}
+.therapist-detail-page .detail-anchor-nav a {
+  font-size: 13px;
+}
+.detail-page .detail-section {
+  scroll-margin-top: 100px;
+}
+.detail-page .detail-section > h2 {
+  font-size: 28px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+  margin-top: 10px;
+}
+.detail-service-menu {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border-color: var(--line);
+}
+.detail-service-menu > a {
+  padding: 25px 24px;
+  gap: 20px;
+  min-height: 116px;
+}
+.detail-service-menu > a:hover {
+  background: var(--hl-tint);
+}
+.detail-service-menu h3 {
+  font-size: 17px;
+  font-weight: 550;
+}
+.detail-service-menu p {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+  line-height: 1.8;
+}
+.detail-service-menu > a > strong {
+  font-size: 24px;
+  font-weight: 550;
+  color: var(--green);
+  white-space: nowrap;
+}
+.detail-service-menu .menu-duration {
+  color: var(--green);
+  font-size: 30px;
+}
+.booking-preview {
+  border: 1px solid var(--hl-line);
+  border-top: 3px solid var(--brass);
+  border-radius: 20px;
+  padding: 28px;
+}
+.booking-preview > h2 {
+  font:
+    500 26px/1.5 Georgia,
+    'Yu Mincho',
+    SimSun,
+    serif;
+  margin: 12px 0 8px;
+  text-wrap: balance;
+}
+.booking-preview .preview-subtitle {
+  font-size: 13px;
+}
+.preview-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--hl-ink-2);
+  margin: 16px 0 20px;
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
+}
+.preview-context svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.preview-context > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.preview-nomination {
+  margin-left: auto;
+  text-align: right;
+  color: var(--green);
+}
+.booking-preview .preview-total {
+  background: var(--hl-tint);
+  border: 0;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0 16px;
+  gap: 14px;
+}
+.preview-total strong {
+  font-size: 28px;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+.preview-total small {
+  color: var(--hl-ink-2);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.visit-day-picker button {
+  border-radius: 10px;
+}
+.visit-day-picker button[aria-pressed='true'],
+.visit-time-picker button[aria-pressed='true'] {
+  color: var(--green);
+  background: var(--hl-tint-2);
+  border-color: #6d8562;
+}
+.visit-time-picker button {
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.shop-detail-hero {
+  background: var(--green-dark);
+  border-radius: 24px;
+  color: #f3f3e8;
+}
+.shop-detail-hero h1 {
+  color: #f6f4e9;
+}
+.shop-hero-copy .eyebrow {
+  color: #d8ddc9;
+}
+.shop-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.shop-hero-actions > .button {
+  background: var(--hl-gold-100);
+  border-color: var(--hl-line-strong);
+  color: var(--green);
+}
+.shop-hero-copy > p,
+.shop-hero-meta > span {
+  color: #d3dfce;
+  font-size: 13px;
+}
+.shop-hero-art::after {
+  background: linear-gradient(90deg, var(--green-dark), #102f2940 28%, transparent 56%);
+}
+.shop-monogram {
+  background: var(--hl-gold-100);
+  color: var(--green);
+  border-color: var(--hl-line-strong);
+}
+.shop-overview {
+  padding: 28px 32px;
+}
+.shop-overview h2 {
+  font-weight: 550;
+}
+.shop-overview > p {
+  font-size: 14px;
+}
+.shop-commitments > span {
+  font-size: 13px;
+}
+.visit-page-heading {
+  margin-bottom: 28px;
+}
+.visit-page-heading h1 {
+  line-height: 1.45;
+}
+.visit-page-heading p {
+  font-size: 15px;
+  color: var(--hl-ink-2);
+  line-height: 1.9;
+}
+.visit-steps {
+  gap: 18px;
+}
+.visit-steps li {
+  font-size: 13px;
+}
+.visit-form {
+  border-radius: 20px;
+  border-color: var(--line);
+}
+.visit-form .visit-form-heading h2,
+.visit-form .visit-form-heading h3 {
+  font-size: 23px;
+  font-weight: 550;
+}
+.visit-form-section {
+  padding-block: 4px 30px;
+  margin-bottom: 30px;
+}
+.visit-service-picker > button {
+  border-radius: 14px;
+  background: #fff;
+}
+.visit-service-picker > button.selected {
+  border-color: #78906c;
+  background: var(--hl-tint);
+  box-shadow: inset 0 0 0 1px var(--hl-sage);
+}
+.preference-picker > button {
+  padding: 22px;
+  border-radius: 14px;
+}
+.preference-picker strong {
+  font-size: 15px;
+}
+.preference-picker small {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.visit-summary {
+  border-radius: 20px;
+  border-color: var(--line);
+}
+.visit-summary .price-lines .price-total {
+  background: var(--green-dark);
+  border: 0;
+  border-radius: 12px;
+  padding: 18px;
+  gap: 14px;
+}
+.visit-summary .price-lines .price-total :is(dt, dd) {
+  color: #f5f3e7;
+}
+.visit-summary .price-lines .price-total dd {
+  font-size: 30px;
+}
+.visit-summary-facts dt {
+  font-size: 12px;
+}
+.visit-summary-facts dd {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.checkout-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+  margin: 0 0 26px;
+  padding-block: 17px;
+  border-block: 1px solid var(--line);
+}
+.checkout-section-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: 13px;
+  color: var(--hl-ink-2);
+}
+.checkout-address-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+.checkout-address-fields > .field {
+  margin: 0;
+}
+.checkout-address-fields > :is(.checkout-full-field, .field-grid, .checkbox) {
+  grid-column: 1 / -1;
+}
+.checkout-address-fields > .field-grid {
+  margin: 0;
+}
+.checkout-address-fields .field-grid .field {
+  margin: 0;
+}
+.checkout-address-fields input,
+.checkout-address-fields select {
+  background: #fff;
+  border-radius: 10px;
+  min-height: 48px;
+}
+.checkout-form #checkout-address,
+#checkout-payment,
+#checkout-policy {
+  scroll-margin-top: 110px;
+}
+.checkout-form .payment-box {
+  padding: 24px;
+  border: 1px solid var(--hl-line);
+  background: var(--hl-tint);
+  border-radius: 16px;
+}
+.checkout-form .payment-box p {
+  color: var(--hl-ink-2);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.checkout-form .policy-text {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.hold-timer {
+  border-radius: 10px;
+}
+.customer-order-detail {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.customer-order-detail .booking-card-heading {
+  padding-bottom: 20px;
+}
+.order-detail-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  margin: 22px 0;
+  padding-block: 14px;
+  border-block: 1px solid var(--line);
+}
+.order-detail-nav :is(a, button) {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--green);
+}
+.customer-order-detail .booking-card-main {
+  gap: 32px;
+  scroll-margin-top: 100px;
+}
+.customer-order-detail .booking-facts h3 {
+  font-size: 24px;
+}
+.customer-order-detail .booking-facts dl {
+  gap: 18px;
+}
+.customer-order-detail .booking-facts dt {
+  font-size: 12px;
+}
+.customer-order-detail .booking-facts dd {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.customer-order-detail .booking-price {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--hl-canvas);
+  padding: 24px;
+}
+.order-care-panel {
+  background: #fff;
+  border: 1px solid var(--hl-line);
+  border-radius: 20px;
+  padding: 28px;
+  scroll-margin-top: 110px;
+}
+.order-care-panel .flow-section-head h3 {
+  font-size: 23px;
+  font-weight: 550;
+}
+.order-care-panel .flow-section-head > button {
+  min-height: 40px;
+  min-width: 40px;
+  justify-content: center;
+}
+.order-care-panel .order-care-amounts > div {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--hl-canvas);
+}
+.order-journey {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.order-journey li {
+  font-size: 12px;
+  padding-top: 12px;
+}
+.order-journey li[aria-current] {
+  font-weight: 650;
+}
+.care-next-step {
+  background: var(--hl-tint);
+  border-inline-start: 3px solid var(--brass);
+  padding: 16px;
+  border-radius: 0 10px 10px 0;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--hl-ink-2);
+}
+.care-refund-progress {
+  border: 1px solid var(--hl-line);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 22px 0;
+  background: var(--hl-canvas);
+}
+.care-refund-progress h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.care-refund-status {
+  font-size: 12px;
+  padding: 5px 10px;
+  background: var(--hl-tint-2);
+  color: var(--hl-pine-900);
+  border-radius: 6px;
+}
+.care-refund-status.refund-pending {
+  color: var(--hl-gold-700);
+  background: var(--hl-gold-100);
+}
+.care-refund-status:is(.refund-rejected, .refund-withdrawn) {
+  background: var(--hl-gold-100);
+  color: var(--hl-ink-2);
+}
+.care-refund-progress ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0;
+  margin: 24px 0;
+  list-style: none;
+  gap: 16px;
+}
+.care-refund-progress li {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+  border-top: 2px solid var(--hl-line);
+  padding-top: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.care-refund-progress li span {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.care-refund-progress li[data-done='true'] {
+  border-color: var(--hl-pine-900);
+  color: var(--hl-pine-900);
+}
+.care-refund-progress li[aria-current] {
+  font-weight: 650;
+}
+.care-refund-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 48px;
+  padding: 0;
+}
+.care-refund-summary dt {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.care-refund-summary dd {
+  margin: 6px 0 0;
+  font-size: 22px;
+  font-weight: 550;
+  color: var(--green);
+}
+.care-refund-progress > p {
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.order-care-panel .quality-error > button {
+  margin-inline-start: 12px;
+}
+.case-list,
+.case-detail,
+.care-create {
+  border-color: var(--line);
+  border-radius: 18px;
+}
+.case-list-heading {
+  padding: 24px;
+}
+.case-list-heading h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.case-list-item {
+  padding: 22px;
+}
+.case-list-item > strong {
+  font-size: 15px;
+}
+.case-list-item > small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.case-list-item.selected {
+  background: var(--hl-tint);
+}
+.case-filters :is(input, select) {
+  min-height: 44px;
+  border-radius: 9px;
+  font-size: 14px;
+}
+.case-detail {
+  padding: 30px;
+  background: #fff;
+}
+.case-detail-heading {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.case-detail-heading h2 {
+  font-size: 28px;
+  font-weight: 550;
+}
+.case-detail .care-privacy {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+  line-height: 1.85;
+}
+.case-description {
+  padding: 22px 0;
+  font-size: 15px;
+  color: var(--hl-ink);
+}
+.refund-case-panel {
+  background: var(--hl-tint);
+  border-color: var(--hl-line);
+  border-radius: 16px;
+  padding: 24px;
+}
+.refund-case-panel .flow-section-head h3 {
+  font-size: 21px;
+  font-weight: 550;
+}
+.case-thread article {
+  border-color: #a7b89a;
+  border-radius: 0 12px 12px 0;
+  background: var(--hl-canvas);
+  padding: 20px;
+}
+.case-thread article strong,
+.case-thread article time {
+  font-size: 12px;
+}
+.case-thread article time {
+  color: var(--hl-ink-2);
+}
+.case-thread p {
+  font-size: 14px;
+}
+.case-resolution {
+  border-radius: 14px;
+  padding: 22px;
+}
+.case-resolution > strong {
+  font-size: 14px;
+}
+.case-resolution p {
+  font-size: 14px;
+}
+.case-compose textarea {
+  min-height: 136px;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 16px;
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .therapist-detail-page .therapist-intro {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px;
+  }
+  .therapist-detail-page .detail-portrait {
+    max-width: 180px;
+  }
+  .therapist-detail-page .detail-portrait img {
+    height: 220px;
+  }
+  .detail-service-menu > a {
+    padding: 22px 18px;
+    gap: 14px;
+  }
+  .checkout-address-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .therapist-detail-page .therapist-intro {
+    grid-template-columns: 94px minmax(0, 1fr);
+    gap: 16px;
+    padding: 22px 18px;
+    border-radius: 18px;
+  }
+  .therapist-detail-page .therapist-about {
+    display: contents;
+  }
+  .therapist-detail-page .detail-portrait {
+    grid-column: 1;
+    grid-row: 1;
+    width: 94px;
+    align-self: start;
+  }
+  .therapist-detail-page .detail-portrait img {
+    height: 136px;
+  }
+  .therapist-identity {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .therapist-identity h1 {
+    font-size: 36px;
+    margin: 9px 0 12px;
+  }
+  .therapist-identity .eyebrow {
+    font-size: 8px;
+  }
+  .profile-identity-actions {
+    gap: 8px;
+  }
+  .profile-identity-actions .detail-verified {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+  .profile-identity-actions button {
+    min-height: 40px;
+    font-size: 12px;
+    padding-inline: 10px;
+  }
+  .therapist-detail-page .profile-description {
+    grid-column: 1/-1;
+    font-size: 13px;
+    margin: 0;
+  }
+  .therapist-detail-page .detail-facts {
+    grid-column: 1/-1;
+  }
+  .therapist-detail-page .detail-facts > div {
+    padding-block: 10px;
+  }
+  .therapist-detail-page .detail-facts dt {
+    font-size: 11px;
+  }
+  .therapist-detail-page .detail-facts dd {
+    font-size: 13px;
+  }
+  .therapist-detail-page .detail-main > .detail-anchor-nav {
+    order: 1;
+    margin: 0;
+    gap: 22px;
+  }
+  .detail-page .detail-section > h2 {
+    font-size: 24px;
+  }
+  .detail-service-menu > a {
+    padding: 20px 16px;
+    gap: 12px;
+  }
+  .detail-service-menu h3 {
+    font-size: 16px;
+  }
+  .detail-service-menu p {
+    font-size: 11px;
+  }
+  .detail-service-menu > a > strong {
+    font-size: 23px;
+  }
+  .booking-preview {
+    padding: 24px 20px;
+    border-radius: 18px;
+  }
+  .booking-preview > h2 {
+    font-size: 24px;
+  }
+  .preview-context {
+    font-size: 12px;
+  }
+  .shop-detail-hero {
+    border-radius: 18px;
+  }
+  .shop-hero-copy {
+    padding: 24px 22px;
+  }
+  .shop-hero-art::after {
+    background: linear-gradient(90deg, var(--green-dark), #102f2990 48%, transparent);
+  }
+  .shop-hero-copy > p,
+  .shop-hero-meta > span {
+    font-size: 12px;
+  }
+  .shop-hero-art > span {
+    display: none;
+  }
+  .shop-overview {
+    padding: 22px 18px;
+  }
+  .shop-commitments {
+    gap: 12px;
+  }
+  .shop-commitments > span {
+    font-size: 12px;
+  }
+  .visit-page-heading {
+    margin-bottom: 22px;
+  }
+  .visit-page-heading h1 {
+    font-size: 28px;
+  }
+  .visit-page-heading p {
+    font-size: 14px;
+  }
+  .visit-steps {
+    gap: 6px;
+  }
+  .visit-steps li {
+    font-size: 10px;
+  }
+  .visit-form .visit-form-heading h2,
+  .visit-form .visit-form-heading h3 {
+    font-size: 21px;
+  }
+  .visit-form-section {
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+  }
+  .preference-picker > button {
+    padding: 16px 12px;
+  }
+  .preference-picker small {
+    font-size: 12px;
+  }
+  .visit-summary .price-lines .price-total {
+    padding: 16px;
+  }
+  .visit-summary .price-lines .price-total dd {
+    font-size: 26px;
+  }
+  .checkout-section-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 22px;
+    padding-block: 8px;
+    margin-bottom: 20px;
+  }
+  .checkout-section-nav a {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .checkout-address-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .checkout-form .payment-box {
+    padding: 20px 16px;
+  }
+  .order-detail-nav {
+    gap: 16px;
+    margin: 18px 0;
+  }
+  .order-detail-nav a {
+    font-size: 13px;
+  }
+  .customer-order-detail .booking-price {
+    padding: 18px;
+  }
+  .order-care-panel {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+  .order-care-panel .flow-section-head h3 {
+    font-size: 21px;
+  }
+  .order-care-panel .order-care-amounts > div {
+    padding: 14px 12px;
+  }
+  .care-refund-progress {
+    padding: 20px 16px;
+  }
+  .care-refund-progress .flow-section-head {
+    align-items: flex-start;
+  }
+  .care-refund-progress h4 {
+    font-size: 16px;
+  }
+  .care-refund-progress ol {
+    gap: 10px;
+  }
+  .care-refund-progress li {
+    font-size: 12px;
+  }
+  .care-refund-summary {
+    gap: 18px;
+  }
+  .case-detail {
+    padding: 22px 17px;
+    border-radius: 16px;
+  }
+  .case-detail-heading h2 {
+    font-size: 24px;
+  }
+  .case-description {
+    font-size: 14px;
+  }
+  .case-list-item {
+    padding: 18px;
+  }
+  .refund-case-panel {
+    padding: 22px 16px;
+  }
+}
+/* Shared shop dispatch, therapist visit and original-order care. */
+.partner-queue-disclosure {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  margin-bottom: 24px;
+  min-width: 0;
+}
+.partner-queue-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 24px;
+  min-height: 58px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green);
+  cursor: pointer;
+}
+.partner-queue-disclosure > summary::marker {
+  content: '';
+}
+.partner-queue-disclosure[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.partner-queue-disclosure .queue-panel {
+  border: 0;
+  margin: 0;
+}
+.merchant-embedded[data-focused='true'] .partner-queue-disclosure[open] .queue-panel {
+  display: block;
+}
+.partner-order-hero {
+  padding: 30px;
+  background: var(--green-dark);
+  border-radius: 18px;
+  color: #f7f6ef;
+  min-width: 0;
+}
+.partner-order-eyebrow {
+  color: #ddcfb2;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.partner-order-hero h2 {
+  color: inherit;
+  font-size: 28px;
+  line-height: 1.4;
+  margin: 12px 0 18px;
+  font-weight: 550;
+}
+.partner-order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  color: #d1dfd5;
+  font-size: 13px;
+}
+.partner-order-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.partner-order-next {
+  margin: 24px 0;
+  padding: 18px 20px;
+  border: 1px solid #ffffff24;
+  border-radius: 12px;
+  background: #ffffff08;
+}
+.partner-order-next > span {
+  display: block;
+  font-size: 11px;
+  color: #ddcfb2;
+  margin-bottom: 8px;
+}
+.partner-order-next > strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.8;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.partner-order-progress {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.partner-order-progress li {
+  border-top: 1px solid #ffffff30;
+  padding-top: 12px;
+  color: var(--hl-subtle);
+  min-width: 0;
+}
+.partner-order-progress li > span {
+  font-size: 11px;
+  display: block;
+  margin-bottom: 7px;
+}
+.partner-order-progress li > strong {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 500;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.partner-order-progress .done {
+  color: #e2e9e0;
+  border-color: #a4baab;
+}
+.partner-order-progress .current {
+  color: #f3dfb5;
+  border-top: 3px solid #d8c39a;
+  padding-top: 10px;
+}
+.partner-order-deadline {
+  margin: 18px 0 0;
+  color: #ddcfb2;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.partner-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 28px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  margin-bottom: 26px;
+}
+.partner-section-nav a {
+  color: var(--green);
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.partner-section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.partner-section-heading > span {
+  color: var(--hl-gold-700);
+  font-size: 12px;
+  border-right: 1px solid var(--hl-line-strong);
+  padding-right: 12px;
+}
+.partner-section-heading > h3 {
+  font-size: 20px;
+  margin: 0;
+  color: var(--ink);
+  font-weight: 550;
+}
+.merchant-dispatch-panel {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--hl-canvas);
+  margin-bottom: 28px;
+}
+.merchant-dispatch-panel > p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0 0 18px;
+  max-width: 780px;
+}
+.merchant-dispatch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.merchant-dispatch-controls:empty {
+  display: none;
+}
+.merchant-dispatch-controls select {
+  max-width: 100%;
+  min-width: 200px;
+  flex: 1 1 220px;
+  min-height: 48px;
+  font-size: 15px;
+  padding: 12px 14px;
+  border: 1px solid var(--hl-line-strong);
+  background: white;
+  border-radius: 10px;
+}
+.merchant-candidate-field {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.merchant-candidate-field > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.merchant-candidate-field select {
+  width: 100%;
+}
+.merchant-dispatch-controls {
+  align-items: flex-end;
+}
+.merchant-dispatch-controls > .button {
+  min-height: 48px;
+  padding-inline: 24px;
+}
+.merchant-order-detail .booking-card-main {
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+}
+.merchant-order-detail {
+  padding: 28px;
+}
+.merchant-embedded[data-focused='true'] > .workspace-content > .workday-task-back {
+  display: none;
+}
+.merchant-order-detail .partner-order-hero {
+  padding: 24px 28px;
+}
+.merchant-order-detail .partner-order-next {
+  margin: 18px 0;
+  padding: 14px 18px;
+}
+.merchant-order-detail .partner-order-hero h2 {
+  font-size: 26px;
+  margin-block: 8px 14px;
+}
+.merchant-order-detail .partner-order-deadline {
+  margin-top: 14px;
+}
+.merchant-order-detail .booking-card-heading {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+}
+.workday-merchant:has(.merchant-embedded[data-focused='true']) .merchant-heading {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+.workday-merchant:has(.merchant-embedded[data-focused='true']) .workday-account-switch {
+  margin-bottom: 18px;
+}
+.merchant-order-detail .booking-facts h3 {
+  font-size: 23px;
+}
+.merchant-order-detail .booking-facts dl > div {
+  padding-block: 8px;
+}
+.merchant-order-detail .booking-price {
+  background: var(--cream);
+  padding: 22px;
+  border-radius: 14px;
+  align-self: start;
+}
+.merchant-order-detail > .booking-actions:empty {
+  display: none;
+}
+.partner-exceptions {
+  margin: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding-block: 8px;
+}
+.partner-exceptions > summary {
+  cursor: pointer;
+  color: var(--green);
+  min-height: 44px;
+  align-content: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+.partner-exceptions > p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.staff-detail-top {
+  padding-bottom: 18px;
+}
+.staff-fulfillment-section {
+  padding: 0 0 28px;
+}
+.staff-fulfillment-section > .flow-muted {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.workday-staff .staff-detail-action {
+  background: var(--hl-tint);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 22px 0;
+}
+.workday-staff .staff-detail-action:empty {
+  display: none;
+}
+.workday-staff .staff-detail-action .button {
+  font-size: 15px;
+  min-height: 48px;
+}
+.workday-staff .staff-detail-action .staff-text-button {
+  min-height: 40px;
+}
+.staff-detail .staff-location {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  margin-top: 24px;
+}
+.staff-detail .staff-location h3 {
+  font-size: 15px;
+}
+.staff-detail .staff-location p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.staff-detail .coordination-panel,
+.merchant-order-detail .coordination-panel {
+  background: #fff;
+  padding: 26px;
+  border-radius: 16px;
+  margin-block: 26px;
+}
+.coordination-panel .flow-section-head h3 {
+  font-size: 22px;
+}
+.coordination-cases > h4,
+.coordination-internal h4 {
+  font-size: 16px;
+}
+.coordination-platform {
+  border-radius: 12px;
+}
+.coordination-proposed {
+  padding: 18px;
+  background: var(--hl-gold-100);
+  border-radius: 12px;
+}
+.coordination-proposed strong,
+.coordination-proposed span {
+  display: block;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.coordination-proposed span {
+  margin-top: 8px;
+  color: var(--muted);
+}
+.coordination-panel .quality-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.handoff-card {
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--hl-canvas);
+}
+.handoff-card > header strong {
+  font-size: 15px;
+}
+.handoff-card > header span {
+  font-size: 12px;
+  padding: 5px 9px;
+  background: var(--hl-tint);
+  border-radius: 6px;
+}
+.handoff-messages > li {
+  background: #fff;
+  border-left: 2px solid var(--hl-line-strong);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 16px;
+}
+.staff-contact-section {
+  border-top: 1px solid var(--line);
+  padding-top: 6px;
+}
+.handoff-order-ref a {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  color: var(--green);
+  font-weight: 600;
+}
+.partner-section-nav a:focus-visible,
+.partner-queue-disclosure > summary:focus-visible,
+.partner-exceptions > summary:focus-visible {
+  outline: 3px solid var(--hl-gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+[id^='dispatch-'],
+[id^='fulfillment-'],
+[id^='cooperation-'],
+[id^='contact-'] {
+  scroll-margin-top: 24px;
+}
+@media (min-width: 1101px) {
+  .staff-tasks-grid {
+    grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.6fr);
+  }
+  .staff-queue {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+  }
+}
+@media (max-width: 760px) {
+  .merchant-order-detail {
+    padding: 18px 14px;
+  }
+  .merchant-order-detail .partner-order-hero {
+    padding: 24px 18px;
+  }
+  .merchant-embedded[data-focused='true'] > .workspace-content > .workday-task-back {
+    display: flex;
+  }
+  .partner-order-hero {
+    padding: 24px 18px;
+    border-radius: 14px;
+  }
+  .partner-order-hero h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  .partner-order-meta {
+    gap: 10px 16px;
+    font-size: 12px;
+  }
+  .partner-order-next {
+    padding: 16px;
+    margin: 20px 0;
+  }
+  .partner-order-next > strong {
+    font-size: 14px;
+  }
+  .partner-order-progress {
+    gap: 7px;
+  }
+  .partner-order-progress li > strong {
+    font-size: 11px;
+  }
+  .partner-order-deadline {
+    font-size: 11px;
+  }
+  .partner-section-nav {
+    gap: 8px 18px;
+    padding-block: 6px;
+    margin-bottom: 22px;
+  }
+  .partner-section-nav a {
+    font-size: 12px;
+    gap: 5px;
+  }
+  .merchant-dispatch-panel {
+    padding: 22px 16px;
+    margin-bottom: 24px;
+  }
+  .merchant-dispatch-controls select {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+  .merchant-candidate-field {
+    flex-basis: 100%;
+  }
+  .merchant-dispatch-controls > .button {
+    flex: 1;
+  }
+  .merchant-order-detail .booking-price {
+    padding: 18px;
+  }
+  .partner-section-heading > h3 {
+    font-size: 19px;
+  }
+  .staff-detail .coordination-panel,
+  .merchant-order-detail .coordination-panel {
+    padding: 22px 16px;
+  }
+  .coordination-panel .flow-section-head h3 {
+    font-size: 20px;
+  }
+  .handoff-card {
+    padding: 16px;
+  }
+  .coordination-history li {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .coordination-panel .flow-section-head {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .partner-queue-disclosure > summary {
+    padding: 16px;
+  }
+  .workday-staff .staff-detail-action {
+    padding: 18px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .therapist-card,
+  .portrait-link img,
+  .workday-tools a {
+    transition: none;
+  }
+  .therapist-card:hover,
+  .therapist-card:hover .portrait-link img {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   2026-10-19 premium pass: quiet luxury.
+   Tokens: globals.css (--hl-*). Warm ivory canvas, near-black ink, deep pine
+   for structure, champagne only as an accent. Fewer tints, larger type,
+   more air, one clear action per block.
+   ========================================================================== */
+
+/* Base type and controls (headings inherit, so dark panels keep light text) */
+:focus-visible {
+  outline: 2px solid var(--hl-gold);
+  outline-offset: 2px;
+}
+.eyebrow,
+.eyebrow.small {
+  color: var(--hl-gold-700);
+  letter-spacing: 0.16em;
+  font-weight: 600;
+}
+.button {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.button:not(.secondary, .ghost, .danger-button, .inverse):not(:disabled):hover {
+  background: var(--hl-pine-800);
+  border-color: var(--hl-pine-800);
+  color: var(--hl-surface);
+}
+.button.inverse {
+  background: var(--hl-gold-100);
+  border-color: var(--hl-line-strong);
+  color: var(--hl-pine-900);
+}
+.button.inverse:not(:disabled):is(:hover, :active) {
+  background: var(--hl-tint-2);
+  border-color: var(--hl-line-strong);
+  color: var(--hl-pine-950);
+}
+.button.secondary,
+.button.ghost {
+  background: #fff;
+  color: var(--hl-ink);
+  border: 1px solid var(--hl-line-strong);
+}
+.button.secondary:hover,
+.button.ghost:hover {
+  background: var(--hl-surface-2);
+  border-color: var(--hl-ink-2);
+}
+.field input,
+.field select,
+.field textarea,
+.discovery-sidebar select,
+.discovery-sidebar input {
+  border-color: var(--hl-line-strong);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--hl-ink);
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--hl-pine-700);
+  box-shadow: 0 0 0 3px var(--hl-pine-50);
+}
+
+/* Header */
+.main-nav a {
+  color: var(--hl-ink-2);
+  font-weight: 500;
+}
+.main-nav a[aria-current],
+.main-nav a.active {
+  color: var(--hl-ink);
+}
+.demo-bar {
+  background: var(--hl-pine-950);
+  color: #e9e4d8;
+  letter-spacing: 0.02em;
+}
+
+/* Hero: larger statement, calmer copy, the image carries the mood */
+.hero {
+  background: var(--hl-pine-950);
+  box-shadow: var(--hl-shadow-lg);
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: #f8f4ea;
+}
+.hero h1 em {
+  color: #d9c39a;
+}
+.hero p {
+  color: rgba(248, 244, 234, 0.76);
+}
+.hero .eyebrow {
+  color: #d9c39a;
+}
+.hero-discover {
+  color: #f8f4ea;
+  border-color: rgba(217, 195, 154, 0.55);
+}
+.hero-art::before {
+  background: linear-gradient(
+    90deg,
+    var(--hl-pine-950),
+    rgba(12, 31, 26, 0.25) 24%,
+    transparent 48%
+  );
+}
+
+/* Search: one elevated bar */
+.search-panel {
+  border: 1px solid var(--hl-line);
+  border-radius: 20px;
+  box-shadow: var(--hl-shadow-lg);
+}
+.mode-tabs {
+  border-bottom-color: var(--hl-line);
+}
+.mode-tabs button {
+  color: var(--hl-muted);
+  font-weight: 500;
+}
+.mode-tabs button.active {
+  color: var(--hl-ink);
+  font-weight: 650;
+  box-shadow: inset 0 -2px 0 var(--hl-gold);
+}
+.search-fields label span {
+  color: var(--hl-muted);
+  letter-spacing: 0.04em;
+}
+.search-fields select {
+  color: var(--hl-ink);
+  font-weight: 550;
+}
+.search-fields svg {
+  color: var(--hl-gold-700);
+}
+.search-fields .button svg {
+  color: #fff;
+}
+
+/* Section headings and counts */
+.section-heading h2 {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.section-heading p {
+  color: var(--hl-muted);
+}
+.result-count {
+  font-family: var(--font-display);
+  color: var(--hl-ink);
+}
+.result-count span {
+  font-family: var(--font-sans);
+  color: var(--hl-muted);
+}
+
+/* Filters */
+.discovery-sidebar form {
+  background: #fff;
+  border: 1px solid var(--hl-line);
+  box-shadow: var(--hl-shadow-sm);
+}
+.discovery-sidebar h3 {
+  color: var(--hl-ink);
+  font-weight: 650;
+}
+.filter-pills a {
+  border-color: var(--hl-line-strong);
+  color: var(--hl-ink-2);
+  background: #fff;
+  border-radius: 999px;
+}
+.filter-pills a.selected {
+  background: var(--hl-pine-900);
+  border-color: var(--hl-pine-900);
+  color: #fff;
+}
+
+/* Therapist cards: portrait, name, shop, price, one action */
+.therapist-card {
+  background: #fff;
+  border: 1px solid var(--hl-line);
+  border-radius: 20px;
+  box-shadow: var(--hl-shadow-sm);
+  overflow: hidden;
+  transition:
+    box-shadow 0.22s ease,
+    transform 0.22s ease,
+    border-color 0.22s ease;
+}
+.therapist-card:hover {
+  border-color: var(--hl-line-strong);
+  box-shadow: var(--hl-shadow-md);
+  transform: translateY(-2px);
+}
+.portrait-link {
+  background: var(--hl-tint);
+}
+.therapist-grid:not(.therapist-list) .card-description {
+  display: none;
+}
+.card-title h3 {
+  color: var(--hl-ink);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+.verified {
+  color: var(--hl-pine-700);
+}
+.shop-link {
+  color: var(--hl-muted);
+  font-weight: 500;
+}
+.shop-link:hover {
+  color: var(--hl-ink);
+}
+.card-language {
+  color: var(--hl-muted);
+}
+.service-setting {
+  background: var(--hl-tint);
+  color: var(--hl-ink-2);
+  border-radius: 999px;
+}
+.card-bottom {
+  border-top-color: var(--hl-line);
+}
+.price {
+  color: var(--hl-ink);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.price-suffix,
+.card-bottom small {
+  color: var(--hl-muted);
+}
+.card-cta {
+  background: var(--hl-pine-900);
+  color: #fff;
+  border-radius: 999px;
+  transition: background-color 0.18s ease;
+}
+.card-cta:hover {
+  background: var(--hl-pine-800);
+}
+.slot-preview {
+  border-top-color: var(--hl-line);
+}
+.slot-preview > span {
+  color: var(--hl-muted);
+}
+.slot-preview a {
+  background: #fff;
+  border: 1px solid var(--hl-line-strong);
+  color: var(--hl-ink-2);
+  border-radius: 8px;
+}
+.slot-preview a:hover {
+  border-color: var(--hl-pine-700);
+  color: var(--hl-ink);
+}
+.availability {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--hl-ink-2);
+}
+.availability.online i {
+  background: #3f8a62;
+}
+
+/* Trust row */
+.trust-section {
+  border-color: var(--hl-line);
+}
+.trust-icon {
+  background: var(--hl-gold-100);
+  color: var(--hl-gold-700);
+  border-radius: 12px;
+}
+.trust-section h3 {
+  color: var(--hl-ink);
+  font-weight: 650;
+}
+.trust-section p {
+  color: var(--hl-muted);
+}
+
+/* How it works: a deep band gives the page its weight */
+.how-section {
+  background: var(--hl-pine-950);
+  color: #efe9dc;
+}
+.how-section .section-heading h2 {
+  color: #f8f4ea;
+}
+.how-section .eyebrow.small {
+  color: #d9c39a;
+}
+.how-section .section-heading a {
+  color: #efe9dc;
+  border-bottom: 1px solid rgba(217, 195, 154, 0.5);
+  padding-bottom: 2px;
+}
+.steps h3 {
+  color: #f8f4ea;
+  font-weight: 600;
+}
+.steps p {
+  color: rgba(239, 233, 220, 0.72);
+}
+.steps > div > span {
+  color: #d9c39a;
+}
+.steps > div > svg {
+  color: rgba(217, 195, 154, 0.55);
+}
+
+/* Footer */
+footer {
+  background: var(--hl-surface);
+  border-top: 1px solid var(--hl-line);
+}
+
+/* Detail, booking and account surfaces */
+.detail-panel,
+.visit-section,
+.visit-summary,
+.address-card,
+.consumer-service-card,
+.consumer-orders,
+.consumer-utilities {
+  background: #fff;
+  border-color: var(--hl-line);
+  box-shadow: var(--hl-shadow-sm);
+}
+
+/* Workspaces: calm canvas, crisp white panels, deep pine navigation */
+.merchant-sidebar,
+.staff-sidebar,
+.admin-sidebar,
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) {
+  background: var(--hl-pine-950);
+  border-color: var(--hl-pine-950);
+}
+:is(.merchant-sidebar, .staff-sidebar, .admin-sidebar) nav a,
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) a {
+  color: var(--hl-on-pine-muted);
+}
+:is(.merchant-sidebar, .staff-sidebar, .admin-sidebar) nav a:hover,
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) a:hover {
+  background: var(--hl-pine-800);
+  color: var(--hl-on-pine);
+}
+:is(.merchant-sidebar, .staff-sidebar, .admin-sidebar) nav a[aria-current],
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+  a:is(.active, [aria-current]) {
+  background: var(--hl-gold-100);
+  color: var(--hl-pine-950);
+}
+:is(.merchant-sidebar, .staff-sidebar, .admin-sidebar) nav a:focus-visible,
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+  a:focus-visible {
+  outline-color: var(--hl-on-pine);
+  outline-offset: -3px;
+}
+:is(.merchant-sidebar, .staff-sidebar, .admin-sidebar) nav a[aria-current]:focus-visible,
+.workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN'])
+  a:is(.active, [aria-current]):focus-visible {
+  outline-color: var(--hl-pine-700);
+}
+.staff-sidebar-foot,
+.staff-sidebar-foot p {
+  color: var(--hl-on-pine-muted);
+  border-color: var(--hl-pine-800);
+}
+.staff-sidebar-foot a {
+  color: var(--hl-on-pine-muted);
+}
+.staff-sidebar-foot a:hover {
+  color: var(--hl-on-pine);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.admin-supply-status > small {
+  color: var(--hl-muted);
+  font-size: 12px;
+}
+.merchant-heading h1,
+.staff-heading h1,
+.admin-heading h1,
+.workspace-title h1 {
+  color: var(--hl-ink);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.merchant-metrics > div,
+.admin-stat-grid > div,
+.workspace-stats > div,
+.workday-counts > a,
+.workday-tools a {
+  border-color: var(--hl-line);
+  box-shadow: var(--hl-shadow-sm);
+}
+.merchant-metrics strong,
+.admin-stat-grid strong,
+.workday-counts strong {
+  color: var(--hl-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.merchant-metrics > div:first-child,
+.workspace-stats > div:first-child {
+  background: var(--hl-pine-900);
+  border-color: var(--hl-pine-900);
+}
+.merchant-metrics > div:first-child strong,
+.workspace-stats > div:first-child strong {
+  color: #fff;
+}
+table th {
+  color: var(--hl-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+table tbody tr:hover {
+  background: var(--hl-surface-2);
+}
+
+@media (min-width: 761px) {
+  .hero {
+    min-height: 540px;
+    border-radius: 28px;
+  }
+  .hero-art {
+    min-height: 540px;
+  }
+  .hero-copy {
+    padding: 72px 40px 104px 64px;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 4.1vw, 64px);
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+  }
+  .hero p {
+    font-size: 16px;
+    max-width: 30em;
+  }
+  .hero-location {
+    font-size: 12px;
+  }
+  .search-position {
+    margin-top: -52px;
+    padding-inline: 56px;
+  }
+  .search-fields .button {
+    min-height: 56px;
+    border-radius: 14px;
+  }
+  .discovery {
+    padding-block: 88px 72px;
+  }
+  .section-heading h2 {
+    font-size: 36px;
+  }
+  .section-heading p {
+    font-size: 15px;
+  }
+  .result-count {
+    font-size: 40px;
+  }
+  .card-body {
+    padding: 22px 22px 20px;
+  }
+  .card-title h3 {
+    font-size: 21px;
+  }
+  .price {
+    font-size: 25px;
+  }
+  .price-suffix,
+  .card-bottom small,
+  .card-language,
+  .service-setting {
+    font-size: 12px;
+  }
+  .card-cta {
+    width: 44px;
+    height: 44px;
+  }
+  .trust-section {
+    padding-block: 64px;
+  }
+  .trust-section h3 {
+    font-size: 20px;
+  }
+  .trust-section p {
+    font-size: 15px;
+  }
+  .how-section {
+    padding-block: 80px 88px;
+  }
+  .how-section .section-heading h2 {
+    font-size: 34px;
+  }
+  .steps h3 {
+    font-size: 20px;
+  }
+  .steps p {
+    font-size: 14px;
+  }
+  .steps > div {
+    padding-left: 72px;
+  }
+  .steps > div > span {
+    font-size: 40px;
+    line-height: 1;
+  }
+  .merchant-heading h1,
+  .staff-heading h1,
+  .admin-heading h1,
+  .workspace-title h1 {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 760px) {
+  .hero {
+    border-radius: 22px;
+  }
+  .search-panel {
+    border-radius: 18px;
+    box-shadow: var(--hl-shadow-md);
+  }
+  .therapist-card {
+    border-radius: 18px;
+  }
+  .therapist-card:hover {
+    transform: none;
+  }
+  .card-cta {
+    border-radius: 12px;
+  }
+  .how-section .section-heading a {
+    border-bottom: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .card-cta {
+    transition: none;
+  }
+}
+@media (min-width: 1101px) {
+  .merchant-sidebar,
+  .staff-sidebar,
+  .admin-sidebar,
+  .workspace-nav:is([data-role='MERCHANT'], [data-role='STAFF'], [data-role='ADMIN']) {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+@media (max-width: 760px) {
+  .locale-label select {
+    width: auto;
+    max-width: none;
+    padding-inline-end: 4px;
+  }
+}

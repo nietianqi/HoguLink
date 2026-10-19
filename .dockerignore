@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+**/.next*
+**/*.tsbuildinfo
+.git
+.qa
+.env*
+secrets
+backups
+data
+hogulink-api/data
+docs/screenshots
+test-results
+playwright-report
+*.log

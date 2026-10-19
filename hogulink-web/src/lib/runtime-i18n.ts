@@ -1,0 +1,56 @@
+import type { Locale } from '@hogulink/contracts';
+const words = {
+  partnerLogin: ['店舗・スタッフのログイン', 'Shop / staff sign in', '店铺 / 技师账号登录'],
+  title: ['通知配信', 'Notification delivery', '通知投递'],
+  configured: ['配信設定あり', 'Provider configured', '已配置投递服务'],
+  disabled: ['配信設定が必要', 'Provider not configured', '尚未配置投递服务'],
+  help: [
+    '受付済みは配信事業者による受付を示します。受信者が読んだことを示すものではありません。',
+    'Accepted means the delivery provider accepted the request. It does not confirm the recipient has read it.',
+    '已受理表示邮件服务商已接受请求，尚不能证明收件人已收到或阅读。',
+  ],
+  PENDING: ['待機中', 'Queued', '待投递'],
+  PROCESSING: ['送信中', 'Sending', '投递中'],
+  RETRY: ['再試行待ち', 'Retry scheduled', '等待重试'],
+  SENT: ['配信事業者が受付', 'Provider accepted', '服务商已受理'],
+  FAILED: ['送信失敗', 'Failed', '投递失败'],
+  BLOCKED: ['宛先の設定が必要', 'Recipient required', '缺少收件人配置'],
+  EXPIRED: ['期限切れ', 'Expired', '已过期'],
+  type: ['通知', 'Notification', '提醒'],
+  status: ['状態', 'Status', '状态'],
+  time: ['日時', 'Time', '时间'],
+  retry: ['再試行', 'Retry', '重试'],
+  refresh: ['更新', 'Refresh', '刷新'],
+  empty: ['通知はありません。', 'No notifications yet.', '暂无通知。'],
+  error: [
+    '読み込めませんでした。再試行してください。',
+    'Unable to load. Please try again.',
+    '加载失败，请重试。',
+  ],
+  verify: ['メールアドレスの確認', 'Email verification', '邮箱验证'],
+  reset: ['パスワードの再設定', 'Password reset', '密码找回'],
+  update: ['サービスの更新', 'Service update', '业务更新'],
+  review: ['メッセージ安全審査', 'Message safety review', '会话安全审核'],
+  reviewHelp: [
+    'ブロックされたメッセージは相手に送信されません。審査結果は記録され、自動再送は行いません。',
+    'Blocked messages are not sent to the other person. Decisions are recorded and do not resend a message automatically.',
+    '被拦截的会话不会发送给对方。审核结果会留痕，不会自动补发原消息。',
+  ],
+  view: ['内容を確認', 'Review content', '查看内容'],
+  PENDING_REVIEW: ['未審査', 'Pending review', '待审核'],
+  REVIEWED: ['審査済み', 'Reviewed', '已审核'],
+  POLICY_CONFIRMED: ['ポリシー違反を確認', 'Policy violation confirmed', '确认违反规则'],
+  FALSE_POSITIVE: ['誤検知', 'False positive', '判定为误拦截'],
+  note: ['判断理由（10文字以上）', 'Reason (at least 10 characters)', '审核说明（至少 10 字）'],
+  save: ['審査を保存', 'Save decision', '保存审核结果'],
+  back: ['管理画面に戻る', 'Back to workspace', '返回平台'],
+  login: ['管理者ログイン', 'Administrator sign in', '平台员工登录'],
+  permission: [
+    '安全審査権限が必要です。',
+    'Safety review permission is required.',
+    '需要安全审核权限。',
+  ],
+} as const;
+export function rt(l: Locale, key: string) {
+  return words[key as keyof typeof words]?.[l === 'ja' ? 0 : l === 'en' ? 1 : 2] ?? key;
+}

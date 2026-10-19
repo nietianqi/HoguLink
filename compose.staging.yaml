@@ -1,0 +1,143 @@
+name: hogulink-staging
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: hogulink
+      POSTGRES_USER: hogulink
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_password
+    secrets: [database_password]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U hogulink']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  api: &api
+    build:
+      context: .
+      args:
+        API_INTERNAL_URL: http://api:4000
+        NEXT_PUBLIC_SITE_URL: https://${STAGING_DOMAIN}
+    image: hogulink-staging:local
+    environment: &runtime
+      APP_MODE: staging
+      PAYMENT_PROVIDER: demo
+      DEMO_ACCESS_ENABLED: '0'
+      SEED_DEMO_DATA: '0'
+      RUN_BACKGROUND_JOBS: '0'
+      API_HOST: 0.0.0.0
+      API_PORT: '4000'
+      TRUST_PROXY_HOPS: '2'
+      WEB_ORIGIN: https://${STAGING_DOMAIN:?Set STAGING_DOMAIN}
+      PUBLIC_WEB_URL: https://${STAGING_DOMAIN}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      DATA_ENCRYPTION_KEY_FILE: /run/secrets/data_encryption_key
+      EMAIL_PROVIDER: resend
+      EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
+      RESEND_API_KEY_FILE: /run/secrets/resend_api_key
+      OPS_NOTIFICATION_EMAIL: ${OPS_NOTIFICATION_EMAIL:-}
+      EVIDENCE_DIRECTORY: /app/hogulink-api/data/private-evidence
+      BACKUP_DIRECTORY: /app/backups
+      BACKUP_REQUIRED: '1'
+      NOTIFICATIONS_REQUIRED: '1'
+    secrets: [database_url, data_encryption_key, resend_api_key]
+    volumes: [private_evidence:/app/hogulink-api/data]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:4000/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+  worker:
+    <<: *api
+    command: [node, --import, tsx, src/entrypoint.ts, worker]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://api:4000/v1/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+  backups:
+    <<: *api
+    command: [node, --import, tsx, src/entrypoint.ts, backup-worker]
+    volumes: [private_evidence:/app/hogulink-api/data:ro, encrypted_backups:/app/backups]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck: { disable: true }
+  web:
+    image: hogulink-staging:local
+    build:
+      context: .
+      args:
+        API_INTERNAL_URL: http://api:4000
+        NEXT_PUBLIC_SITE_URL: https://${STAGING_DOMAIN}
+    working_dir: /app/hogulink-web
+    command: [node, ../node_modules/next/dist/bin/next, start, --hostname, 0.0.0.0]
+    environment:
+      API_INTERNAL_URL: http://api:4000
+      NEXT_PUBLIC_SITE_URL: https://${STAGING_DOMAIN}
+      PUBLIC_HTTPS: '1'
+      SEO_INDEXING_ENABLED: 'false'
+    depends_on:
+      api: { condition: service_healthy }
+    read_only: true
+    tmpfs: [/tmp, '/app/hogulink-web/.next-production/cache:uid=1000,gid=1000']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/zh-cn/account/access').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+  gateway:
+    image: caddy:2-alpine
+    ports: ['80:80', '443:443', '443:443/udp']
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    volumes: [./deploy/Caddyfile:/etc/caddy/Caddyfile:ro, caddy_data:/data, caddy_config:/config]
+    secrets: [staging_auth]
+    depends_on: [web]
+    restart: unless-stopped
+secrets:
+  database_password: { file: ./secrets/database_password }
+  database_url: { file: ./secrets/database_url }
+  data_encryption_key: { file: ./secrets/data_encryption_key }
+  resend_api_key: { file: ./secrets/resend_api_key }
+  staging_auth: { file: ./secrets/staging_auth }
+volumes:
+  postgres_data:
+  private_evidence:
+  encrypted_backups:
+  caddy_data:
+  caddy_config:

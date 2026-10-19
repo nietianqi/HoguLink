@@ -1,0 +1,422 @@
+.order-monitor {
+  margin-bottom: 24px;
+}
+.governance-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.governance-heading h2,
+.governance-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 6px 0;
+}
+.governance-muted {
+  color: var(--hl-ink-2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.monitor-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--hl-line);
+  border-radius: 14px;
+  overflow: hidden;
+  margin: 22px 0 18px;
+}
+.monitor-metrics button {
+  border: 0;
+  border-right: 1px solid var(--hl-line);
+  text-align: left;
+  background: var(--hl-canvas);
+  padding: 18px;
+  color: var(--hl-ink-2);
+  cursor: pointer;
+  min-width: 0;
+}
+.monitor-metrics button:last-child {
+  border-right: 0;
+}
+.monitor-metrics button.selected {
+  background: var(--hl-tint);
+  color: var(--hl-pine-900);
+}
+.monitor-metrics span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.monitor-metrics strong {
+  display: block;
+  font-size: 30px;
+  font-weight: 500;
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.monitor-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.monitor-toolbar input,
+.monitor-toolbar select {
+  min-width: 0;
+  border: 1px solid var(--hl-line);
+  border-radius: 9px;
+  padding: 11px 13px;
+  background: white;
+  color: var(--hl-ink);
+  font-size: 14px;
+}
+.monitor-toolbar input {
+  flex: 1;
+}
+.monitor-toolbar select {
+  max-width: 42%;
+}
+.monitor-alert {
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  border-top: 1px solid var(--hl-line);
+  padding: 20px 0 20px 15px;
+  border-left: 3px solid var(--hl-line);
+  margin: 0 0 0 1px;
+}
+.monitor-alert.high {
+  border-left-color: var(--hl-gold);
+}
+.monitor-alert-main {
+  flex: 1;
+  min-width: 0;
+}
+.monitor-alert h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.monitor-alert p {
+  margin: 7px 0;
+  color: var(--hl-ink-2);
+  font-size: 13px;
+}
+.monitor-alert small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.monitor-alert .admin-pill {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.monitor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 230px;
+  flex-shrink: 0;
+}
+.governance-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--hl-pine-900);
+  font-size: 13px;
+  min-height: 40px;
+}
+.monitor-alert .monitor-late {
+  color: #9b522c;
+}
+.monitor-severity {
+  color: var(--hl-gold-700);
+}
+.coordination-platform {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--hl-line);
+  border-radius: 12px;
+  background: var(--hl-tint);
+  color: var(--hl-pine-900);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.coordination-platform ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.coordination-platform p {
+  margin: 6px 0 0;
+  color: var(--hl-ink-2);
+}
+.monitor-alert details summary {
+  font-size: 12px;
+  color: var(--hl-pine-900);
+  cursor: pointer;
+  padding: 8px 0;
+}
+.governance-pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.monitor-empty {
+  text-align: center;
+  color: var(--hl-ink-2);
+  padding: 30px 0;
+}
+.monitor-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 15px;
+  font-size: 13px;
+}
+.governance-stamp {
+  font-size: 11px;
+  color: var(--hl-ink-2);
+  margin-top: 16px;
+}
+.governance-form {
+  padding: 0 24px 24px;
+}
+.governance-form fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  display: grid;
+  gap: 17px;
+  min-width: 0;
+}
+.governance-form label:not(.decision-check) {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.governance-form input:not([type='checkbox']),
+.governance-form select,
+.governance-form textarea {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--hl-line);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--hl-ink);
+  background: white;
+  font: inherit;
+}
+.governance-form textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+.case-decision {
+  background: var(--hl-canvas);
+  border: 1px solid var(--hl-line);
+  border-radius: 16px;
+  padding: 22px;
+  margin: 20px 0;
+  min-width: 0;
+}
+.case-decision h3 {
+  font-size: 16px;
+}
+.decision-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--hl-tint);
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--hl-pine-900);
+}
+.decision-state.review {
+  background: var(--hl-gold-100);
+  color: var(--hl-gold-700);
+}
+.decision-state svg {
+  flex-shrink: 0;
+}
+.decision-facts {
+  margin: 20px 0;
+  display: grid;
+  gap: 18px;
+}
+.decision-facts dt {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+  margin-bottom: 6px;
+}
+.decision-facts dd {
+  margin: 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.decision-boundary {
+  font-size: 11px;
+  margin-bottom: 0;
+}
+.decision-history {
+  margin: 12px 0 20px;
+  font-size: 13px;
+}
+.decision-receipt {
+  border-top: 1px solid var(--hl-line);
+  padding: 16px 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.decision-receipt small {
+  color: var(--hl-ink-2);
+}
+.decision-history summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.decision-history article {
+  border-top: 1px solid var(--hl-line);
+  padding: 14px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.decision-sheet {
+  max-width: 680px;
+}
+.decision-evidence {
+  border: 1px solid var(--hl-line);
+  border-radius: 12px;
+  padding: 15px;
+}
+.decision-evidence h3 {
+  font-size: 14px;
+  margin: 0 0 9px;
+}
+.decision-evidence blockquote {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: var(--hl-gold-100);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.decision-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  line-height: 1.7;
+  font-size: 13px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.decision-check input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: var(--hl-pine-900);
+}
+.decision-check > span {
+  min-width: 0;
+}
+.decision-check span span,
+.decision-check strong {
+  display: block;
+  white-space: pre-wrap;
+}
+.decision-check strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hl-ink-2);
+}
+.monitor-metrics button:focus-visible,
+.governance-link:focus-visible {
+  outline: 2px solid var(--hl-pine-900);
+  outline-offset: -3px;
+}
+@media (max-width: 1100px) {
+  .monitor-alert {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .monitor-actions {
+    width: auto;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 760px) {
+  .monitor-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .monitor-metrics button {
+    padding: 14px;
+    min-height: 94px;
+  }
+  .monitor-metrics button:nth-child(2) {
+    border-right: 0;
+  }
+  .monitor-metrics button:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--hl-line);
+  }
+  .monitor-metrics strong {
+    font-size: 27px;
+  }
+  .monitor-toolbar {
+    flex-direction: column;
+  }
+  .monitor-toolbar select {
+    max-width: none;
+  }
+  .monitor-toolbar input,
+  .monitor-toolbar select,
+  .governance-form input:not([type='checkbox']),
+  .governance-form select,
+  .governance-form textarea {
+    font-size: 16px;
+    min-height: 46px;
+  }
+  .monitor-alert {
+    padding: 17px 0 17px 11px;
+  }
+  .monitor-alert .governance-heading {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .monitor-alert .governance-heading h3 {
+    line-height: 1.6;
+  }
+  .monitor-actions {
+    gap: 10px;
+  }
+  .monitor-actions .button {
+    min-height: 44px;
+  }
+  .order-monitor .governance-heading h2 {
+    font-size: 20px;
+  }
+  .governance-form {
+    padding: 0 18px 24px;
+  }
+  .governance-form .button {
+    min-height: 48px;
+  }
+  .case-decision {
+    padding: 17px;
+  }
+  .decision-check {
+    padding: 13px 0;
+  }
+  .monitor-pagination {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}

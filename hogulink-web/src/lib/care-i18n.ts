@@ -1,0 +1,214 @@
+import type { Locale, SupportCategory, SupportTicketStatus } from '@hogulink/contracts';
+const words = {
+  linkedMissing: [
+    'リンク先の相談が見つからないか、アクセスできません。一覧から選択してください。',
+    'The linked case is unavailable or inaccessible. Choose a case from your list.',
+    '链接中的工单不存在或无权访问，请从本人记录中选择。',
+  ],
+  center: ['サポート・安全', 'Support & safety', '售后与安全'],
+  bookings: ['予約一覧', 'Bookings', '预约列表'],
+  subtitle: [
+    'ご相談から対応結果まで、同じ窓口で確認できます。',
+    'Follow your request from the first message to the final decision.',
+    '从提交问题到查看处理结果，在这里持续跟进。',
+  ],
+  create: ['新しい相談', 'Open a request', '提交新问题'],
+  related: ['関連する予約', 'Related booking', '关联预约'],
+  selectBooking: ['予約を選択', 'Select a booking', '请选择预约'],
+  noBooking: ['予約に関係しない通報', 'Report without a booking', '与预约无关的举报'],
+  category: ['相談の種類', 'Issue category', '问题类型'],
+  subject: ['件名', 'Subject', '标题'],
+  description: [
+    '内容（10文字以上）',
+    'Details (at least 10 characters)',
+    '详细说明（至少 10 个字）',
+  ],
+  submit: ['相談を送信', 'Submit request', '提交问题'],
+  ticketCreated: ['相談を受け付けました', 'Request saved', '问题已提交'],
+  myCases: ['相談履歴', 'Support requests', '问题记录'],
+  empty: ['相談はまだありません', 'No support requests yet', '暂无问题记录'],
+  choose: [
+    '相談を選択すると経緯が表示されます。',
+    'Choose a request to view its history.',
+    '选择一条问题记录查看处理经过。',
+  ],
+  shared: [
+    'この相談は担当店舗と共有されます。',
+    'This request is shared with the shop providing your service.',
+    '此问题与提供服务的店铺共享。',
+  ],
+  confidential: [
+    '投稿者とプラットフォームのみ閲覧できます。',
+    'Only the reporter and platform can view this report.',
+    '仅提交人及平台可以查看此私密报告。',
+  ],
+  reply: ['返信', 'Reply', '回复'],
+  replyPlaceholder: [
+    '返信や対応内容を入力してください',
+    'Write your reply or decision',
+    '填写回复或处理结果',
+  ],
+  send: ['返信を送る', 'Send reply', '发送回复'],
+  escalate: ['プラットフォームへ相談', 'Escalate to platform', '升级至平台'],
+  resolve: ['対応結果を記録', 'Record resolution', '记录处理结果'],
+  close: ['対応を確認して閉じる', 'Confirm & close', '确认结果并关闭'],
+  reopen: ['再調査を依頼', 'Request another review', '申请重新处理'],
+  decision: ['対応結果', 'Resolution', '处理结果'],
+  deadline: ['回答期限の目安', 'Response target', '目标回复时间'],
+  high: ['優先対応', 'High priority', '优先处理'],
+  restriction: ['アカウントの予約制限', 'Booking restriction', '账号预约限制'],
+  restrictedText: [
+    '現在、新しいご予約をお受けできません。期限と申立て窓口をご確認ください。',
+    'New bookings are temporarily unavailable. You can review the expiry and submit an appeal.',
+    '当前暂时无法提交新预约，可查看限制期限并提出申诉。',
+  ],
+  expires: ['期限', 'Expires', '到期时间'],
+  appeal: ['制限への申立て', 'Appeal a restriction', '限制申诉'],
+  appealText: [
+    '再確認を希望する理由を入力してください',
+    'Explain why you would like this decision reviewed',
+    '请说明希望重新审核的原因',
+  ],
+  submitAppeal: ['申立てを送信', 'Submit appeal', '提交申诉'],
+  releaseRestriction: [
+    '審査結果に基づき、この制限を解除する',
+    'Release this restriction as part of the decision',
+    '按审核结论解除此次账号限制',
+  ],
+  privateFeedback: [
+    '顧客への非公開の安全報告',
+    'Private customer safety report',
+    '顾客私密安全反馈',
+  ],
+  feedbackHelp: [
+    '安全上の懸念をプラットフォームに報告します。審査中、このお客様の本店舗での新規予約を停止します。',
+    'Report a safety concern privately to the platform. New bookings at this shop pause during review.',
+    '向平台私密报告安全顾虑。审核期间暂停该顾客在本店提交新预约。',
+  ],
+  releaseBlock: [
+    '関連する店舗の拒否設定を解除する',
+    'Release the related shop block',
+    '解除此报告关联的本店拒接',
+  ],
+  blocks: ['本店舗の拒否リスト', 'This shop’s customer blocks', '本店拒接名单'],
+  blockHelp: [
+    '理由は本店舗だけに表示され、他店や顧客には公開されません。',
+    'Reasons are visible only to this shop, never to other shops or the customer.',
+    '拒接原因仅本店可见，不向其他店铺或顾客公开。',
+  ],
+  customer: ['お客様', 'Customer', '顾客'],
+  privateReason: ['内部向け理由', 'Private reason', '内部原因'],
+  saveBlock: ['拒否設定を保存', 'Save shop block', '保存拒接设置'],
+  blockActive: [
+    '本店舗での新規予約を停止',
+    'Block new bookings at this shop',
+    '暂停该顾客在本店的新预约',
+  ],
+  reviewRequired: [
+    '安全審査中 · 店舗では解除できません',
+    'Safety review pending · Shop cannot release',
+    '安全审核中 · 店铺暂不能解除',
+  ],
+  editing: ['編集中', 'Editing', '正在编辑'],
+  active: ['有効', 'Active', '生效中'],
+  inactive: ['解除済み', 'Released', '已解除'],
+  expired: ['期限切れ', 'Expired', '已到期'],
+  restrictions: [
+    'プラットフォームの制限管理',
+    'Platform restriction management',
+    '平台账号限制管理',
+  ],
+  restrictionHelp: [
+    '期限付きで新規予約を制限します。調査理由は顧客や他の店舗に公開されません。申立ては別の相談として記録されます。',
+    'Restrict new bookings until a defined expiry. Investigation reasons remain private. Appeals are recorded separately.',
+    '限期限制新预约。调查原因不向顾客或其他店铺披露，申诉以独立工单记录。',
+  ],
+  duration: ['制限期間（時間）', 'Restriction duration (hours)', '限制时长（小时）'],
+  enabled: ['新規予約を制限する', 'Restrict new bookings', '限制新预约'],
+  saveRestriction: ['制限を保存', 'Save restriction', '保存账号限制'],
+  safetyEvents: ['安全イベントの対応', 'Safety event handling', '安全事件处置'],
+  noSafety: ['安全イベントはありません', 'No safety events', '暂无安全事件'],
+  open: ['未対応', 'Open', '待处理'],
+  resolved: ['対応済み', 'Resolved', '已处理'],
+  safetyResolution: [
+    '確認した状況・対応結果（10文字以上）',
+    'Verified situation and response (at least 10 characters)',
+    '核实情况与处置结果（至少 10 个字）',
+  ],
+  resolveSafety: ['安全イベントを処理済みにする', 'Resolve safety event', '完成安全事件处置'],
+  safetyNote: [
+    'イベントを閉じても、関連する顧客の制限や拒否設定は自動解除されません。',
+    'Resolving an event does not automatically release related account restrictions or shop blocks.',
+    '完成事件处置不会自动解除关联账号限制或店铺拒接。',
+  ],
+  demoNote: [
+    '相談はローカル環境に保存されます。メール・LINE・緊急連絡先への実際の通知は送信されません。',
+    'Requests are saved locally. No real email, LINE or emergency contact is notified.',
+    '问题记录保存在本机，尚未向真实邮箱、LINE 或紧急联系人发送通知。',
+  ],
+  noCustomers: ['関連する顧客がまだいません', 'No related customers yet', '暂无关联顾客'],
+  login: ['アカウントでログイン', 'Sign in to this workspace', '登录此工作台'],
+  updated: ['更新しました', 'Updated', '已更新'],
+  SERVICE_QUALITY: ['サービス品質', 'Service quality', '服务质量'],
+  PRICE_OR_REFUND: ['料金・返金', 'Price or refund', '费用或退款'],
+  LATE_ARRIVAL: ['到着の遅れ', 'Late arrival', '技师迟到'],
+  MERCHANT_UNREACHABLE: ['店舗と連絡が取れない', 'Shop unreachable', '无法联系店铺'],
+  QUALIFICATION: ['資格・表示の問題', 'Qualifications or advertising', '资质或宣传问题'],
+  SAFETY: ['ハラスメント・安全', 'Harassment or safety', '骚扰或安全问题'],
+  PRIVACY: ['個人情報', 'Privacy', '个人信息问题'],
+  FINANCIAL: ['決済の異常', 'Payment irregularity', '支付异常'],
+  APPEAL: ['アカウント制限への申立て', 'Account restriction appeal', '账号限制申诉'],
+  OPEN: ['返答待ち', 'Awaiting response', '等待回复'],
+  NEEDS_MERCHANT: ['店舗の対応待ち', 'Awaiting shop response', '等待店铺处理'],
+  PLATFORM_ESCALATED: ['プラットフォーム確認中', 'Under platform review', '平台处理中'],
+  RESOLVED: ['対応結果あり', 'Resolution recorded', '已有处理结果'],
+  CLOSED: ['終了', 'Closed', '已关闭'],
+  CUSTOMER_RESTRICTED: [
+    '現在、新しいご予約はできません。サポート画面で制限と申立てをご確認ください。',
+    'New bookings are currently unavailable. Review restrictions and appeals in support.',
+    '当前无法提交新预约，请在售后与安全页面查看限制与申诉入口。',
+  ],
+  PLATFORM_REVIEW_REQUIRED: [
+    'プラットフォームの安全審査が必要です。',
+    'Platform safety review is required first.',
+    '需先完成平台安全审核。',
+  ],
+  RESTRICTION_CHANGED: [
+    '制限が更新されました。最新の決定を確認してください。',
+    'The restriction changed. Review the latest decision.',
+    '限制已变更，请重新核对最新决定。',
+  ],
+  OTHER_SAFETY_REPORT_OPEN: [
+    '別の安全報告が審査中です。',
+    'Another safety report is still under review.',
+    '还有其他安全报告尚未处理。',
+  ],
+  SUPPORT_LIMIT: [
+    '未対応の相談が多いため、既存の相談に追記してください。',
+    'Too many active requests. Add details to an existing case.',
+    '待处理问题过多，请先在已有记录中补充说明。',
+  ],
+  BOOKING_REQUIRED: [
+    '関連する予約を選択してください。',
+    'Select the related booking.',
+    '请选择关联预约。',
+  ],
+  INVALID_EXPIRY: [
+    '30日以内の有効期限を選択してください。',
+    'Choose an expiry within 30 days.',
+    '请选择 30 天以内的到期时间。',
+  ],
+} satisfies Record<string, [string, string, string]>;
+export type CareKey = keyof typeof words;
+export function ct(locale: Locale, key: CareKey) {
+  return words[key][locale === 'ja' ? 0 : locale === 'en' ? 1 : 2];
+}
+export function categoryLabel(locale: Locale, value: SupportCategory) {
+  return ct(locale, value);
+}
+export function caseStatus(locale: Locale, value: SupportTicketStatus) {
+  return ct(locale, value);
+}
+export function isCareKey(value: string): value is CareKey {
+  return Object.hasOwn(words, value);
+}

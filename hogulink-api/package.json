@@ -1,0 +1,29 @@
+{
+  "name": "@hogulink/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --import tsx --watch src/entrypoint.ts main",
+    "start": "node --env-file-if-exists=.env --import tsx src/entrypoint.ts main",
+    "worker": "node --env-file-if-exists=.env --import tsx src/entrypoint.ts worker",
+    "maintenance": "node --env-file-if-exists=.env --import tsx src/entrypoint.ts maintenance",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs"
+  },
+  "dependencies": {
+    "@hogulink/contracts": "*",
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/platform-express": "^11.1.9",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "sharp": "^0.35.5",
+    "tsx": "^4.20.6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/pg": "^8.15.5"
+  }
+}

@@ -1,0 +1,451 @@
+/* Task-first surfaces, using the existing forest, ivory and brass palette. */
+.workday-tools {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+.workday-tools a {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  min-height: 54px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--green);
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.workday-tools a:hover {
+  background: var(--hl-tint);
+  border-color: #a8b7a6;
+}
+.workday-tools a > span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.workday-tools svg {
+  flex-shrink: 0;
+}
+.workday-tools b {
+  font-size: 12px;
+  min-width: 22px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  text-align: center;
+  background: var(--green);
+  color: #fff;
+}
+.workday-customer-focus,
+.workday-action-center {
+  border: 1px solid var(--hl-line-strong);
+  border-radius: 18px;
+  background: var(--hl-tint);
+  padding: 24px 28px;
+  margin: 16px 0 20px;
+}
+.workday-focus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--hl-ink-2);
+}
+.workday-customer-focus h2,
+.workday-action-center h2 {
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 14px 0 8px;
+}
+.workday-customer-focus p,
+.workday-action-center > p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--hl-ink-2);
+  margin: 8px 0 16px;
+}
+.workday-customer-focus p strong {
+  margin-left: 14px;
+  color: var(--green);
+  font-weight: 600;
+}
+.workday-customer-focus .button {
+  min-height: 48px;
+}
+.workday-customer .consumer-account-hero {
+  padding: 22px 26px;
+}
+.workday-customer .consumer-account-hero h1 {
+  margin: 7px 0;
+}
+.workday-customer .consumer-orders {
+  margin-top: 16px;
+}
+.workday-action-center {
+  background: #fff;
+  border-top: 3px solid var(--green);
+}
+.workday-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 20px 0;
+}
+.workday-counts > a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  border-radius: 10px;
+  background: var(--hl-tint);
+  padding: 12px;
+  color: var(--green);
+}
+.workday-counts > a:hover {
+  background: var(--hl-tint-2);
+}
+.workday-counts strong {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+.workday-counts span {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.workday-action-center .merchant-upcoming {
+  padding: 0;
+}
+.workday-action-center .merchant-upcoming > a {
+  background: var(--hl-canvas);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-top: 10px;
+}
+.workday-waiting {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.workday-account-switch,
+.workday-resources {
+  margin: 12px 0 20px;
+  color: var(--hl-ink-2);
+  font-size: 14px;
+}
+.workday-account-switch > summary,
+.workday-resources > summary {
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--hl-tint);
+}
+.workday-account-switch .merchant-account {
+  margin: 10px 0 0;
+}
+.workday-resources {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  margin-top: 28px;
+}
+.workday-resources .partner-entry {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+.workday-staff .staff-overview-grid {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 14px;
+}
+.workday-staff .staff-focus {
+  min-height: 0;
+  padding: 24px 28px;
+}
+.workday-staff .staff-focus-label {
+  margin-bottom: 16px;
+}
+.workday-staff .staff-focus h2 {
+  margin: 8px 0;
+  font-size: 29px;
+}
+.workday-staff .staff-focus p {
+  margin: 10px 0;
+  font-size: 14px;
+}
+.workday-staff .staff-focus .button {
+  margin-top: 18px;
+  min-height: 48px;
+}
+.workday-staff .staff-stat-grid {
+  margin: 0 0 24px;
+}
+.workday-staff .staff-stat-grid > div {
+  min-height: 0;
+  padding: 18px 20px;
+}
+.workday-staff .staff-stat-grid > div > span,
+.workday-staff .staff-stat-grid > div > small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.workday-staff .staff-stat-grid strong {
+  font-size: 28px;
+}
+.workday-staff .staff-stat-grid strong small {
+  font-size: 12px;
+  color: var(--hl-ink-2);
+}
+.workday-income-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--hl-ink-2);
+  padding: 16px;
+  background: var(--hl-tint);
+  border-radius: 10px;
+}
+.workday-income-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.workday-orders .workspace-title {
+  margin-bottom: 14px;
+}
+.workday-orders .workspace-title h1 {
+  font-size: 28px;
+}
+.workday-orders .workspace-title p {
+  font-size: 14px;
+}
+.workday-orders .workspace-stats {
+  gap: 8px;
+  margin: 16px 0;
+}
+.workday-orders .workspace-stats > div {
+  min-height: 0;
+  padding: 14px;
+}
+.workday-orders .workspace-stats strong {
+  font-size: 23px;
+  margin-top: 8px;
+}
+.workday-order-next {
+  padding: 18px 20px;
+  background: var(--hl-tint);
+  border: 1px solid var(--hl-line-strong);
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+.workday-order-next > span,
+.workday-order-next > small {
+  font-size: 13px;
+  color: var(--hl-ink-2);
+  line-height: 1.8;
+}
+.workday-order-next > strong {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.8;
+}
+.workday-task-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 44px;
+  color: var(--green);
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.workday-response {
+  display: block;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--hl-ink-2);
+  margin: 10px 0 14px;
+}
+.workday-staff .staff-detail-action {
+  margin: 18px 0;
+}
+.order-care-panel {
+  scroll-margin-top: 100px;
+}
+.address-save-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  color: var(--green);
+  background: var(--hl-tint);
+  border-radius: 9px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.workday-tools a:focus-visible,
+.workday-counts a:focus-visible,
+.workday-account-switch > summary:focus-visible,
+.workday-resources > summary:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+@media (max-width: 1100px) {
+  .workday-tools a {
+    padding: 12px;
+  }
+}
+@media (max-width: 760px) {
+  .workday-orders[data-consent='true'] .workspace-title p {
+    display: none;
+  }
+  .workday-merchant .merchant-sidebar,
+  .workday-merchant .merchant-sidebar nav {
+    scrollbar-width: none;
+  }
+  .workday-merchant .merchant-sidebar::-webkit-scrollbar,
+  .workday-merchant .merchant-sidebar nav::-webkit-scrollbar {
+    display: none;
+  }
+  .merchant-embedded[data-focused='true'] .queue-panel {
+    display: none;
+  }
+  .workday-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+  .workday-tools a {
+    min-height: 52px;
+    padding: 12px;
+    font-size: 13px;
+    gap: 8px;
+  }
+  .workday-customer .consumer-account-hero {
+    padding: 18px;
+    gap: 12px;
+  }
+  .workday-customer .consumer-account-hero h1 {
+    font-size: 24px;
+  }
+  .workday-customer .consumer-account-hero p {
+    font-size: 13px;
+  }
+  .workday-customer .consumer-avatar {
+    width: 44px;
+    height: 44px;
+  }
+  .workday-customer-focus,
+  .workday-action-center {
+    padding: 18px;
+    margin: 14px 0;
+    border-radius: 14px;
+  }
+  .workday-customer-focus h2,
+  .workday-action-center h2 {
+    font-size: 22px;
+  }
+  .workday-customer-focus .button {
+    width: 100%;
+  }
+  .workday-customer-focus p strong {
+    display: block;
+    margin: 6px 0 0;
+  }
+  .workday-counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 16px 0;
+  }
+  .workday-counts > a {
+    min-height: 60px;
+    padding: 10px;
+    gap: 10px;
+  }
+  .workday-counts strong {
+    font-size: 26px;
+  }
+  .workday-counts span {
+    font-size: 13px;
+  }
+  .workday-action-center .merchant-upcoming > a {
+    flex-wrap: wrap;
+  }
+  .workday-merchant .merchant-heading,
+  .workday-staff .staff-heading {
+    margin-bottom: 12px;
+  }
+  .workday-merchant .merchant-heading h1,
+  .workday-staff .staff-heading h1 {
+    font-size: 24px;
+    margin-top: 5px;
+  }
+  .workday-staff .staff-heading p {
+    font-size: 13px;
+  }
+  .workday-staff .staff-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .workday-staff .staff-account {
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .workday-staff .staff-account > summary {
+    min-height: 40px;
+    padding-block: 10px;
+  }
+  .workday-staff .staff-focus {
+    padding: 20px;
+  }
+  .workday-staff .staff-focus h2 {
+    font-size: 26px;
+  }
+  .workday-staff .staff-focus-label {
+    margin-bottom: 12px;
+  }
+  .workday-staff .staff-stat-grid > div {
+    padding: 14px 10px;
+  }
+  .workday-staff .staff-stat-grid strong {
+    font-size: 25px;
+  }
+  .workday-staff .staff-tasks-grid[data-focused='true'] .staff-queue {
+    display: none;
+  }
+  .workday-orders .workspace-title h1 {
+    font-size: 25px;
+  }
+  .workday-orders .workspace-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workday-orders .workspace-stats > div {
+    padding: 12px;
+  }
+  .workday-order-next {
+    padding: 16px;
+    margin: 14px 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workday-tools a {
+    transition: none;
+  }
+}
+@media (max-width: 380px) {
+  .workday-merchant[data-tab='overview'] .merchant-heading p {
+    display: none;
+  }
+}

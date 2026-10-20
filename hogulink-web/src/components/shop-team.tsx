@@ -13,6 +13,7 @@ export function ShopTeam({
   nominationFee,
   initialLanguage = '',
   area,
+  mode,
   demo = false,
 }: {
   locale: Locale;
@@ -22,6 +23,7 @@ export function ShopTeam({
   nominationFee?: number;
   initialLanguage?: string;
   area?: string;
+  mode?: string;
   demo?: boolean;
 }) {
   const [language, setLanguage] = useState(initialLanguage);
@@ -60,6 +62,7 @@ export function ShopTeam({
             offerings={offerings}
             language={language}
             area={area}
+            mode={mode}
             nominationFee={nominationFee}
           />
         ))}

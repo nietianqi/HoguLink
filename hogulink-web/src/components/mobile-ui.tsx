@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
-  Search,
   LifeBuoy,
   X,
   ChevronUp,
@@ -365,9 +364,9 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
           {role ? (
             <Icon size={21} strokeWidth={active ? 2.3 : 1.6} />
           ) : index === 2 ? (
-            <strong className="h5-nav-book-word">{ht(locale, 'booking')}</strong>
+            <CalendarDays size={22} strokeWidth={1.7} className="h5-nav-icon" aria-hidden="true" />
           ) : index === 0 && active ? (
-            <strong className="h5-nav-home-word">Hogu</strong>
+            <House size={22} strokeWidth={1.7} className="h5-nav-icon" aria-hidden="true" />
           ) : (
             <Icon className="h5-nav-icon" size={22} strokeWidth={active ? 2.2 : 1.7} />
           )}

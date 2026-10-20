@@ -133,7 +133,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   line-height: 1.9;
   background: var(--hl-tint);
@@ -201,7 +201,7 @@
   overflow-wrap: anywhere;
 }
 .case-list-item small {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   color: var(--hl-muted);
 }
 .case-list-item > svg {
@@ -211,7 +211,7 @@
   color: var(--hl-muted);
 }
 .case-list-item .status-badge {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
 }
 .status-badge.priority-high {
   background: var(--hl-gold-100);
@@ -233,7 +233,7 @@
   gap: 10px;
 }
 .care-priority {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-gold-700);
 }
 .case-description {
@@ -270,11 +270,11 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .case-thread time {
   color: var(--hl-muted);
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
 }
 .case-thread p {
   font-size: 12px;
@@ -311,7 +311,7 @@
   gap: 9px;
 }
 .case-compose .checkbox {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .restriction-panel {
   border: 1px solid #decda7;
@@ -350,14 +350,14 @@
   overflow-wrap: anywhere;
 }
 .care-records p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   margin: 6px 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .care-records small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
 }
 .care-safety-event {
@@ -370,7 +370,7 @@
 }
 .care-safety-event .button-row > small {
   color: var(--hl-muted);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .care-safety-event > form {
   margin-top: 20px;
@@ -381,7 +381,7 @@
     margin-bottom: 18px;
   }
   .workspace-nav a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 8px 12px;
   }
   .care-layout {
@@ -412,7 +412,7 @@
     padding: 0 19px 20px;
   }
   .care-privacy {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .restriction-panel {
     padding: 20px;
@@ -427,7 +427,7 @@
     flex: 1;
   }
   .case-thread time {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .care-safety-event .button-row {
     gap: 10px;
@@ -511,7 +511,7 @@ h3 {
   font-size: 17px;
 }
 small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 fieldset {
   padding: 0;
@@ -566,7 +566,7 @@ svg {
   justify-content: space-between;
   align-items: center;
   padding: 0 40px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   letter-spacing: 0.025em;
 }
@@ -675,7 +675,7 @@ svg {
   z-index: 1;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   font-weight: 600;
   letter-spacing: 0.19em;
   display: flex;
@@ -710,13 +710,13 @@ svg {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   letter-spacing: 0.13em;
   margin-top: 25px;
 }
 .hero-location > span {
   color: var(--hl-muted);
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   margin-left: 17px;
 }
 .hero-art {
@@ -814,7 +814,7 @@ svg {
 }
 .search-fields label span {
   display: block;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
 }
 .search-fields select {
@@ -858,7 +858,7 @@ svg {
 }
 .button.small {
   padding: 9px 14px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   min-height: 36px;
 }
 .button.full {
@@ -881,12 +881,12 @@ svg {
   font-size: 25px;
 }
 .section-heading p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   margin: 0;
 }
 .eyebrow.small {
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   letter-spacing: 0.18em;
 }
 .result-count {
@@ -897,7 +897,7 @@ svg {
   gap: 8px;
 }
 .result-count span {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   font-family: var(--font-sans);
   color: var(--muted);
 }
@@ -915,7 +915,7 @@ svg {
   padding: 5px 16px;
   border: 1px solid var(--hl-line);
   border-radius: 20px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   background: #fff;
 }
 .filter-pills a.selected {
@@ -924,7 +924,7 @@ svg {
   color: #fff;
 }
 .sort-link {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -976,7 +976,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   padding: 5px 9px;
 }
 .availability i {
@@ -1015,7 +1015,7 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   color: var(--hl-ink-2);
 }
 .shop-link {
@@ -1023,14 +1023,14 @@ svg {
   align-items: center;
   gap: 4px;
   color: var(--hl-muted);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   margin-top: 2px;
 }
 .card-language {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   margin: 14px 0 15px;
 }
@@ -1047,14 +1047,14 @@ svg {
   letter-spacing: -0.025em;
 }
 .price-suffix {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   color: var(--hl-muted);
   margin-left: 2px;
 }
 .card-bottom small {
   display: block;
   color: var(--hl-muted);
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   margin-top: 3px;
 }
 .card-cta {
@@ -1098,7 +1098,7 @@ svg {
   position: absolute;
   right: 17px;
   top: 13px;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   color: var(--hl-subtle);
 }
 .trust-section h3 {
@@ -1106,7 +1106,7 @@ svg {
   margin-bottom: 7px;
 }
 .trust-section p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
   line-height: 1.9;
   max-width: 280px;
@@ -1120,7 +1120,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .steps {
   display: grid;
@@ -1146,7 +1146,7 @@ svg {
   margin-bottom: 6px;
 }
 .steps p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
   margin: 0;
 }
@@ -1170,14 +1170,14 @@ footer {
   font-size: 22px;
 }
 .footer-content p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
   margin: 10px 0 0 2px;
 }
 .footer-links {
   display: flex;
   gap: 28px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
 }
 .footer-bottom {
@@ -1186,7 +1186,7 @@ footer {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   color: var(--hl-muted);
   padding-top: 15px;
   padding-bottom: 15px;
@@ -1227,7 +1227,7 @@ footer {
   position: absolute;
   bottom: 17px;
   left: 20px;
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   letter-spacing: 0.15em;
   color: var(--hl-ink-2);
 }
@@ -1257,7 +1257,7 @@ footer {
   gap: 8px 20px;
 }
 .provider-line span {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
 }
 .provider-line a {
@@ -1302,7 +1302,7 @@ footer {
   font-size: 13px;
 }
 .service-grid p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   margin: 5px 0 0;
 }
@@ -1377,7 +1377,7 @@ footer {
   font-size: 19px;
 }
 .mini-profile a {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
 }
 .choice-grid {
@@ -1462,7 +1462,7 @@ footer {
   font-size: 12px;
 }
 .login-panel p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   margin: 4px 0 0;
   color: var(--hl-muted);
 }
@@ -1499,7 +1499,7 @@ footer {
   color: var(--ink);
 }
 .muted {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   line-height: 1.9;
 }
@@ -1507,7 +1507,7 @@ footer {
   display: flex;
   gap: 5px;
   align-items: center;
-  font-size: 10px !important;
+  font-size: var(--consumer-min-font-size, 10px) !important;
   color: var(--hl-muted);
 }
 .hold-timer {
@@ -1517,7 +1517,7 @@ footer {
   background: var(--hl-tint);
   border-radius: 6px;
   padding: 12px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-bottom: 25px;
 }
 .payment-box {
@@ -1529,7 +1529,7 @@ footer {
   font-size: 12px;
 }
 .payment-box p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.9;
   color: var(--hl-muted);
   margin-top: 10px;
@@ -1544,7 +1544,7 @@ footer {
   background: none;
   border: 0;
   padding: 7px 0;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   text-decoration: underline;
   text-underline-offset: 4px;
   display: inline-flex;
@@ -1562,7 +1562,7 @@ footer {
   background: #7d3b33;
 }
 .policy-text {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.9;
   color: var(--hl-muted);
 }
@@ -1690,7 +1690,7 @@ footer {
   overflow-wrap: anywhere;
 }
 .account-panel p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-muted);
   margin: 3px 0 0;
 }
@@ -1711,7 +1711,7 @@ footer {
   padding: 20px 24px;
 }
 .workspace-stats span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
 }
 .workspace-stats strong {
@@ -1721,7 +1721,7 @@ footer {
   margin-top: 5px;
 }
 .workspace-stats small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-left: 10px;
   color: var(--hl-muted);
 }
@@ -1753,7 +1753,7 @@ footer {
   font-size: 12px;
 }
 .booking-ref {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   letter-spacing: 0.07em;
   color: var(--hl-muted);
 }
@@ -1761,7 +1761,7 @@ footer {
   display: inline-flex;
   border-radius: 5px;
   padding: 4px 9px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   font-weight: 600;
   background: var(--hl-tint);
   color: var(--hl-pine-700);
@@ -1792,12 +1792,12 @@ footer {
   font-size: 19px;
 }
 .legal-name {
-  font-size: 10px !important;
+  font-size: var(--consumer-min-font-size, 10px) !important;
   margin: 3px 0 13px;
 }
 .booking-facts dl > div {
   padding: 7px 0;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   border: 0;
   grid-template-columns: 120px 1fr;
   gap: 14px;
@@ -1809,7 +1809,7 @@ footer {
   padding: 11px;
   background: var(--hl-tint);
   border-radius: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-top: 15px;
 }
 .booking-price {
@@ -1825,7 +1825,7 @@ footer {
 }
 .booking-actions select {
   width: 165px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   padding: 8px;
   min-height: 36px;
 }
@@ -1839,7 +1839,7 @@ footer {
   font-size: 14px;
 }
 .replacement-panel p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-top: 6px;
 }
 .message-panel {
@@ -1850,7 +1850,7 @@ footer {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   cursor: pointer;
 }
 .message-panel > p {
@@ -1874,7 +1874,7 @@ footer {
 }
 .message-list small {
   color: var(--hl-muted);
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
 }
 .message-list p {
   font-size: 12px;
@@ -1893,7 +1893,7 @@ footer {
 table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   text-align: left;
 }
 th,
@@ -1918,7 +1918,7 @@ th {
 .moderation-list small {
   display: block;
   color: var(--hl-muted);
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   margin-top: 4px;
 }
 .audit-list {
@@ -1930,7 +1930,7 @@ th {
   gap: 20px;
   padding: 12px 0;
   border-bottom: 1px solid var(--hl-line);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   flex-wrap: wrap;
 }
 .audit-row strong {
@@ -2018,7 +2018,7 @@ th {
     gap: 5px;
   }
   .verified {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
   }
   .verified svg {
     width: 14px;
@@ -2056,11 +2056,11 @@ th {
     padding: 6px 18px;
     gap: 10px;
     flex-wrap: wrap;
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .demo-bar nav {
     gap: 13px;
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .header {
     height: 76px;
@@ -2088,7 +2088,7 @@ th {
   }
   .locale-label select {
     width: 76px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .hero {
     grid-template-columns: 1fr;
@@ -2104,12 +2104,12 @@ th {
     margin: 14px 0;
   }
   .hero p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     max-width: 85%;
   }
   .hero-location {
     margin-top: 15px;
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .hero-art {
     position: absolute;
@@ -2146,11 +2146,11 @@ th {
     padding-left: 11px;
   }
   .search-fields select {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding-right: 0;
   }
   .search-fields label span {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .search-fields > .button {
     grid-column: 1/-1;
@@ -2161,7 +2161,7 @@ th {
     gap: 25px;
   }
   .mode-tabs button {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .discovery {
     padding-top: 38px;
@@ -2175,7 +2175,7 @@ th {
     font-size: 21px;
   }
   .section-heading p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     max-width: 240px;
   }
   .result-count {
@@ -2185,12 +2185,12 @@ th {
     margin-top: 19px;
   }
   .result-count span {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
     white-space: normal;
     max-width: 55px;
   }
   .eyebrow.small {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
     letter-spacing: 0.11em;
   }
   .filter-row {
@@ -2201,11 +2201,11 @@ th {
     gap: 5px;
   }
   .filter-pills a {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     padding: 5px 10px;
   }
   .sort-link {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     gap: 4px;
   }
   .therapist-grid {
@@ -2222,17 +2222,17 @@ th {
     font-size: 18px;
   }
   .verified {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
     margin-top: 2px;
   }
   .verified svg {
     width: 12px;
   }
   .shop-link {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .card-language {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
     gap: 4px;
     margin: 10px 0;
   }
@@ -2247,12 +2247,12 @@ th {
     font-size: 16px;
   }
   .price-suffix {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
     display: block;
     margin-top: -2px;
   }
   .card-bottom small {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
   }
   .card-cta {
     width: 25px;
@@ -2262,7 +2262,7 @@ th {
     width: 15px;
   }
   .availability {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
     bottom: 8px;
     left: 8px;
     padding: 3px 5px;
@@ -2292,7 +2292,7 @@ th {
     font-size: 14px;
   }
   .trust-section p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     max-width: none;
   }
   .tiny-number {
@@ -2307,7 +2307,7 @@ th {
   }
   .how-section .section-heading a {
     margin-top: 15px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .steps {
     grid-template-columns: 1fr;
@@ -2321,7 +2321,7 @@ th {
     display: none;
   }
   .steps p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .footer-content {
     align-items: flex-start;
@@ -2330,7 +2330,7 @@ th {
   .footer-links {
     flex-direction: column;
     gap: 11px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .footer-bottom {
     flex-direction: column;
@@ -2398,7 +2398,7 @@ th {
     gap: 12px;
   }
   .choice {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 13px 8px;
   }
   .choice svg {
@@ -2415,7 +2415,7 @@ th {
     font-size: 24px;
   }
   .workspace-title p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .workspace-title > .button {
     font-size: 0;
@@ -2435,11 +2435,11 @@ th {
   .account-panel select {
     max-width: 100%;
     flex: 1;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .account-panel > .button {
     flex: 1;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .account-avatar {
     width: 34px;
@@ -2459,7 +2459,7 @@ th {
     font-size: 24px;
   }
   .workspace-stats span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .booking-card-heading {
     padding: 15px;
@@ -2477,14 +2477,14 @@ th {
   }
   .booking-facts dl > div {
     grid-template-columns: 105px 1fr;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .booking-price .price-lines {
     padding-top: 12px;
     border-top: 1px solid var(--hl-line);
   }
   .booking-price .price-lines > div {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     margin-bottom: 7px;
   }
   .booking-price .price-total {
@@ -2500,7 +2500,7 @@ th {
     width: 140px;
   }
   .notice {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     flex-wrap: wrap;
     padding: 14px;
   }
@@ -2526,7 +2526,7 @@ th {
     grid-template-columns: 1fr;
     gap: 5px;
     padding: 14px 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .guide-content h1 {
     font-size: 26px;

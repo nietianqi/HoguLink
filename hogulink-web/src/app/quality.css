@@ -45,7 +45,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   letter-spacing: 0.09em;
   color: var(--hl-ink-2);
 }
@@ -150,7 +150,7 @@
   flex-wrap: wrap;
 }
 .quality-card time {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
 }
 .quality-card h3 {
@@ -462,7 +462,7 @@
 }
 .quality-badge {
   display: inline-flex;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   padding: 5px 9px;
   background: var(--hl-tint);
   color: var(--hl-ink-2);
@@ -510,7 +510,7 @@
 }
 .quality-history time {
   display: block;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
 }
 .quality-fee {
@@ -527,7 +527,7 @@
   font-weight: 400;
 }
 .quality-fee time {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
 }
 .quality-entry {
@@ -628,11 +628,11 @@
     gap: 8px;
   }
   .quality-card .quality-eyebrow {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     letter-spacing: 0;
   }
   .quality-card time {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .quality-summary {
     padding: 18px;
@@ -648,7 +648,7 @@
     gap: 13px;
   }
   .quality-dimensions.compact {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .quality-favorites {
     grid-template-columns: minmax(0, 1fr);

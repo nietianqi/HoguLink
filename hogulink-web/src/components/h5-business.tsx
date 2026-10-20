@@ -57,6 +57,9 @@ export function H5Badges({
   verified?: string;
 }) {
   if (!freeTravel && !instantNow && !promotion && !verified) return null;
+  const showInstant = instantNow && (!verified || !promotion);
+  const showTravel =
+    freeTravel && Number(!!verified) + Number(!!promotion) + Number(!!showInstant) < 2;
   return (
     <span className="h5-badges">
       {verified && (
@@ -71,13 +74,13 @@ export function H5Badges({
           {ht(l, 'promoTag')}
         </span>
       )}
-      {instantNow && (
+      {showInstant && (
         <span className="h5-badge is-instant">
           <Zap size={11} aria-hidden="true" />
           {ht(l, 'instantNow')}
         </span>
       )}
-      {freeTravel && (
+      {showTravel && (
         <span className="h5-badge is-travel">
           <Truck size={11} aria-hidden="true" />
           {ht(l, 'freeTravel')}

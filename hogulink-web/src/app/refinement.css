@@ -50,7 +50,7 @@ textarea {
 .eyebrow,
 .eyebrow.small {
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   font-weight: 600;
 }
 .main-nav a[aria-current='page'] {
@@ -168,13 +168,8 @@ textarea {
 .detail-anchor-nav a {
   font-weight: 550;
 }
-.consumer-account-hero {
-  background: var(--hl-tint);
-  border-color: var(--line);
-}
 .consumer-service-card,
-.consumer-orders,
-.consumer-utilities {
+.consumer-orders {
   border-color: var(--line);
   border-radius: 18px;
 }
@@ -183,15 +178,8 @@ textarea {
   color: var(--ink);
   letter-spacing: -0.025em;
 }
-.consumer-service-info p,
-.consumer-price-note,
-.consumer-account-hero p {
+.consumer-price-note {
   color: var(--hl-ink-2);
-}
-.workday-customer .consumer-account-hero {
-  background: transparent;
-  border: 0;
-  padding-inline: 0;
 }
 .workday-customer-focus {
   background: #fff;
@@ -400,7 +388,7 @@ textarea {
   font-size: 14px;
 }
 .status-badge {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .admin-control {
   background: var(--hl-tint);
@@ -412,7 +400,7 @@ textarea {
   color: var(--hl-ink-2);
 }
 .admin-control-top > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .admin-control > p {
   color: var(--hl-ink-2);
@@ -470,7 +458,7 @@ textarea {
   }
   .hero-location {
     margin-top: 25px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .search-position {
     padding-inline: 40px;
@@ -541,7 +529,7 @@ textarea {
   }
   .price-suffix,
   .card-bottom small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .detail-page,
   .visit-page {
@@ -656,7 +644,7 @@ textarea {
     .workspace-brand
     small {
     color: var(--hl-subtle);
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .merchant-shop-stamp,
   .staff-identity,
@@ -864,22 +852,8 @@ textarea {
   .button {
     border-radius: 10px;
   }
-  .market-page:has(.consumer-mobile-home) > .hero {
-    min-height: 178px;
-    border-radius: 18px;
-    margin-top: 14px;
-  }
-  .market-page:has(.consumer-mobile-home) .hero-copy {
-    width: 92%;
-    padding: 23px 20px;
-  }
-  .market-page:has(.consumer-mobile-home) .hero h1 {
-    font-size: clamp(25px, 6.8vw, 31px);
-    line-height: 1.42;
-    margin: 13px 0 0;
-  }
   .hero .eyebrow {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     letter-spacing: 0.09em;
   }
   .hero-art {
@@ -903,53 +877,7 @@ textarea {
     padding: 12px 14px;
   }
   .search-fields label span {
-    font-size: 11px;
-  }
-  .consumer-shortcuts {
-    margin-block: 24px;
-    gap: 12px;
-  }
-  .consumer-shortcuts > a > span {
-    background: #fff;
-    border-color: var(--hl-line);
-    color: var(--green);
-    width: 48px;
-    height: 48px;
-    border-radius: 15px;
-  }
-  .consumer-shortcuts strong {
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .consumer-duration-cards > a {
-    background: #fff;
-    border-color: var(--hl-line);
-    padding: 16px 12px;
-    border-radius: 14px;
-    gap: 12px;
-  }
-  .consumer-duration-cards > a:nth-child(2) {
-    background: var(--hl-gold-100);
-    border-color: var(--hl-line-strong);
-  }
-  .consumer-duration-cards > a:nth-child(3) {
-    background: var(--hl-tint);
-    border-color: var(--hl-line);
-  }
-  .consumer-duration-cards strong {
-    font-size: 13px;
-  }
-  .consumer-duration-cards > a > small {
-    font-size: 11px;
-    color: var(--hl-ink-2);
-  }
-  .consumer-mobile-home .consumer-section-head small {
-    color: var(--hl-ink-2);
-    font-size: 11px;
-  }
-  .consumer-mobile-home > .consumer-price-note {
-    font-size: 11px;
-    color: var(--hl-ink-2);
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .section-heading h2 {
     font-size: 23px;
@@ -961,11 +889,11 @@ textarea {
     font-size: 20px;
   }
   .service-setting {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .card-language,
   .card-bottom small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .price {
     font-size: 24px;
@@ -1040,7 +968,7 @@ textarea {
   }
   .merchant-metrics small,
   .admin-stat-grid > div > small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .merchant-metrics strong,
   .admin-stat-grid strong {
@@ -1254,7 +1182,7 @@ textarea {
 }
 .preview-total small {
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.8;
 }
 .visit-day-picker button {
@@ -1592,7 +1520,7 @@ textarea {
 }
 .care-refund-progress li span {
   display: block;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-bottom: 5px;
 }
 .care-refund-progress li[data-done='true'] {
@@ -1769,13 +1697,13 @@ textarea {
     margin: 9px 0 12px;
   }
   .therapist-identity .eyebrow {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .profile-identity-actions {
     gap: 8px;
   }
   .profile-identity-actions .detail-verified {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding: 4px 6px;
   }
   .profile-identity-actions button {
@@ -1795,7 +1723,7 @@ textarea {
     padding-block: 10px;
   }
   .therapist-detail-page .detail-facts dt {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .therapist-detail-page .detail-facts dd {
     font-size: 13px;
@@ -1816,7 +1744,7 @@ textarea {
     font-size: 16px;
   }
   .detail-service-menu p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .detail-service-menu > a > strong {
     font-size: 23px;
@@ -1869,7 +1797,7 @@ textarea {
     gap: 6px;
   }
   .visit-steps li {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .visit-form .visit-form-heading h2,
   .visit-form .visit-form-heading h3 {
@@ -2038,7 +1966,7 @@ textarea {
 }
 .partner-order-next > span {
   display: block;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: #ddcfb2;
   margin-bottom: 8px;
 }
@@ -2064,7 +1992,7 @@ textarea {
   min-width: 0;
 }
 .partner-order-progress li > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   display: block;
   margin-bottom: 7px;
 }
@@ -2415,10 +2343,10 @@ textarea {
     gap: 7px;
   }
   .partner-order-progress li > strong {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .partner-order-deadline {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .partner-section-nav {
     gap: 8px 18px;
@@ -2825,8 +2753,7 @@ footer {
 .visit-summary,
 .address-card,
 .consumer-service-card,
-.consumer-orders,
-.consumer-utilities {
+.consumer-orders {
   background: #fff;
   border-color: var(--hl-line);
   box-shadow: var(--hl-shadow-sm);
@@ -3072,17 +2999,9 @@ table tbody tr:hover {
 
 /* Customer journey, based on the shared H5 visual language.
    Business workspaces retain their independent tokens and layouts. */
-.h5-home,
 .h5-account-profile,
-.h5-account-features,
 .h5-account-utilities,
 .h5-message-categories {
-  display: none;
-}
-.customer-home-services {
-  display: none;
-}
-.customer-account-actions {
   display: none;
 }
 .customer-account-nav {
@@ -3103,9 +3022,8 @@ table tbody tr:hover {
   border-radius: 5px;
   background: #fffffff0;
   color: #536b63;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
-.h5-directory,
 .h5-benefits,
 .h5-settings {
   padding-block: 32px 100px;
@@ -3220,22 +3138,6 @@ table tbody tr:hover {
   background: var(--h5-mint, #e6f5ef);
   border-radius: 8px;
 }
-.h5-therapist-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-.h5-therapist-card {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 100px;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: #fff;
-  border: 1px solid var(--h5-line, #e8efec);
-  border-radius: 12px;
-}
 .h5-therapist-avatar {
   display: flex;
   flex-direction: column;
@@ -3259,22 +3161,9 @@ table tbody tr:hover {
   position: relative;
   background: var(--h5-primary, #00835a);
   color: #fff;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   line-height: 1.4;
   text-align: center;
-}
-.h5-therapist-copy {
-  min-width: 0;
-}
-.h5-therapist-heading {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.h5-therapist-heading h2 {
-  margin: 0;
-  font: 700 17px/1.4 var(--font-sans);
 }
 .h5-tag {
   display: inline-flex;
@@ -3284,21 +3173,15 @@ table tbody tr:hover {
   background: var(--h5-mint, #e3f9ef);
   border-radius: 4px;
   padding: 1px 4px;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   line-height: 1.5;
 }
 .h5-shop-name {
   display: block;
   margin-top: 5px;
   color: var(--h5-muted, #536b63);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.h5-therapist-copy > p {
-  margin: 3px 0;
-  color: var(--h5-muted, #536b63);
-  font-size: 10px;
   overflow-wrap: anywhere;
 }
 .h5-therapist-price {
@@ -3309,21 +3192,7 @@ table tbody tr:hover {
 .h5-therapist-price small {
   color: var(--h5-muted, #536b63);
   font-weight: 400;
-  font-size: 10px;
-}
-.h5-therapist-action {
-  display: flex;
-  flex-direction: column;
-  align-items: end;
-  gap: 20px;
-}
-.h5-therapist-action > small {
-  display: flex;
-  gap: 3px;
-  align-items: center;
-  font-size: 9px;
-  color: var(--h5-primary-ink, #007e55);
-  text-align: end;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .h5-primary {
   display: inline-flex;
@@ -3367,7 +3236,7 @@ table tbody tr:hover {
 }
 .h5-footnote {
   color: var(--h5-muted, #536b63);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.65;
   text-align: center;
   margin: 14px 4px;
@@ -3426,8 +3295,7 @@ table tbody tr:hover {
   display: none;
 }
 .h5-feed-image,
-.h5-project-image,
-.h5-safety-card {
+.h5-project-image {
   position: relative;
 }
 .h5-language-sheet nav {
@@ -3583,70 +3451,10 @@ table tbody tr:hover {
 .h5-portrait-sheet > p {
   text-align: center;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: #50645d;
 }
-@media (max-width: 1100px) {
-  .h5-therapist-list {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 /* Shared customer palette at every width. Business consoles keep their own tokens. */
-body:has(.h5-consumer-demo) {
-  --h5-primary: #00865b;
-  --h5-primary-ink: #006b49;
-  --h5-primary-hover: #006f4c;
-  --h5-accent: #13c58a;
-  --h5-nav-accent: #009d67;
-  --h5-canvas: #f3f6f8;
-  --h5-surface: #fff;
-  --h5-mint: #e5f8ef;
-  --h5-mint-strong: #d4f3e4;
-  --h5-line: #dce9e3;
-  --h5-ink: #182d25;
-  --h5-muted: #536b63;
-  --h5-price: #bd4626;
-  --h5-promo: #fff4ee;
-  --h5-promo-line: #ffe2d6;
-  --h5-danger: #ab352f;
-  --h5-danger-soft: #fff1ef;
-  --hl-canvas: var(--h5-canvas);
-  --hl-surface: var(--h5-surface);
-  --hl-surface-2: var(--h5-surface);
-  --hl-tint: var(--h5-mint);
-  --hl-tint-2: var(--h5-mint-strong);
-  --hl-line: var(--h5-line);
-  --hl-line-strong: #b8d8c9;
-  --hl-ink: var(--h5-ink);
-  --hl-ink-2: #344b41;
-  --hl-muted: var(--h5-muted);
-  --hl-subtle: #657b71;
-  --hl-pine-950: var(--h5-primary-hover);
-  --hl-pine-900: var(--h5-primary);
-  --hl-pine-800: var(--h5-primary-hover);
-  --hl-pine-700: var(--h5-primary-ink);
-  --hl-pine-50: var(--h5-mint);
-  --hl-sage: #93d4b7;
-  --hl-on-pine: #fff;
-  --hl-on-pine-muted: #e5fff2;
-  --hl-gold: var(--h5-price);
-  --hl-gold-700: #9e3c22;
-  --hl-gold-100: var(--h5-promo);
-  --ink: var(--h5-ink);
-  --muted: var(--h5-muted);
-  --green: var(--h5-primary);
-  --green-dark: var(--h5-primary-hover);
-  --mint: var(--h5-mint);
-  --cream: var(--h5-canvas);
-  --line: var(--h5-line);
-  --brass: var(--h5-price);
-  --surface: var(--h5-surface);
-  --surface-soft: var(--h5-mint);
-  --font-display: var(--font-sans);
-  background: var(--h5-canvas);
-  color: var(--h5-ink);
-  accent-color: var(--h5-primary);
-}
 @media (max-width: 760px) {
   body:has(.h5-surface) {
     background: var(--h5-canvas, #f3f6f8);
@@ -3669,19 +3477,8 @@ body:has(.h5-consumer-demo) {
   .h5-surface h3 {
     font-family: var(--font-sans);
   }
-  .market-page > :not(.h5-home) {
-    display: none;
-  }
   .market-page {
     padding: 0 0 80px;
-  }
-  .market-page > .h5-home {
-    display: block;
-  }
-  .h5-home {
-    --h5-green: #00b978;
-    margin-top: 0;
-    color: var(--h5-ink, #182d25);
   }
   .h5-home-hero {
     height: 140px;
@@ -3711,7 +3508,7 @@ body:has(.h5-consumer-demo) {
     letter-spacing: -0.6px;
   }
   .h5-brand small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding-left: 4px;
     border-left: 1px solid #d5f7e8;
     color: #073f2c;
@@ -3744,7 +3541,7 @@ body:has(.h5-consumer-demo) {
     padding: 4px 7px;
     border-radius: 16px;
     background: #087b56;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .h5-hero-copy {
     position: absolute;
@@ -3768,14 +3565,14 @@ body:has(.h5-consumer-demo) {
     text-wrap: balance;
   }
   .h5-hero-copy p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     color: #073f2c;
     margin: 5px 0 2px;
     line-height: 1.4;
   }
   .h5-hero-copy > small {
     display: block;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     line-height: 1.4;
     color: #073f2c;
   }
@@ -3787,7 +3584,7 @@ body:has(.h5-consumer-demo) {
     color: #fff;
     padding: 4px 12px;
     border-radius: 14px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .h5-shortcuts {
     display: grid;
@@ -3806,7 +3603,7 @@ body:has(.h5-consumer-demo) {
     align-items: center;
     gap: 5px;
     min-width: 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     text-align: center;
     padding: 0 3px;
   }
@@ -3822,12 +3619,6 @@ body:has(.h5-consumer-demo) {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 9px;
-  }
-  .h5-category-card {
-    background: #fff;
-    border-radius: 11px;
-    padding: 9px 10px;
-    min-height: 122px;
   }
   .h5-section-title {
     display: flex;
@@ -3845,75 +3636,7 @@ body:has(.h5-consumer-demo) {
     display: inline-flex;
     align-items: center;
     color: var(--h5-primary-ink, #007e55);
-    font-size: 10px;
-    white-space: nowrap;
-  }
-  .h5-category-card > div:last-child {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin-top: 8px;
-  }
-  .h5-category-card > div:last-child a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    font-size: 11px;
-    text-align: center;
-  }
-  .h5-category-card img {
-    width: 56px;
-    height: 56px;
-    object-fit: cover;
-    object-position: center 25%;
-    border-radius: 50%;
-    border: 1px solid var(--h5-line, #d7e9e1);
-    background: #f0faf5;
-  }
-  .h5-safety-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 5px;
-    background: #f7fff4;
-    border: 3px solid #fff;
-    border-radius: 11px;
-    padding: 9px;
-    color: #18573f;
-    overflow: hidden;
-    min-height: 122px;
-  }
-  .h5-safety-card > img {
-    object-fit: cover;
-  }
-  .h5-safety-card > div {
-    position: relative;
-    width: 55%;
-    z-index: 1;
-  }
-  .h5-safety-card h2 {
-    font-size: 14px;
-    font-weight: 700;
-    margin: 0 0 5px;
-  }
-  .h5-safety-card p {
-    max-width: 76px;
-    font-size: 10px;
-    line-height: 1.5;
-    margin: 0 0 8px;
-    color: #315e4b;
-    white-space: pre-line;
-  }
-  .h5-safety-card span {
-    display: inline-flex;
-    gap: 1px;
-    align-items: center;
-    color: #fff;
-    background: var(--h5-price, #ad4324);
-    padding: 4px 6px;
-    border-radius: 10px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     white-space: nowrap;
   }
   .h5-coupon-preview {
@@ -3940,7 +3663,7 @@ body:has(.h5-consumer-demo) {
   .h5-coupon-heading a {
     display: inline-flex;
     align-items: center;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     white-space: nowrap;
   }
   .h5-coupon-rules {
@@ -3962,15 +3685,15 @@ body:has(.h5-consumer-demo) {
     text-align: center;
   }
   .h5-coupon-rules strong {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     line-height: 1.2;
   }
   .h5-coupon-rules span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     color: #8a583f;
   }
   .h5-coupon-rules small {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     line-height: 1.2;
     padding: 3px 6px;
     background: #ffded0;
@@ -4019,53 +3742,9 @@ body:has(.h5-consumer-demo) {
     color: #fff;
     background: #17644df0;
     text-align: center;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding: 3px;
     border-radius: 4px;
-  }
-  .h5-project-copy {
-    min-width: 0;
-    padding: 5px 5px 3px 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .h5-project-copy > div:first-child {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-  }
-  .h5-project-copy h3 {
-    font-size: 16px;
-    line-height: 1.35;
-    font-weight: 700;
-    margin: 0;
-  }
-  .h5-project-copy > p {
-    margin: 3px 0;
-    color: var(--h5-muted, #657a71);
-    font-size: 11px;
-  }
-  .h5-project-copy > small {
-    font-size: 9px;
-    color: var(--h5-muted, #657a71);
-  }
-  .h5-project-bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 5px;
-    margin-top: auto;
-  }
-  .h5-project-bottom > strong {
-    color: var(--h5-price, #bd4626);
-    font-size: 20px;
-    letter-spacing: -0.5px;
-  }
-  .h5-project-bottom > .h5-primary {
-    min-height: 40px;
-    padding: 5px 12px;
-    font-size: 12px;
   }
   .h5-home-empty {
     text-align: center;
@@ -4117,33 +3796,6 @@ body:has(.h5-consumer-demo) {
     color: #527c67;
     margin-left: auto;
   }
-  .h5-partner-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 17px 13px;
-    margin-top: 10px;
-    border-radius: 10px;
-    background: #d5fae4;
-    color: #13563a;
-  }
-  .h5-partner-banner > div {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 4px;
-  }
-  .h5-partner-banner strong {
-    font-size: 17px;
-  }
-  .h5-partner-banner small {
-    color: #446b54;
-    font-size: 10px;
-  }
-  .h5-partner-banner > svg:last-child {
-    margin-left: auto;
-    flex-shrink: 0;
-  }
   .mobile-bottom-nav.h5-bottom-nav {
     background: #fff;
     border-top: 1px solid var(--h5-line, #e9f0ed);
@@ -4159,7 +3811,7 @@ body:has(.h5-consumer-demo) {
     gap: 3px;
     min-height: 49px;
     padding: 4px 1px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     border-radius: 0;
   }
   .h5-bottom-nav > a[aria-current='page'] {
@@ -4187,12 +3839,8 @@ body:has(.h5-consumer-demo) {
   }
   .h5-bottom-nav > a:nth-child(3) span {
     color: #fff;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     line-height: 1.15;
-  }
-  .h5-directory {
-    width: 100%;
-    padding: 0 10px 100px;
   }
   .h5-desktop-title {
     position: absolute;
@@ -4266,39 +3914,12 @@ body:has(.h5-consumer-demo) {
   .h5-area-note {
     margin: 0;
     padding: 7px 8px;
-    font-size: 10px;
-  }
-  .h5-therapist-list {
-    gap: 9px;
-    margin-top: 10px;
-  }
-  .h5-therapist-card {
-    grid-template-columns: 68px minmax(0, 1fr) 83px;
-    gap: 8px;
-    padding: 10px 8px;
-    border: 0;
-    min-height: 110px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .h5-therapist-avatar img {
     width: 68px;
     height: 68px;
     object-position: center 25%;
-  }
-  .h5-therapist-heading h2 {
-    font-size: 16px;
-  }
-  .h5-therapist-action {
-    gap: 21px;
-  }
-  .h5-therapist-action .h5-primary {
-    width: 80px;
-    min-height: 40px;
-    font-size: 12px;
-    padding: 5px 6px;
-  }
-  .h5-therapist-action > small {
-    font-size: 9px;
-    line-height: 1.45;
   }
   .h5-therapist-price {
     font-size: 14px;
@@ -4310,9 +3931,6 @@ body:has(.h5-consumer-demo) {
   .consumer-account.h5-surface {
     width: 100%;
     padding: 0 10px 95px;
-  }
-  .consumer-account-hero {
-    display: none;
   }
   .h5-account-profile {
     display: flex;
@@ -4347,7 +3965,7 @@ body:has(.h5-consumer-demo) {
   }
   .h5-profile-name > span {
     color: #477863;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .h5-account-profile > a:not(.h5-profile-name) {
     display: flex;
@@ -4358,18 +3976,9 @@ body:has(.h5-consumer-demo) {
     min-width: 30px;
   }
   .h5-account-profile small {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
-  .h5-account-features {
-    display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
-    gap: 8px;
-    background: var(--h5-mint, #e1faf0);
-    margin: -1px -10px 10px;
-    padding: 0 10px 10px;
-  }
-  .h5-account-coupon,
-  .h5-account-wallet {
+  .h5-account-coupon {
     background: #fffdf8;
     border: 1px solid #fff;
     border-radius: 11px;
@@ -4389,7 +3998,7 @@ body:has(.h5-consumer-demo) {
   .h5-account-coupon > div > span {
     display: flex;
     align-items: center;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     color: #6c7b71;
   }
   .h5-account-coupon p {
@@ -4407,28 +4016,9 @@ body:has(.h5-consumer-demo) {
   }
   .h5-account-coupon p small {
     display: block;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     margin-top: 3px;
     color: #91624d;
-  }
-  .h5-account-wallet {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-    color: #4a7c65;
-    background: #f6fffb;
-  }
-  .h5-account-wallet > span {
-    font-size: 11px;
-  }
-  .h5-account-wallet > strong {
-    font-size: 11px;
-    border-radius: 14px;
-    padding: 3px 10px;
-    background: var(--h5-mint, #dcf5e8);
-    color: #286349;
   }
   .consumer-account .consumer-orders {
     background: #fff;
@@ -4444,7 +4034,7 @@ body:has(.h5-consumer-demo) {
     font-size: 15px;
   }
   .consumer-account .consumer-section-head a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     color: #6b7d72;
   }
   .consumer-account .consumer-order-shortcuts {
@@ -4458,10 +4048,10 @@ body:has(.h5-consumer-demo) {
     background: transparent;
     border: 0;
     padding: 4px 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .consumer-account .consumer-order-shortcuts strong {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     font-weight: 500;
   }
   .consumer-account .consumer-order-shortcuts svg {
@@ -4524,9 +4114,6 @@ body:has(.h5-consumer-demo) {
   .h5-account-utilities svg {
     color: #267c58;
     flex-shrink: 0;
-  }
-  .consumer-account .consumer-utilities {
-    display: none;
   }
   .consumer-account .consumer-recent {
     border: 0;
@@ -4604,17 +4191,17 @@ body:has(.h5-consumer-demo) {
     line-height: 1.5;
   }
   .discovery-page .discovery-story p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     line-height: 1.6;
   }
   .discovery-page .discovery-story .discovery-read {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .discovery-page .consumer-section-head h2 {
     font-size: 15px;
   }
   .discovery-page .consumer-section-head small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .discovery-page .discovery-shop {
     background: #fff;
@@ -4651,7 +4238,7 @@ body:has(.h5-consumer-demo) {
     gap: 10px;
     color: #284b3b;
     text-align: center;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .h5-message-categories a > span {
     display: flex;
@@ -4681,11 +4268,11 @@ body:has(.h5-consumer-demo) {
     text-underline-offset: 5px;
   }
   .h5-message-categories strong {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     font-weight: 500;
   }
   .inbox-page .inbox-delivery-note {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding: 7px 5px;
     color: #687d71;
     margin: 0 0 10px;
@@ -4699,7 +4286,7 @@ body:has(.h5-consumer-demo) {
     gap: 5px;
   }
   .inbox-page .discovery-tabs a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 7px;
     min-height: 32px;
     background: #fff;
@@ -4712,7 +4299,7 @@ body:has(.h5-consumer-demo) {
   }
   .inbox-page .inbox-toolbar button {
     min-height: 32px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding: 5px 8px;
   }
   .h5-message-empty {
@@ -4734,7 +4321,7 @@ body:has(.h5-consumer-demo) {
     color: #5d7568;
   }
   .h5-message-empty p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .inbox-page .inbox-item {
     border: 0;
@@ -4756,7 +4343,7 @@ body:has(.h5-consumer-demo) {
   }
   .inbox-page .inbox-item-copy small,
   .inbox-page .inbox-read-state {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .inbox-page .inbox-icon {
     width: 34px;
@@ -4771,10 +4358,10 @@ body:has(.h5-consumer-demo) {
   .inbox-page .inbox-actions .quality-button {
     min-height: 32px;
     padding: 5px 9px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .inbox-page .inbox-actions .quality-link {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .h5-benefits,
   .h5-settings {
@@ -4858,13 +4445,10 @@ body:has(.h5-consumer-demo) {
   }
   .h5-therapist-avatar > span {
     margin-top: 2px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     padding: 1px 5px;
     width: 63px;
     margin-inline: auto;
-  }
-  .h5-therapist-action .h5-primary {
-    border-radius: 24px;
   }
   .h5-nav-icon {
     width: 22px;
@@ -5051,7 +4635,7 @@ body:has(.h5-consumer-demo) {
     background: #ffffffed;
     padding: 2px 4px;
     color: #476154;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .h5-feed-card h2 {
     font-size: 14px;
@@ -5068,7 +4652,7 @@ body:has(.h5-consumer-demo) {
     align-items: center;
     gap: 4px;
     margin: 0 5px 8px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     color: var(--h5-muted, #60746b);
     min-height: 17px;
   }
@@ -5083,7 +4667,7 @@ body:has(.h5-consumer-demo) {
     flex: 1;
   }
   .h5-feed-author > b {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     font-weight: 400;
     color: var(--h5-primary-ink, #07794f);
     background: var(--h5-mint, #e0faec);
@@ -5195,7 +4779,7 @@ body:has(.h5-consumer-demo) {
     background: #ab4029;
     min-width: 17px;
     border-radius: 10px;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     padding: 2px 3px;
   }
   .h5-message-idle {
@@ -5286,13 +4870,13 @@ body:has(.h5-consumer-demo) {
     font-weight: 600;
   }
   .h5-order-prompt small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     line-height: 1.4;
   }
   .h5-order-prompt > b {
     display: flex;
     align-items: center;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     background: var(--h5-primary, #00865b);
     color: #fff;
     padding: 9px 7px;
@@ -5322,7 +4906,7 @@ body:has(.h5-consumer-demo) {
     display: block;
   }
   .h5-account-guide small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     display: block;
     margin: 5px 0;
     line-height: 1.5;
@@ -5341,7 +4925,7 @@ body:has(.h5-consumer-demo) {
     padding: 3px 10px;
     border: 1px solid #7cbd9a;
     border-radius: 15px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     letter-spacing: 2px;
   }
   .h5-trust-footer {
@@ -5364,7 +4948,7 @@ body:has(.h5-consumer-demo) {
     align-items: center;
     justify-content: center;
     gap: 3px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .h5-settings {
     padding-top: 0;
@@ -5409,7 +4993,7 @@ body:has(.h5-consumer-demo) {
   .h5-order-list-page .workspace-title .button {
     min-height: 32px;
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .h5-order-list-page .queue-panel {
     padding: 0;
@@ -5433,14 +5017,14 @@ body:has(.h5-consumer-demo) {
     padding: 8px 3px;
     background: transparent;
     border: 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .h5-order-list-page .queue-tabs button[aria-pressed='true'] {
     color: var(--h5-primary, #00835a);
     box-shadow: inset 0 -2px var(--h5-primary, #00835a);
   }
   .h5-order-list-page .queue-tabs button > span {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
     min-width: 0;
     margin-left: 3px;
     padding: 0;
@@ -5582,7 +5166,6 @@ body:has(.h5-consumer-demo) :is(.button, .quality-primary, .quality-button, .h5-
   color: #5a6b62;
   opacity: 1;
 }
-body:has(.h5-consumer-demo) .consumer-service-tabs a[aria-current],
 body:has(.h5-consumer-demo) .customer-auth-tabs button[aria-pressed='true'] {
   color: var(--h5-primary-ink);
   background: var(--h5-mint);
@@ -5598,12 +5181,7 @@ body:has(.h5-consumer-demo)
   border-color: var(--h5-line);
 }
 body:has(.h5-consumer-demo)
-  :is(
-    .consumer-service-bottom > div > strong,
-    .preview-total strong,
-    .mobile-action-dock strong,
-    .mobile-price-toggle strong
-  ) {
+  :is(.preview-total strong, .mobile-action-dock strong, .mobile-price-toggle strong) {
   color: var(--h5-price);
 }
 body:has(.h5-consumer-demo)
@@ -5648,9 +5226,6 @@ body:has(.h5-consumer-demo) :is(.quality-reply, .h5-language-sheet nav a[aria-cu
   background: var(--h5-mint);
   color: var(--h5-primary-ink);
 }
-body:has(.h5-consumer-demo) :is(.h5-account-coupon, .h5-account-wallet) {
-  background: var(--h5-surface);
-}
 body:has(.h5-consumer-demo) .h5-feed-tabs a[aria-current] {
   color: var(--h5-primary-ink);
 }
@@ -5665,26 +5240,9 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   .h5-feature-grid {
     gap: 6px;
   }
-  .h5-category-card {
-    padding-inline: 7px;
-  }
-  .h5-safety-card {
-    padding: 7px;
-  }
-  .h5-safety-card > svg {
-    width: 25px;
-  }
   .h5-project-card {
     grid-template-columns: 86px minmax(0, 1fr);
     gap: 8px;
-  }
-  .h5-project-bottom > strong {
-    font-size: 18px;
-  }
-  .h5-therapist-card {
-    grid-template-columns: 57px minmax(0, 1fr) 72px;
-    gap: 6px;
-    padding-inline: 7px;
   }
   .h5-therapist-avatar img {
     width: 55px;
@@ -5696,12 +5254,9 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   .h5-therapist-avatar > span {
     width: 55px;
   }
-  .h5-therapist-action .h5-primary {
-    width: 70px;
-  }
   .h5-account-utilities nav a {
     gap: 4px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
 }
 
@@ -5868,10 +5423,6 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   .market-page .search-fields > label {
     border-color: var(--h5-line);
   }
-  .customer-home-services {
-    display: block;
-    padding-top: 26px;
-  }
   .customer-shortcuts {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -5898,24 +5449,6 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     background: var(--h5-mint);
     border-color: var(--h5-primary);
   }
-  .customer-home-services .section-heading {
-    margin: 32px 0 16px;
-  }
-  .customer-home-services .section-heading h2 {
-    font-size: 25px;
-  }
-  .customer-home-services .section-heading p {
-    color: var(--h5-muted);
-    font-size: 13px;
-    margin-top: 6px;
-  }
-  .customer-home-services .section-heading > a {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--h5-primary-ink);
-    font-size: 14px;
-  }
   .customer-service-picks {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -5940,34 +5473,6 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   }
   .customer-service-photo img {
     object-fit: cover;
-  }
-  .customer-service-copy {
-    flex: 1;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 7px;
-  }
-  .customer-service-copy > small {
-    color: var(--h5-muted);
-    font-size: 12px;
-  }
-  .customer-service-copy h3 {
-    font-size: 18px;
-    margin: 0;
-  }
-  .customer-service-copy > div:last-child {
-    display: flex;
-    width: 100%;
-    align-items: end;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: auto;
-    padding-top: 5px;
-  }
-  .customer-service-copy .h5-price > strong {
-    font-size: 23px;
   }
   .customer-pick-arrow {
     border-radius: 50%;
@@ -6002,8 +5507,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     object-fit: contain;
     background: #eff8f3;
   }
-  body:has(.customer-header)
-    :is(.card-body .price, .consumer-service-bottom > div > strong, .preview-total strong) {
+  body:has(.customer-header) :is(.card-body .price, .preview-total strong) {
     color: var(--h5-price);
     font-family: var(--font-sans);
     font-weight: 750;
@@ -6134,7 +5638,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     background: #fffffff0;
     color: var(--h5-muted);
     border-radius: 6px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .h5-feed-card h2 {
     font-size: 17px;
@@ -6158,7 +5662,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     white-space: nowrap;
   }
   .h5-feed-author > b {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     color: var(--h5-primary-ink);
     background: var(--h5-mint);
     padding: 2px 5px;
@@ -6186,22 +5690,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   }
 
   /* Keep the account's useful desktop dashboard, with the H5 identity and actions. */
-  .consumer-account .consumer-account-hero {
-    padding: 26px 30px;
-    background: var(--h5-mint);
-    border: 1px solid var(--h5-line);
-    border-radius: 16px;
-  }
-  .consumer-account .consumer-account-hero h1 {
-    font-size: 30px;
-  }
-  .consumer-account .customer-account-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-  .consumer-account :is(.consumer-orders, .consumer-utilities, .consumer-recent) {
+  .consumer-account :is(.consumer-orders, .consumer-recent) {
     background: #fff;
     border: 1px solid var(--h5-line);
     border-radius: 14px;
@@ -6219,13 +5708,6 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   .consumer-account .consumer-order-shortcuts strong {
     color: var(--h5-primary-ink);
     font-family: var(--font-sans);
-  }
-  .consumer-account .consumer-utilities nav a {
-    border-color: var(--h5-line);
-    border-radius: 10px;
-  }
-  .consumer-account .consumer-utilities nav a:hover {
-    background: var(--h5-mint);
   }
   .inbox-page .h5-message-categories {
     display: grid;
@@ -6273,7 +5755,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     border-radius: 12px;
     color: #fff;
     background: var(--h5-primary);
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     text-align: center;
   }
   .inbox-page .discovery-intro h1 {
@@ -6341,7 +5823,7 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   body:has(.customer-header) .detail-portrait > span {
     color: var(--h5-muted);
     background: #fffffff0;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   body:has(.customer-header) :is(.visit-summary, .booking-preview) {
     border-color: var(--h5-line);
@@ -6379,13 +5861,6 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   .customer-header .header-actions {
     grid-column: 2;
     grid-row: 1;
-  }
-  .consumer-account .consumer-account-hero {
-    flex-wrap: wrap;
-  }
-  .consumer-account .customer-account-actions {
-    flex-basis: 100%;
-    justify-content: flex-end;
   }
   .market-page .hero-copy {
     padding: 24px 24px 54px;

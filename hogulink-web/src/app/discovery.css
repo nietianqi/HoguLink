@@ -181,7 +181,7 @@
   gap: 4px;
 }
 .discovery-shop-price small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .discovery-shop-price strong {
@@ -402,7 +402,7 @@
   line-height: 1.8;
 }
 .inbox-read-state {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .is-unread .inbox-read-state {
@@ -517,7 +517,7 @@
     font-size: 50px;
   }
   .discovery-shop-art small {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .discovery-shop-copy {
     padding: 18px 14px;
@@ -527,7 +527,7 @@
     margin: 8px 0 12px;
   }
   .discovery-shop-copy .quality-eyebrow {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .discovery-shop-price {
     gap: 10px;
@@ -623,7 +623,7 @@
   align-items: center;
   gap: 8px;
   padding: 4px 10px 8px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--h5-primary-ink, var(--hl-pine-900));
 }
 .h5-feed-controls :is(button, a) {
@@ -698,7 +698,7 @@
   gap: 2px;
   align-items: center;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
 }
 .h5-feed-feedback {
   padding: 24px 14px;
@@ -766,7 +766,7 @@
   font-weight: 600;
 }
 .discovery-post-author small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
 }
 .discovery-save {
@@ -861,7 +861,7 @@
   bottom: 10px;
   background: #fffffff2;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   border-radius: 5px;
 }
@@ -926,7 +926,7 @@
   position: absolute;
   top: 5px;
   right: 5px;
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   background: #fffffff2;
   padding: 2px 4px;
 }
@@ -939,7 +939,7 @@
   gap: 3px;
   padding: 0 6px 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   align-items: center;
 }
 .discovery-post-related .h5-feed-author > span {
@@ -1056,7 +1056,7 @@
     flex-direction: column;
     gap: 2px;
     padding: 5px 8px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     border: 0;
     max-width: 90px;
   }

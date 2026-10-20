@@ -1,6 +1,3 @@
-.consumer-mobile-home {
-  display: none;
-}
 .consumer-page {
   padding-top: 32px;
   padding-bottom: 90px;
@@ -32,8 +29,7 @@
   margin: 24px 0 18px;
 }
 .consumer-section-head h2,
-.consumer-recent h2,
-.consumer-utilities h2 {
+.consumer-recent h2 {
   font-weight: 500;
   font-size: 22px;
   margin: 0;
@@ -90,28 +86,6 @@
   color: var(--hl-pine-900);
   box-sizing: border-box;
 }
-.consumer-service-tabs {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 24px 0 10px;
-}
-.consumer-service-tabs a {
-  padding: 11px 20px;
-  border: 1px solid var(--hl-line);
-  border-radius: 9px;
-  font-size: 14px;
-  white-space: nowrap;
-  min-height: 44px;
-  box-sizing: border-box;
-  color: var(--hl-ink-2);
-}
-.consumer-service-tabs a[aria-current] {
-  background: var(--hl-pine-900);
-  color: #fff;
-  border-color: var(--hl-pine-900);
-}
 .consumer-service-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -165,54 +139,11 @@
   line-height: 1;
 }
 .consumer-service-art small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   display: block;
   text-align: center;
   font-family: var(--font-sans);
   margin-top: 8px;
-}
-.consumer-service-info {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.consumer-service-info h3 {
-  font-size: 20px;
-  font-weight: 500;
-  margin: 12px 0;
-  line-height: 1.5;
-}
-.consumer-service-info p {
-  color: var(--hl-muted);
-  font-size: 12px;
-  margin: 0 0 18px;
-  line-height: 1.8;
-}
-.consumer-service-bottom {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-.consumer-service-bottom > div > strong {
-  font-size: 24px;
-  font-family: var(--font-display);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-.consumer-service-bottom > div > small {
-  display: block;
-  font-size: 11px;
-  color: var(--hl-muted);
-  margin-top: 4px;
-}
-.consumer-service-bottom button {
-  font-size: 12px;
-  min-height: 44px;
-  padding: 10px 12px;
 }
 .consumer-member-list {
   display: grid;
@@ -294,7 +225,7 @@
 }
 .consumer-history-card time {
   display: block;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   line-height: 1.7;
 }
@@ -309,45 +240,8 @@
 .consumer-account {
   max-width: 1040px;
 }
-.consumer-account-hero {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 34px 36px;
-  border: 1px solid var(--hl-line);
-  background: var(--hl-tint);
-  border-radius: 18px;
-}
-.consumer-avatar {
-  display: grid;
-  place-items: center;
-  background: var(--hl-pine-900);
-  color: #fff;
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.consumer-account-hero > div:nth-child(2) {
-  flex: 1;
-  min-width: 0;
-}
-.consumer-account-hero h1 {
-  font-size: clamp(24px, 3vw, 34px);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  margin: 12px 0;
-  line-height: 1.4;
-}
-.consumer-account-hero p {
-  color: var(--hl-muted);
-  line-height: 1.8;
-  font-size: 13px;
-  margin: 0;
-}
 .consumer-orders,
-.consumer-recent,
-.consumer-utilities {
+.consumer-recent {
   background: #fff;
   border: 1px solid var(--hl-line);
   border-radius: 15px;
@@ -380,7 +274,7 @@
   position: absolute;
   right: -13px;
   top: -9px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   line-height: 16px;
   min-width: 17px;
   height: 17px;
@@ -417,7 +311,7 @@
   font-weight: 500;
 }
 .consumer-resume small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   line-height: 1.9;
 }
@@ -425,8 +319,7 @@
   font-size: 14px;
   justify-content: space-between;
 }
-.consumer-recent > h2,
-.consumer-utilities > h2 {
+.consumer-recent > h2 {
   margin-bottom: 20px;
 }
 .consumer-recent-order {
@@ -448,7 +341,7 @@
   flex-shrink: 0;
 }
 .consumer-recent-order small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .consumer-recent-order strong {
@@ -457,30 +350,6 @@
 }
 .consumer-recent-order time {
   font-size: 12px;
-  color: var(--hl-muted);
-}
-.consumer-utilities > div {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 28px;
-}
-.consumer-utilities a {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border-top: 1px solid var(--hl-line);
-  min-height: 64px;
-  font-size: 14px;
-  min-width: 0;
-}
-.consumer-utilities a span {
-  flex: 1;
-}
-.consumer-utilities a > svg:first-child {
-  color: var(--hl-muted);
-  flex-shrink: 0;
-}
-.consumer-utilities a small {
   color: var(--hl-muted);
 }
 .consumer-signin {
@@ -506,7 +375,7 @@
   margin: 26px 0;
 }
 .consumer-logout > small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   line-height: 1.9;
 }
@@ -517,8 +386,7 @@
   white-space: nowrap;
 }
 .consumer-page a:focus-visible,
-.consumer-page button:focus-visible,
-.consumer-mobile-home a:focus-visible {
+.consumer-page button:focus-visible {
   outline: 2px solid #91a47b;
   outline-offset: 4px;
 }
@@ -535,126 +403,11 @@
   .consumer-service-art {
     flex-basis: 90px;
   }
-  .consumer-service-info h3 {
-    font-size: 18px;
-  }
 }
 @media (max-width: 760px) {
   .header .locale-label select {
     font-size: 16px;
     min-height: 40px;
-  }
-  .consumer-mobile-home {
-    display: block;
-  }
-  .consumer-shortcuts {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin: 20px 0 28px;
-    gap: 8px;
-  }
-  .consumer-shortcuts > a {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-    text-align: center;
-    min-width: 0;
-  }
-  .consumer-shortcuts > a > span {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-    background: var(--hl-tint);
-    color: var(--hl-ink-2);
-    border: 1px solid var(--hl-line);
-  }
-  .consumer-shortcuts strong {
-    font-size: 11px;
-    font-weight: 400;
-    line-height: 1.5;
-  }
-  .consumer-mobile-home .consumer-section-head {
-    margin-bottom: 14px;
-    align-items: flex-start;
-  }
-  .consumer-mobile-home .consumer-section-head h2 {
-    font-size: 20px;
-  }
-  .consumer-mobile-home .consumer-section-head small {
-    font-size: 10px;
-    color: var(--hl-muted);
-    line-height: 1.8;
-  }
-  .consumer-mobile-home .consumer-section-head a {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-  .consumer-duration-cards {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 9px;
-  }
-  .consumer-duration-cards > a {
-    display: flex;
-    flex-direction: column;
-    padding: 14px 11px;
-    border-radius: 12px;
-    background: var(--hl-tint);
-    border: 1px solid var(--hl-line);
-    gap: 9px;
-    min-width: 0;
-  }
-  .consumer-duration-cards > a:nth-child(2) {
-    background: var(--hl-gold-100);
-    border-color: var(--hl-line-strong);
-  }
-  .consumer-duration-cards > a:nth-child(3) {
-    background: var(--hl-tint);
-    border-color: var(--hl-line);
-  }
-  .consumer-minute {
-    font-family: var(--font-display);
-    font-size: 28px;
-    line-height: 1;
-    display: flex;
-    gap: 5px;
-    align-items: baseline;
-  }
-  .consumer-minute small {
-    font-family: var(--font-sans);
-    font-size: 9px;
-    color: var(--hl-muted);
-  }
-  .consumer-duration-cards strong {
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.5;
-  }
-  .consumer-duration-cards > a > small {
-    font-size: 10px;
-    line-height: 1.6;
-    overflow-wrap: anywhere;
-  }
-  .consumer-mobile-home > .consumer-price-note {
-    font-size: 9px;
-    margin: 8px 0 0;
-  }
-  .market-page:has(.consumer-mobile-home) > .hero {
-    min-height: 132px;
-  }
-  .market-page:has(.consumer-mobile-home) .hero-copy {
-    padding: 16px 20px;
-  }
-  .market-page:has(.consumer-mobile-home) .hero h1 {
-    font-size: 24px;
-    line-height: 1.3;
-    margin: 10px 0;
-  }
-  .market-page:has(.consumer-mobile-home) .hero-location {
-    display: none;
   }
   .consumer-page {
     padding-top: 12px;
@@ -681,7 +434,7 @@
     grid-column: 1/-1;
   }
   .consumer-service-filter label {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     gap: 5px;
   }
   .consumer-service-filter input,
@@ -692,14 +445,6 @@
   .consumer-service-filter button {
     grid-column: 1/-1;
   }
-  .consumer-service-tabs {
-    gap: 8px;
-    padding-top: 20px;
-  }
-  .consumer-service-tabs a {
-    padding: 10px 14px;
-    font-size: 12px;
-  }
   .consumer-section-head {
     margin: 20px 0 14px;
   }
@@ -707,7 +452,7 @@
     font-size: 21px;
   }
   .consumer-section-head > .consumer-price-note {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     max-width: 48%;
     text-align: right;
   }
@@ -734,38 +479,7 @@
     font-size: 28px;
   }
   .consumer-service-art small {
-    font-size: 9px;
-  }
-  .consumer-service-info h3 {
-    font-size: 18px;
-    margin: 9px 0;
-  }
-  .consumer-service-info p {
-    font-size: 10px;
-    margin-bottom: 12px;
-  }
-  .consumer-service-info > .quality-eyebrow {
-    font-size: 10px;
-    letter-spacing: 0;
-    line-height: 1.7;
-  }
-  .consumer-service-bottom {
-    gap: 10px;
-  }
-  .consumer-service-bottom > div > strong {
-    font-size: 22px;
-  }
-  .consumer-service-bottom > div > small {
-    font-size: 9px;
-  }
-  .consumer-service-bottom button {
-    font-size: 11px;
-    padding: 9px 11px;
-    min-height: 44px;
-  }
-  .consumer-service-bottom button > svg {
-    width: 14px;
-    height: 14px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .consumer-history-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -778,48 +492,8 @@
   .consumer-history-card h2 {
     font-size: 22px;
   }
-  .consumer-account-hero {
-    padding: 24px 20px;
-    gap: 15px;
-    border-radius: 15px;
-    align-items: flex-start;
-    position: relative;
-  }
-  .consumer-avatar {
-    width: 48px;
-    height: 48px;
-    margin-top: 4px;
-  }
-  .consumer-avatar > svg {
-    width: 25px;
-    height: 25px;
-  }
-  .consumer-account-hero .quality-eyebrow {
-    font-size: 8px;
-    letter-spacing: 0.06em;
-  }
-  .consumer-account-hero h1 {
-    font-size: 22px;
-    margin: 10px 0;
-    max-width: 95%;
-    line-height: 1.6;
-  }
-  .consumer-account-hero p {
-    font-size: 11px;
-    line-height: 1.9;
-  }
-  .consumer-refresh {
-    position: absolute;
-    right: 10px;
-    top: 8px;
-    min-height: 32px;
-    padding: 7px;
-    background: transparent;
-    border: 0;
-  }
   .consumer-orders,
-  .consumer-recent,
-  .consumer-utilities {
+  .consumer-recent {
     padding: 22px 18px;
     border-radius: 13px;
     margin-top: 16px;
@@ -828,7 +502,7 @@
     margin-bottom: 8px;
   }
   .consumer-section-head a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .consumer-order-shortcuts {
     gap: 6px;
@@ -839,7 +513,7 @@
     gap: 10px;
   }
   .consumer-order-shortcuts strong {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     overflow-wrap: anywhere;
   }
   .consumer-order-shortcuts b {
@@ -860,15 +534,7 @@
     font-size: 12px;
   }
   .consumer-resume small {
-    font-size: 10px;
-  }
-  .consumer-utilities > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-  .consumer-utilities a {
-    font-size: 13px;
-    min-height: 60px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .consumer-recent-order > span:nth-child(2) > strong {
     font-size: 14px;
@@ -889,7 +555,7 @@
     min-width: 0;
   }
   .consumer-choice-dialog .consumer-member-list small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .consumer-choice-dialog .consumer-assign {
     padding: 14px 12px;

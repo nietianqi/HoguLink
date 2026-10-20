@@ -24,7 +24,7 @@
   border-radius: 0 10px 10px 0;
 }
 .coordination-next > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   letter-spacing: 0.08em;
   color: var(--hl-ink-2);
 }
@@ -82,7 +82,7 @@
 }
 .coordination-history time {
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   white-space: nowrap;
 }
 .coordination-internal,
@@ -146,7 +146,7 @@
   display: block;
   margin: 10px 0;
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .handoff-messages {
   list-style: none;
@@ -163,7 +163,7 @@
   border-radius: 8px;
 }
 .handoff-messages span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .handoff-messages p {

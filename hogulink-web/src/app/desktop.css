@@ -10,12 +10,12 @@ body {
 .demo-bar {
   background: var(--hl-pine-900);
   color: #f1f4ed;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   min-height: 32px;
   padding-inline: 48px;
 }
 .demo-bar nav a {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: #edf2e9;
 }
 .header {
@@ -82,12 +82,12 @@ body {
   color: var(--hl-ink-2);
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   letter-spacing: 0.16em;
   color: var(--hl-ink-2);
 }
 .eyebrow.small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   letter-spacing: 0.14em;
 }
 .hero-art {
@@ -113,7 +113,7 @@ body {
   color: #fff;
   text-shadow: 0 1px 10px #0008;
   letter-spacing: 0.18em;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   text-align: right;
 }
 .hero-image-caption span {
@@ -134,11 +134,11 @@ body {
   font-weight: 600;
 }
 .hero-location {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   margin-top: 25px;
 }
 .hero-location > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .search-position {
@@ -163,7 +163,7 @@ body {
   gap: 26px;
 }
 .search-fields label span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   margin-bottom: 4px;
 }
@@ -258,7 +258,7 @@ body {
   min-width: 0;
 }
 .discovery-sidebar small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.7;
   color: var(--muted);
   font-weight: 400;
@@ -383,7 +383,7 @@ body {
   transform: scale(1.025);
 }
 .availability {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   border: 1px solid #ffffff90;
   background: #fffffff2;
   color: var(--hl-ink-2);
@@ -404,7 +404,7 @@ body {
   font-weight: 550;
 }
 .verified {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   gap: 3px;
 }
 .shop-link {
@@ -412,7 +412,7 @@ body {
   margin: 8px 0 10px;
 }
 .card-language {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   gap: 6px;
   margin: 0 0 10px;
 }
@@ -428,7 +428,7 @@ body {
   min-height: 43px;
 }
 .service-setting {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   background: var(--hl-tint);
   padding: 4px 8px;
@@ -446,10 +446,10 @@ body {
   letter-spacing: -0.04em;
 }
 .price-suffix {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .card-bottom small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   margin-top: 3px;
 }
@@ -470,7 +470,7 @@ body {
   display: flex;
   gap: 5px;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   margin-bottom: 8px;
 }
@@ -485,21 +485,21 @@ body {
   border-radius: 4px;
   background: var(--hl-canvas);
   padding: 4px 6px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   white-space: nowrap;
 }
 .slot-preview a:hover {
   border-color: var(--green);
 }
 .slot-preview small {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
 }
 .availability-footnote {
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   margin: 24px 0 0;
 }
@@ -573,7 +573,7 @@ footer {
   font-size: 12px;
 }
 .footer-bottom {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   padding-block: 20px;
 }
 .field {
@@ -661,14 +661,14 @@ footer {
 }
 .workspace-brand small {
   display: block;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   font-weight: 400;
   letter-spacing: 0;
   margin-top: 5px;
 }
 .workspace-nav-label {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--hl-ink-2);
   padding: 20px 11px 6px;
   letter-spacing: 0.08em;
@@ -697,12 +697,12 @@ footer {
   padding-top: 60px;
 }
 .workspace-nav-bottom > small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   padding: 0 11px;
   color: var(--muted);
 }
 .workspace-nav-bottom a {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-top: 12px;
   border-top: 1px solid var(--hl-line);
   border-radius: 0;
@@ -743,7 +743,7 @@ footer {
   font-size: 13px;
 }
 .account-panel p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .account-panel select {
   font-size: 12px;
@@ -780,7 +780,7 @@ footer {
   margin-top: 8px;
 }
 .workspace-stats small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   font-weight: 400;
   margin-left: 9px;
   letter-spacing: 0;
@@ -831,7 +831,7 @@ footer {
   background: var(--hl-tint);
   border-radius: 4px;
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .queue-toolbar {
   padding: 18px 24px;
@@ -882,7 +882,7 @@ footer {
   border-collapse: collapse;
 }
 .queue-table th {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   background: var(--hl-canvas);
   font-weight: 500;
@@ -899,7 +899,7 @@ footer {
 }
 .queue-table td small {
   display: block;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   margin-top: 5px;
 }
@@ -918,7 +918,7 @@ footer {
   padding: 0;
   color: var(--green);
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   letter-spacing: 0.025em;
   text-decoration: underline;
   text-decoration-color: var(--hl-subtle);
@@ -938,7 +938,7 @@ footer {
   color: var(--hl-gold-700);
 }
 .status-badge {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   padding: 5px 8px;
   border-radius: 5px;
 }
@@ -947,13 +947,13 @@ footer {
   justify-content: space-between;
   align-items: center;
   padding: 17px 24px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   gap: 12px;
 }
 .queue-footer > span small {
   margin-left: 15px;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .queue-footer > div {
   display: flex;
@@ -965,7 +965,7 @@ footer {
   padding: 12px 24px;
   margin: 0;
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   background: var(--hl-canvas);
 }
 .queue-empty {
@@ -994,7 +994,7 @@ footer {
 }
 .agenda-day > time small {
   display: block;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   font-weight: 400;
   color: var(--muted);
 }
@@ -1024,7 +1024,7 @@ footer {
 .agenda-day button small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .booking-list {
   scroll-margin-top: 22px;
@@ -1102,7 +1102,7 @@ footer {
   font-size: 16px;
 }
 .case-list-heading > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .case-filters {
   padding: 0 16px 16px;
@@ -1137,7 +1137,7 @@ footer {
   margin: 10px 0 7px;
 }
 .case-list-item > small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   line-height: 1.8;
 }
 .case-detail {
@@ -1165,7 +1165,7 @@ footer {
 }
 .case-thread time,
 .case-thread strong {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .care-create {
   border-radius: 10px;
@@ -1276,10 +1276,10 @@ footer {
   }
   .demo-bar {
     padding-inline: 18px;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .demo-bar nav a {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .header {
     height: 80px;
@@ -1292,7 +1292,7 @@ footer {
     min-height: 36px;
   }
   .locale-label select {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     width: 70px;
   }
   .header-actions {
@@ -1336,7 +1336,7 @@ footer {
   .hero-image-caption {
     right: 20px;
     bottom: 45px;
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .hero-image-caption span {
     font-size: 20px;
@@ -1369,7 +1369,7 @@ footer {
     min-height: 44px;
   }
   .search-fields label span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .discovery {
     padding-top: 40px;
@@ -1390,10 +1390,10 @@ footer {
     font-size: 31px;
   }
   .result-count span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .eyebrow.small {
-    font-size: 8px;
+    font-size: var(--consumer-min-font-size, 8px);
   }
   .discovery-layout {
     grid-template-columns: 1fr;
@@ -1412,11 +1412,11 @@ footer {
   }
   .discovery-sidebar .field {
     min-width: 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     margin-bottom: 14px;
   }
   .discovery-sidebar .field small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .discovery-sidebar .button {
     align-self: center;
@@ -1426,7 +1426,7 @@ footer {
   .filter-reset {
     align-self: center;
     margin: 0;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .discovery-aside-note {
     display: none;
@@ -1440,7 +1440,7 @@ footer {
   .filter-pills a {
     padding: 6px 10px;
     min-height: 34px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .view-toggle a,
   .view-toggle button {
@@ -1461,7 +1461,7 @@ footer {
     font-size: 23px;
   }
   .verified {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .shop-link,
   .card-language {
@@ -1472,7 +1472,7 @@ footer {
     min-height: 0;
   }
   .service-setting {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .price {
     font-size: 26px;
@@ -1485,7 +1485,7 @@ footer {
   .card-bottom small,
   .slot-preview > span,
   .slot-preview a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .slot-preview a {
     padding: 5px 8px;
@@ -1521,7 +1521,7 @@ footer {
     object-position: center;
   }
   .availability-footnote {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     align-items: flex-start;
   }
   .trust-section {
@@ -1548,7 +1548,7 @@ footer {
     padding-block: 30px;
   }
   .footer-bottom {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .page-section:has(.workspace-layout) {
     width: calc(100% - 30px);
@@ -1561,7 +1561,7 @@ footer {
     font-size: 25px;
   }
   .workspace-title p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .workspace-title {
     gap: 12px;
@@ -1575,7 +1575,7 @@ footer {
     padding: 7px;
   }
   .workspace-nav a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 8px 10px;
   }
   .account-panel {
@@ -1592,7 +1592,7 @@ footer {
     flex: 1;
   }
   .account-panel p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .account-panel .button {
     min-width: 100px;
@@ -1606,7 +1606,7 @@ footer {
     padding: 16px;
   }
   .workspace-stats span {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .workspace-stats strong {
     font-size: 25px;
@@ -1618,7 +1618,7 @@ footer {
     font-size: 19px;
   }
   .queue-heading .button {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 8px;
   }
   .queue-tabs {
@@ -1626,7 +1626,7 @@ footer {
     padding: 0 18px;
   }
   .queue-tabs button {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .queue-toolbar {
     padding: 15px;
@@ -1642,16 +1642,16 @@ footer {
   }
   .queue-footer {
     padding: 14px 15px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .queue-footer > span small {
     display: block;
     margin: 4px 0 0;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .queue-help {
     padding: 12px 16px;
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .queue-table td {
     padding: 15px;
@@ -1688,13 +1688,13 @@ footer {
   .agenda-day button {
     gap: 8px;
     padding: 12px 10px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .agenda-day button > svg:first-child {
     display: none;
   }
   .agenda-day button .status-badge {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .care-layout {
     grid-template-columns: 1fr;
@@ -1715,7 +1715,7 @@ footer {
   }
   .case-filters input,
   .case-filters select {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     min-width: 0;
   }
   .case-description {
@@ -1725,9 +1725,9 @@ footer {
     font-size: 12px;
   }
   .case-thread time {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .notice {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
 }

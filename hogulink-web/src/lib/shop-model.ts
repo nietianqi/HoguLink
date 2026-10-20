@@ -17,6 +17,7 @@ export type ShopCard = {
   serviceNames: string[];
   /** Regular shop-arranged total for that same menu, only when a fair comparison exists. */
   fromCompare?: number;
+  fromPromotionEndsAt?: number;
   promotion: boolean;
   freeTravel: boolean;
   stats?: ListingStats;
@@ -71,6 +72,7 @@ export function shopCards(
           fromDuration: cheapest.offering.durationMinutes,
           fromOfferingId: cheapest.offering.id,
           serviceNames: [...new Set(services.map((s) => s.offering.name[filters.locale ?? 'ja']))],
+          fromPromotionEndsAt: cheapest.promotionEndsAt,
           fromCompare:
             cheapest.compareTotal === undefined
               ? undefined
@@ -94,11 +96,12 @@ export function shopPage(cards: ShopCard[], rawPage?: string) {
 export function shopCardHref(
   locale: Locale,
   card: ShopCard,
-  preferences: { area?: string; language?: string } = {},
+  preferences: { area?: string; language?: string; mode?: string } = {},
 ) {
   return `/${locale}/shops/${card.store.slug}?${new URLSearchParams({
     ...(preferences.area ? { area: preferences.area } : {}),
     ...(preferences.language ? { language: preferences.language } : {}),
+    ...(preferences.mode === 'INSTANT' ? { mode: 'INSTANT' } : {}),
     offering: card.fromOfferingId,
     nomination: 'FREE',
   })}`;

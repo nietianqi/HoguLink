@@ -22,6 +22,7 @@ import { localeMap, locales, t } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { ht } from '@/lib/h5-i18n';
+import { cui } from '@/lib/customer-ui-i18n';
 export function Header({ locale }: { locale: Locale }) {
   const path = usePathname();
   const query = useSearchParams();
@@ -63,8 +64,8 @@ export function Header({ locale }: { locale: Locale }) {
               path.includes('/book/')
                 ? `${path.replace('/book/', '/therapists/')}?${query}`
                 : path.includes('/shops/')
-                  ? `/${locale}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))) })}`
-                  : `/${locale}?${new URLSearchParams(Object.fromEntries(['mode', 'area', 'language'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))))}#discover`
+                  ? `/${locale}/therapists?${new URLSearchParams({ view: 'shops', ...Object.fromEntries(['area', 'language', 'mode'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))) })}`
+                  : `/${locale}/therapists?${new URLSearchParams(Object.fromEntries(['mode', 'area', 'language'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))))}`
             }
             aria-label={mt(locale, 'back')}
           >
@@ -160,6 +161,9 @@ export function Header({ locale }: { locale: Locale }) {
   );
 }
 export function Footer({ locale }: { locale: Locale }) {
+  const path = usePathname();
+  if (!/^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path))
+    return <ConsumerFooter locale={locale} />;
   return (
     <footer>
       <div className="wrap footer-content">
@@ -215,5 +219,42 @@ export function DemoNotice({ locale }: { locale: Locale }) {
       <ShieldCheck size={17} />
       {t(locale, 'supportText')}
     </p>
+  );
+}
+
+function ConsumerFooter({ locale: l }: { locale: Locale }) {
+  return (
+    <footer className="ui-consumer-footer">
+      <div className="wrap">
+        <Link className="logo" href={`/${l}`}>
+          <Leaf size={22} />
+          Hogu<span>Link</span>
+        </Link>
+        <details>
+          <summary>{cui(l, 'footerInfo')}</summary>
+          <nav aria-label={cui(l, 'footerInfo')}>
+            <Link href={`/${l}/account/support`}>{ct(l, 'center')}</Link>
+            <Link href={`/${l}/guides/booking-and-safety`}>{t(l, 'safety')}</Link>
+            <Link href={`/${l}/onboarding?role=MERCHANT`}>{ut(l, 'partner')}</Link>
+            <Link href={`/${l}/guides/terms`}>{t(l, 'terms')}</Link>
+            <Link href={`/${l}/shops/nagi-tokyo`}>{t(l, 'legal')}</Link>
+          </nav>
+          <p>{t(l, 'nonMedical')}</p>
+          <p>© 2026 HoguLink · Local development preview</p>
+          <details className="mobile-demo-workspaces">
+            <summary>
+              {l === 'ja' ? 'デモの管理画面' : l === 'en' ? 'Demo workspaces' : '演示工作台'}
+            </summary>
+            <div>
+              {(['merchant', 'staff', 'admin'] as const).map((role) => (
+                <Link key={role} href={`/${l}/${role}`}>
+                  {t(l, role)} →
+                </Link>
+              ))}
+            </div>
+          </details>
+        </details>
+      </div>
+    </footer>
   );
 }

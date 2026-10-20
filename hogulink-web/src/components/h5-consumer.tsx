@@ -4,17 +4,12 @@ import Image from 'next/image';
 import { useState } from 'react';
 import {
   ArrowRight,
-  BadgeCheck,
-  CalendarDays,
   ChevronRight,
-  Clock3,
   Globe2,
   Headphones,
   Heart,
   History,
-  Leaf,
   MapPin,
-  Search,
   Settings,
   ShieldCheck,
   Store,
@@ -27,22 +22,16 @@ import {
   Handshake,
   Megaphone,
   ReceiptText,
-  TicketPercent,
 } from 'lucide-react';
 import type { Actor, Locale, MobileBootstrap } from '@hogulink/contracts';
-import { type Catalog } from '@/lib/api';
-import { areaName, areas, languageNames, localeMap, locales, t } from '@/lib/i18n';
+import { areaName, localeMap, locales, t } from '@/lib/i18n';
 import { ht } from '@/lib/h5-i18n';
-import { serviceChoices } from '@/lib/consumer-model';
+import { af } from '@/lib/customer-flow-i18n';
+import { xt } from '@/lib/discovery-i18n';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { ut } from '@/lib/consumer-i18n';
-import { h5Portrait } from '@/lib/h5-media';
-import { H5EmptyArt, H5PageHeading, H5PortraitThumbnail } from './h5-overlays';
+
+import { H5EmptyArt, H5PageHeading } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
-import { H5Badges, H5Price } from './h5-business';
-import { H5ShopSection } from './h5-shops';
-import { shopCards, shopCardHref } from '@/lib/shop-model';
-import type { ShopStatsMap } from '@/lib/shop-stats';
 
 export function H5Language({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const path = usePathname(),
@@ -109,298 +98,18 @@ export function H5Language({ locale, compact = false }: { locale: Locale; compac
   );
 }
 
-export function H5Home({
-  locale: l,
-  catalog,
-  q,
-  shopStats = {},
-}: {
-  locale: Locale;
-  catalog: Catalog;
-  q: Record<string, string>;
-  /** Missing entries remain unknown and expose retry, distinct from real zero counts. */
-  shopStats?: ShopStatsMap;
-}) {
-  const carry = Object.fromEntries(
-    ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
-  );
-  const choices = serviceChoices(catalog, carry);
-  // Shop-run limited prices that are live right now; hidden entirely when none run.
-  const offers = serviceChoices(catalog, { ...carry, promotions: true })
-    .sort((a, b) => (a.promotionEndsAt ?? 0) - (b.promotionEndsAt ?? 0))
-    .slice(0, 6);
-  const featured = [60, 90, 120].flatMap(
-    (duration) => choices.find((x) => x.offering.durationMinutes === duration) ?? [],
-  );
-  const featuredStores = new Set(featured.map((choice) => choice.store.id));
-  for (const choice of choices) {
-    if (featured.length >= 5) break;
-    if (featuredStores.has(choice.store.id)) continue;
-    featured.push(choice);
-    featuredStores.add(choice.store.id);
-  }
-  const path = (base: string, changes: Record<string, string> = {}) =>
-    `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
-  const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 3);
-  const shopCarry = Object.fromEntries(
-    ['area', 'language'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
-  );
-  return (
-    <section className="h5-home h5-surface" aria-label={ht(l, 'projects')}>
-      <div className="h5-home-header">
-        <section className="h5-home-hero">
-          <Image
-            className="h5-hero-art"
-            src="/images/h5-home-banner.png"
-            alt={ht(l, 'bannerArt')}
-            width={2068}
-            height={760}
-            sizes="(max-width:760px) 100vw, 390px"
-            loading="eager"
-            fetchPriority="high"
-          />
-          <div className="h5-brand">
-            <Leaf size={19} />
-            <strong>HoguLink</strong>
-            <small>{ht(l, 'tokyo')}</small>
-          </div>
-          <H5Language locale={l} compact />
-          <div className="h5-hero-copy">
-            <h1>{ht(l, 'homeHeadline')}</h1>
-            <p>{ht(l, 'homeSubline')}</p>
-            <small>{ht(l, 'homeAssurance')}</small>
-          </div>
-        </section>
-        <nav className="h5-shortcuts" aria-label={ut(l, 'utilities')}>
-          {(
-            [
-              [TicketPercent, 'card', 'services?promo=1'],
-              [Handshake, 'partner', 'onboarding?role=MERCHANT'],
-              [Heart, 'savedShops', 'account/favorites?type=shops'],
-              [History, 'history', 'account/history'],
-            ] as const
-          ).map(([Icon, key, href]) => (
-            <Link key={key} href={`/${l}/${href}`}>
-              <Icon size={22} strokeWidth={1.7} aria-hidden="true" />
-              <span>{ht(l, key)}</span>
-            </Link>
-          ))}
-        </nav>
-      </div>
-      <div className="h5-home-sections">
-        <div className="h5-feature-grid">
-          <section className="h5-category-card">
-            <div className="h5-section-title">
-              <h2>{ht(l, 'categories')}</h2>
-              <Link href={path('services')}>
-                {t(l, 'all')}
-                <ChevronRight size={12} />
-              </Link>
-            </div>
-            <div>
-              {([60, 90] as const).map((duration, i) => (
-                <Link key={duration} href={path('services', { duration: String(duration) })}>
-                  <H5PortraitThumbnail
-                    photo={
-                      catalog.listings[i]
-                        ? h5Portrait(catalog.listings[i], catalog.demo)
-                        : '/images/h5-relaxation.png'
-                    }
-                    size={56}
-                  />
-                  <span>{ht(l, i ? 'long' : 'short')}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-          <Link className="h5-safety-card" href={`/${l}/guides/booking-and-safety`}>
-            <Image
-              src="/images/h5-booking-care.png"
-              alt=""
-              fill
-              sizes="(max-width:760px) 48vw, 190px"
-              loading="eager"
-            />
-            <div>
-              <h2>{ht(l, 'safety')}</h2>
-              <p>{ht(l, 'safetySub')}</p>
-              <span>
-                {ht(l, 'learn')}
-                <ChevronRight size={12} />
-              </span>
-            </div>
-          </Link>
-        </div>
-        <H5ShopSection
-          locale={l}
-          cards={shops}
-          demo={catalog.demo}
-          href={(_, card) => shopCardHref(l, card, shopCarry)}
-          allHref={`/${l}/discover?${new URLSearchParams({ ...shopCarry, tab: 'shops' })}`}
-        />
-        {!!offers.length && (
-          <section className="h5-offers" aria-labelledby="h5-offers-title">
-            <div className="h5-section-title">
-              <h2 id="h5-offers-title">
-                <TicketPercent size={17} aria-hidden="true" />
-                {ht(l, 'promotions')}
-              </h2>
-              <Link href={path('services', { promo: '1' })}>
-                {ht(l, 'allPromotions')}
-                <ChevronRight size={12} />
-              </Link>
-            </div>
-            <p className="h5-offers-sub">{ht(l, 'promotionsSub')}</p>
-            <div className="h5-offer-rail">
-              {offers.map(({ offering, store, total, compareTotal, promotionEndsAt }) => (
-                <Link
-                  key={offering.id}
-                  className="h5-offer-card"
-                  href={path('services', {
-                    duration: String(offering.durationMinutes),
-                    offering: offering.id,
-                  })}
-                >
-                  <span className="h5-offer-meta">
-                    {offering.durationMinutes} {t(l, 'minutes')}
-                  </span>
-                  <strong className="h5-offer-name">{offering.name[l]}</strong>
-                  <small className="h5-offer-store">{store.name[l]}</small>
-                  <H5Price
-                    locale={l}
-                    total={total}
-                    compareTotal={compareTotal}
-                    promotionEndsAt={promotionEndsAt}
-                  />
-                  <span className="h5-offer-cta">
-                    {ht(l, 'bookNow')}
-                    <ChevronRight size={12} />
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-        <div className="h5-section-title h5-recommended-title">
-          <h2>{ht(l, 'projects')}</h2>
-          <Link href={path('services')}>
-            {ht(l, 'allProjects')}
-            <ChevronRight size={13} />
-          </Link>
-        </div>
-        <div className="h5-project-list">
-          {featured.map(({ offering, store, total, compareTotal, promotionEndsAt }, index) => (
-            <article className="h5-project-card" key={offering.id}>
-              <Link
-                className="h5-project-image"
-                aria-label={`${offering.name[l]} · ${offering.durationMinutes} ${t(l, 'minutes')} · ${store.name[l]} · ${ht(l, 'reserve')}`}
-                href={path('services', {
-                  duration: String(offering.durationMinutes),
-                  offering: offering.id,
-                })}
-              >
-                <Image
-                  src={
-                    offering.durationMinutes === 120
-                      ? '/images/h5-service-120.png'
-                      : offering.durationMinutes === 90
-                        ? '/images/h5-service-90.png'
-                        : '/images/h5-treatment.png'
-                  }
-                  alt=""
-                  fill
-                  sizes="(max-width:360px) 86px, 102px"
-                  loading={index < 2 ? 'eager' : 'lazy'}
-                />
-                <span>{ht(l, 'serviceIllustration')}</span>
-              </Link>
-              <div className="h5-project-copy">
-                <div>
-                  <h3>{offering.name[l]}</h3>
-                  <span className="h5-tag">
-                    {offering.durationMinutes} {t(l, 'minutes')}
-                  </span>
-                </div>
-                <p>{store.name[l]}</p>
-                <H5Badges
-                  locale={l}
-                  promotion={!!promotionEndsAt}
-                  freeTravel={offering.transportFee === 0}
-                />
-                <small>{ht(l, 'total')}</small>
-                <div className="h5-project-bottom">
-                  <H5Price locale={l} total={total} compareTotal={compareTotal} />
-                  <Link
-                    className="h5-primary"
-                    aria-label={`${ht(l, 'reserve')} · ${offering.name[l]} · ${offering.durationMinutes} ${t(l, 'minutes')} · ${store.name[l]}`}
-                    href={path('services', {
-                      duration: String(offering.durationMinutes),
-                      offering: offering.id,
-                    })}
-                  >
-                    {ht(l, 'reserve')}
-                  </Link>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!featured.length && (
-          <div className="h5-home-empty" role="status">
-            <CalendarDays size={27} />
-            <h3>{ht(l, 'homeNoMatches')}</h3>
-            <p>{ht(l, 'homeNoMatchesHelp')}</p>
-            <div>
-              <Link href={path('services', { mode: 'SCHEDULED' })}>{ht(l, 'scheduled')}</Link>
-              <Link href={`/${l}/therapists`}>{ht(l, 'allTherapists')}</Link>
-            </div>
-          </div>
-        )}
-        <Link className="h5-region-strip" href={path('therapists')}>
-          <MapPin size={17} />
-          <strong>{ht(l, 'regions')}</strong>
-          <span>{ht(l, 'tokyo')}</span>
-          <ChevronRight size={15} />
-        </Link>
-        <Link className="h5-partner-banner" href={`/${l}/onboarding?role=MERCHANT`}>
-          <Store size={30} />
-          <div>
-            <strong>{ht(l, 'partner')}</strong>
-            <small>{ht(l, 'welcomeSub')}</small>
-          </div>
-          <ArrowRight size={20} />
-        </Link>
-        <p className="h5-footnote">{catalog.demo ? ht(l, 'sampleNote') : ht(l, 'regionsHelp')}</p>
-      </div>
-    </section>
-  );
-}
-
 export function H5AccountFeatures({ locale: l }: { locale: Locale }) {
   return (
-    <div className="h5-account-features">
-      <Link href={`/${l}/account/benefits`} className="h5-account-coupon">
-        <div>
-          <strong>{ht(l, 'coupons')}</strong>
-          <span>
-            {ht(l, 'rules')}
-            <ChevronRight size={12} />
-          </span>
-        </div>
-        <p>
-          <Ticket size={28} />
-          <span>
-            {ht(l, 'coming')}
-            <small>{ht(l, 'couponShort')}</small>
-          </span>
-        </p>
+    <nav className="ui-coming-links" aria-label={ht(l, 'card')}>
+      <Link href={`/${l}/account/benefits`}>
+        {ht(l, 'coupons')}
+        <span>{ht(l, 'coming')}</span>
       </Link>
-      <Link href={`/${l}/account/benefits#wallet`} className="h5-account-wallet">
-        <span>{ht(l, 'wallet')}</span>
-        <Wallet size={22} />
-        <strong>{ht(l, 'coming')}</strong>
+      <Link href={`/${l}/account/benefits#wallet`}>
+        {ht(l, 'wallet')}
+        <span>{ht(l, 'coming')}</span>
       </Link>
-    </div>
+    </nav>
   );
 }
 export function H5AccountProfile({
@@ -444,16 +153,17 @@ export function H5AccountUtilities({ locale: l }: { locale: Locale }) {
   return (
     <div className="h5-account-utilities">
       <nav>
-        {(
-          [
-            [Heart, 'favorites', 'account/favorites'],
-            [History, 'footprints', 'account/history'],
-            [ShieldCheck, 'complaint', 'account/support'],
-          ] as const
-        ).map(([Icon, key, href]) => (
-          <Link key={key} href={`/${l}/${href}`}>
+        {[
+          { Icon: Heart, label: ht(l, 'favorites'), href: 'account/favorites' },
+          { Icon: Store, label: xt(l, 'shopFavorites'), href: 'account/favorites?type=shops' },
+          { Icon: History, label: ht(l, 'footprints'), href: 'account/history' },
+          { Icon: MapPin, label: af(l, 'addresses'), href: 'account/addresses' },
+          { Icon: ShieldCheck, label: ht(l, 'complaint'), href: 'account/support' },
+          { Icon: ReceiptText, label: t(l, 'terms'), href: 'guides/terms' },
+        ].map(({ Icon, label, href }) => (
+          <Link key={href} href={`/${l}/${href}`}>
             <Icon size={20} />
-            <span>{ht(l, key)}</span>
+            <span>{label}</span>
           </Link>
         ))}
       </nav>
@@ -480,6 +190,11 @@ export function H5AccountUtilities({ locale: l }: { locale: Locale }) {
           sizes="115px"
           loading="eager"
         />
+      </Link>
+      <Link className="ui-partner-link" href={`/${l}/onboarding?role=MERCHANT`}>
+        <Handshake size={20} />
+        {ht(l, 'partner')}
+        <ChevronRight size={16} />
       </Link>
       <div className="h5-trust-footer">
         <strong>{ht(l, 'ourService')}</strong>

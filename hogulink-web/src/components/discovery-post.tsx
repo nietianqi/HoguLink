@@ -15,7 +15,7 @@ import { api, ClientError } from '@/lib/api';
 import { pt } from '@/lib/discovery-post-i18n';
 import {
   authorHref,
-  discoveryParams,
+  discoveryBrowserParams,
   postBookingHref,
   postHref,
   postImage,
@@ -210,7 +210,7 @@ export function DiscoveryPostPage({
       <header className="discovery-post-header">
         <Link
           className="discovery-back"
-          href={`/${l}/discover?${discoveryParams(q)}`}
+          href={`/${l}/discover?${discoveryBrowserParams(q)}`}
           aria-label={pt(l, 'back')}
         >
           <ChevronLeft size={23} />

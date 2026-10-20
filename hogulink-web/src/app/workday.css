@@ -80,12 +80,6 @@
 .workday-customer-focus .button {
   min-height: 48px;
 }
-.workday-customer .consumer-account-hero {
-  padding: 22px 26px;
-}
-.workday-customer .consumer-account-hero h1 {
-  margin: 7px 0;
-}
 .workday-customer .consumer-orders {
   margin-top: 16px;
 }
@@ -333,20 +327,6 @@
     padding: 12px;
     font-size: 13px;
     gap: 8px;
-  }
-  .workday-customer .consumer-account-hero {
-    padding: 18px;
-    gap: 12px;
-  }
-  .workday-customer .consumer-account-hero h1 {
-    font-size: 24px;
-  }
-  .workday-customer .consumer-account-hero p {
-    font-size: 13px;
-  }
-  .workday-customer .consumer-avatar {
-    width: 44px;
-    height: 44px;
   }
   .workday-customer-focus,
   .workday-action-center {

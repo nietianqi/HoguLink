@@ -17,9 +17,11 @@ import { api, ClientError } from '@/lib/api';
 import { areaName, areas, languageNames, t } from '@/lib/i18n';
 import { ht } from '@/lib/h5-i18n';
 import { xt } from '@/lib/discovery-i18n';
+import { cui } from '@/lib/customer-ui-i18n';
 import { pt } from '@/lib/discovery-post-i18n';
 import {
   discoveryParams,
+  discoveryBrowserParams,
   postHref,
   postImage,
   type DiscoveryQuery,
@@ -193,10 +195,14 @@ export function H5DiscoveryFeed({
         {discoveryTabs.map((tab) => (
           <Link
             key={tab}
-            href={`/${l}/discover?${discoveryParams({ ...q, tab })}`}
+            href={`/${l}/discover?${discoveryBrowserParams({ ...q, tab })}`}
             aria-current={q.tab === tab ? 'page' : undefined}
           >
-            {tab === 'therapists' ? ht(l, 'therapists') : xt(l, tab)}
+            {tab === 'shops'
+              ? cui(l, 'shopStories')
+              : tab === 'therapists'
+                ? ht(l, 'therapists')
+                : xt(l, tab)}
           </Link>
         ))}
       </nav>
@@ -223,7 +229,7 @@ export function H5DiscoveryFeed({
         className="h5-feed-filter-form"
         action={`/${l}/discover`}
       >
-        <input type="hidden" name="tab" value={q.tab} />
+        <input type="hidden" name="tab" value={q.tab === 'shops' ? 'stories' : q.tab} />
         <label>
           <span>{pt(l, 'search')}</span>
           <input name="search" defaultValue={q.search ?? ''} maxLength={80} />
@@ -252,7 +258,9 @@ export function H5DiscoveryFeed({
         </label>
         <div>
           <button className="h5-primary">{pt(l, 'apply')}</button>
-          <Link href={`/${l}/discover?tab=${q.tab}`}>{pt(l, 'reset')}</Link>
+          <Link href={`/${l}/discover?${discoveryBrowserParams({ tab: q.tab })}`}>
+            {pt(l, 'reset')}
+          </Link>
         </div>
       </form>
       {lead}
@@ -268,7 +276,9 @@ export function H5DiscoveryFeed({
       {data?.items.length === 0 && !error && (
         <div className="h5-empty">
           <p>{pt(l, 'empty')}</p>
-          <Link href={`/${l}/discover?tab=${q.tab}`}>{pt(l, 'reset')}</Link>
+          <Link href={`/${l}/discover?${discoveryBrowserParams({ tab: q.tab })}`}>
+            {pt(l, 'reset')}
+          </Link>
         </div>
       )}
       {data?.nextCursor && !error && (

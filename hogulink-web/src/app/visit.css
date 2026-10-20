@@ -55,7 +55,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
   padding: 6px 10px;
   background: var(--hl-tint);
@@ -133,7 +133,7 @@
   position: absolute;
   bottom: 13px;
   left: 14px;
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   letter-spacing: 0.12em;
   color: var(--hl-ink-2);
 }
@@ -149,7 +149,7 @@
   margin-bottom: 22px;
 }
 .therapist-about .eyebrow {
-  font-size: 8px;
+  font-size: var(--consumer-min-font-size, 8px);
   line-height: 1.8;
 }
 .detail-facts {
@@ -164,7 +164,7 @@
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin-bottom: 6px;
 }
 .detail-facts dd {
@@ -197,7 +197,7 @@
   min-width: 0;
 }
 .affiliated-shop small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
 }
 .affiliated-shop h3 {
@@ -205,7 +205,7 @@
   margin: 3px 0 5px;
 }
 .affiliated-shop p {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   margin: 0;
   color: var(--muted);
   overflow-wrap: anywhere;
@@ -258,7 +258,7 @@
   color: var(--hl-ink-2);
 }
 .menu-duration small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   line-height: 1.8;
   letter-spacing: 0;
   margin-top: 5px;
@@ -274,7 +274,7 @@
   margin-bottom: 8px;
 }
 .detail-service-menu p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   margin: 0;
   line-height: 1.8;
@@ -310,7 +310,7 @@
   overflow-wrap: anywhere;
 }
 .visit-note-grid a {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   text-decoration: underline;
   text-underline-offset: 5px;
 }
@@ -333,7 +333,7 @@
   font-size: 12px;
 }
 .sidebar-shop-link > span {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   flex: 1;
   text-align: right;
@@ -387,7 +387,7 @@
   letter-spacing: -0.7px;
 }
 .service-duration small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   margin-top: 6px;
   letter-spacing: 0;
@@ -401,7 +401,7 @@
   display: block;
   margin-top: 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.7;
 }
 .visit-service-picker strong {
@@ -441,7 +441,7 @@
   flex: 1;
 }
 .compact .service-duration small {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   margin: 0;
 }
 .compact .service-choice-name {
@@ -467,7 +467,7 @@
   gap: 8px;
 }
 .availability-label > small {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -508,7 +508,7 @@
   min-height: 79px;
 }
 .visit-day-picker span {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
 }
 .visit-day-picker strong {
@@ -516,7 +516,7 @@
   font-weight: 550;
 }
 .visit-day-picker small {
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   color: var(--muted);
 }
 .visit-day-picker [aria-pressed='true'] {
@@ -555,13 +555,13 @@
   margin: 6px auto 0;
   background: none;
   border: 0;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 .availability-disclaimer {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   line-height: 1.8;
   margin: 12px 0 0;
@@ -584,12 +584,12 @@
   margin-top: 19px;
 }
 .preview-total > span {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .preview-total small {
   display: block;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--consumer-min-font-size, 9px);
   margin-top: 5px;
 }
 .preview-total strong {
@@ -607,7 +607,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 14px 0 0;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   line-height: 1.8;
   color: var(--muted);
 }
@@ -660,7 +660,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .shop-hero-art {
@@ -688,7 +688,7 @@
   color: white;
   text-align: right;
   text-shadow: 0 1px 6px #0005;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   letter-spacing: 0.12em;
   z-index: 1;
 }
@@ -720,7 +720,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-ink-2);
 }
 .shop-overview .detail-muted {
@@ -858,7 +858,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   background: var(--hl-tint);
 }
 .visit-steps li.current {
@@ -917,7 +917,7 @@
   border-radius: 5px;
   background: var(--hl-tint);
   color: var(--hl-ink-2);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .visit-form-heading h2,
 .visit-form-heading h3 {
@@ -956,7 +956,7 @@
   margin-top: 8px;
 }
 .visit-help {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
   line-height: 1.95;
   margin: 13px 0 0;
@@ -995,7 +995,7 @@
 .preference-picker small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.8;
   margin-top: 6px;
 }
@@ -1026,10 +1026,10 @@
   font-size: 12px;
 }
 .visit-form .login-panel p {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
 }
 .visit-form .login-panel .button {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   padding: 8px 12px;
 }
 .visit-form .visit-submit {
@@ -1088,7 +1088,7 @@
   margin-bottom: 14px;
 }
 .visit-summary-facts dt {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   color: var(--muted);
   margin-bottom: 5px;
 }
@@ -1115,7 +1115,7 @@
 }
 .summary-estimate {
   color: var(--muted);
-  font-size: 10px !important;
+  font-size: var(--consumer-min-font-size, 10px) !important;
   line-height: 1.8;
 }
 .summary-provider {
@@ -1131,16 +1131,16 @@
 }
 .visit-summary .summary-provider h4 {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .visit-summary .summary-provider p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   overflow-wrap: anywhere;
 }
 .visit-summary .summary-provider a {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   display: inline-block;
   margin-top: 10px;
 }
@@ -1148,7 +1148,7 @@
   padding-top: 20px;
   margin-top: 20px;
   border-top: 1px solid var(--line);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--muted);
 }
 .summary-policy summary {
@@ -1156,11 +1156,11 @@
 }
 .summary-policy p {
   margin: 12px 0 0;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.95;
 }
 .visit-summary > .subtle-note {
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   margin-top: 20px;
   line-height: 1.8;
   align-items: flex-start;
@@ -1183,12 +1183,12 @@
 .checkout-area small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--consumer-min-font-size, 10px);
   line-height: 1.8;
   margin-top: 5px;
 }
 .checkout-area .text-button {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .checkout-form .hold-timer {
   border: 1px solid var(--hl-line);
@@ -1257,7 +1257,7 @@
     font-size: 18px;
   }
   .detail-service-menu p {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .booking-preview {
     padding: 23px 20px;
@@ -1277,7 +1277,7 @@
     gap: 13px;
   }
   .service-choice-name small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .visit-service-picker strong {
     font-size: 18px;
@@ -1364,7 +1364,7 @@
     padding-bottom: 40px;
   }
   .detail-breadcrumb {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     gap: 8px;
     margin-bottom: 25px;
   }
@@ -1380,7 +1380,7 @@
     font-size: 35px;
   }
   .detail-verified {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .detail-page-heading > p {
     font-size: 12px;
@@ -1391,7 +1391,7 @@
     margin-bottom: 24px;
   }
   .detail-anchor-nav a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     min-height: 52px;
   }
   .detail-columns {
@@ -1431,12 +1431,12 @@
     height: 155px;
   }
   .detail-portrait > span {
-    font-size: 6px;
+    font-size: var(--consumer-min-font-size, 6px);
     bottom: 8px;
     left: 8px;
   }
   .therapist-about .eyebrow {
-    font-size: 7px;
+    font-size: var(--consumer-min-font-size, 7px);
   }
   .therapist-about h2 {
     font-size: 20px;
@@ -1447,10 +1447,10 @@
     line-height: 1.85;
   }
   .detail-facts dt {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .detail-facts dd {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .affiliated-shop {
     padding: 18px;
@@ -1464,7 +1464,7 @@
     font-size: 15px;
   }
   .affiliated-shop p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .detail-section {
     padding-top: 30px;
@@ -1473,7 +1473,7 @@
     font-size: 23px;
   }
   .detail-muted {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .detail-service-menu > a {
     padding: 20px 17px;
@@ -1491,7 +1491,7 @@
     font-size: 14px;
   }
   .detail-service-menu p {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     line-height: 1.9;
   }
   .detail-service-menu > a > strong {
@@ -1519,7 +1519,7 @@
   }
   .detail-nonmedical {
     align-items: flex-start;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .detail-nonmedical svg {
     margin-top: 2px;
@@ -1536,10 +1536,10 @@
   }
   .preview-assurance,
   .availability-disclaimer {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .preview-total small {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .preview-total strong {
     font-size: 28px;
@@ -1570,7 +1570,7 @@
     gap: 12px;
   }
   .related-team .section-heading > a {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .related-team > .therapist-grid {
     grid-template-columns: 1fr;
@@ -1595,7 +1595,7 @@
     gap: 14px;
   }
   .shop-hero-meta > span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .shop-hero-art {
     min-height: 200px;
@@ -1616,7 +1616,7 @@
     gap: 14px;
   }
   .shop-commitments > span {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
   }
   .shop-team-grid {
     grid-template-columns: 1fr;
@@ -1628,25 +1628,25 @@
     font-size: 12px;
   }
   .business-summary p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .business-disclosure {
     padding: 0 18px;
   }
   .business-disclosure summary {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .business-disclosure dl > div {
     grid-template-columns: 1fr;
     gap: 7px;
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding-block: 12px;
   }
   .business-disclosure dd {
     line-height: 1.9;
   }
   .visit-page > .back-link {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     margin-bottom: 22px;
   }
   .visit-steps {
@@ -1656,13 +1656,13 @@
     row-gap: 14px;
   }
   .visit-steps li {
-    font-size: 10px;
+    font-size: var(--consumer-min-font-size, 10px);
     gap: 6px;
   }
   .visit-steps li > span {
     height: 25px;
     width: 25px;
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .visit-steps li:not(:last-child):after {
     width: 12px;
@@ -1733,7 +1733,7 @@
     font-size: 12px;
   }
   .preference-picker small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .preference-fee {
     font-size: 12px;
@@ -1765,7 +1765,7 @@
     margin-left: 34px;
   }
   .visit-help {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .visit-booking-layout .visit-summary {
     grid-row: auto;
@@ -1782,13 +1782,13 @@
     display: block;
   }
   .visit-summary .summary-provider p {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .visit-summary-facts dd {
     font-size: 13px;
   }
   .visit-summary-facts dt {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .visit-summary .price-lines > div {
     font-size: 13px;
@@ -1797,7 +1797,7 @@
     font-size: 29px;
   }
   .summary-estimate {
-    font-size: 11px !important;
+    font-size: var(--consumer-min-font-size, 11px) !important;
   }
   .checkout-area {
     padding: 15px;
@@ -1807,10 +1807,10 @@
     min-width: 180px;
   }
   .checkout-area small {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .checkout-form .hold-timer {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
     padding: 13px;
   }
   .checkout-form .payment-box {
@@ -1820,7 +1820,7 @@
     font-size: 12px;
   }
   .checkout-form .checkbox {
-    font-size: 11px;
+    font-size: var(--consumer-min-font-size, 11px);
   }
   .checkout-form .field-grid {
     grid-template-columns: 1fr 1fr;
@@ -1843,7 +1843,7 @@
     gap: 18px;
   }
   .visit-steps li {
-    font-size: 9px;
+    font-size: var(--consumer-min-font-size, 9px);
   }
   .visit-steps li:not(:last-child):after {
     right: -14px;
@@ -1878,7 +1878,7 @@
 }
 .exception-heading > span {
   color: var(--hl-ink-2);
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
 }
 .exception-panel > p,
 .exception-review p {
@@ -1904,7 +1904,7 @@
   overflow-wrap: anywhere;
 }
 .exception-facts dt {
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   color: var(--hl-muted);
   margin-bottom: 7px;
 }
@@ -1915,7 +1915,7 @@
 }
 .exception-history {
   padding-left: 20px;
-  font-size: 11px;
+  font-size: var(--consumer-min-font-size, 11px);
   line-height: 1.9;
   color: var(--hl-muted);
 }

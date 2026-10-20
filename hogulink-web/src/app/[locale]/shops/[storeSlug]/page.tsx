@@ -47,7 +47,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string; storeSlug: string }>;
-  searchParams: Promise<{ area?: string; language?: string }>;
+  searchParams: Promise<{ area?: string; language?: string; mode?: string }>;
 }) {
   const p = await params,
     l = asLocale(p.locale),
@@ -57,6 +57,7 @@ export default async function Page({
   const context = shopVisitContext(catalog, s.id, {
     area: typeof q.area === 'string' ? q.area : undefined,
     language: typeof q.language === 'string' ? q.language : undefined,
+    mode: q.mode === 'INSTANT' ? 'INSTANT' : undefined,
   });
   const offerings = context.services.map((s) => s.offering);
   // Shop-level facts from approved reviews, completed visits and shop saves only.
@@ -67,7 +68,7 @@ export default async function Page({
   const priced = offerings.map((o) => ({ o, ...visitTotal(o, 'FREE', 0) }));
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page">
-      <DetailBreadcrumb locale={l} name={s.name[l]} />
+      <DetailBreadcrumb locale={l} name={s.name[l]} preferences={context.carry} view="shops" />
       <section className="shop-detail-hero">
         <H5ShopCover store={s} className="shop-hero-cover" />
         <div className="shop-hero-copy">
@@ -137,22 +138,6 @@ export default async function Page({
       </nav>
       <div className="detail-columns">
         <div className="detail-main">
-          <section className="shop-overview detail-panel">
-            <span className="eyebrow small">YOUR LOCAL PROVIDER</span>
-            <h2>{vt(l, 'shopAbout')}</h2>
-            <p>{acceptanceHelp(l, s.acceptanceMode)}</p>
-            <div className="shop-commitments">
-              <span>
-                <ReceiptText size={17} />
-                {vt(l, 'freeTotalNote')}
-              </span>
-              <span>
-                <ShieldCheck size={17} />
-                {acceptanceLabel(l, s.acceptanceMode)}
-              </span>
-            </div>
-            <p className="detail-muted">{s.areas.map((a) => areaName(l, a)).join(' · ')}</p>
-          </section>
           <section className="detail-section" id="services">
             <span className="eyebrow small">THE SERVICE MENU</span>
             <h2>{vt(l, 'serviceMenu')}</h2>
@@ -204,14 +189,30 @@ export default async function Page({
               demo={catalog.demo}
               locale={l}
               store={s}
-              listings={team}
+              listings={context.members}
               offerings={catalog.offerings}
               nominationFee={catalog.bookingRules?.nominationFee}
               initialLanguage={context.carry.language}
+              mode={context.carry.mode}
               area={context.carry.area}
             />
           </section>
           <PublicReviews locale={l} storeId={s.id} />
+          <details className="shop-overview detail-panel">
+            <summary>{vt(l, 'shopAbout')}</summary>
+            <p>{acceptanceHelp(l, s.acceptanceMode)}</p>
+            <div className="shop-commitments">
+              <span>
+                <ReceiptText size={17} />
+                {vt(l, 'freeTotalNote')}
+              </span>
+              <span>
+                <ShieldCheck size={17} />
+                {acceptanceLabel(l, s.acceptanceMode)}
+              </span>
+            </div>
+            <p className="detail-muted">{s.areas.map((a) => areaName(l, a)).join(' · ')}</p>
+          </details>
           <VisitNotes locale={l} store={s} rules={catalog.bookingRules} />
           <section className="detail-section" id="business-info">
             <span className="eyebrow small">BUSINESS INFORMATION</span>

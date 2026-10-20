@@ -4,7 +4,7 @@ import { serviceChoices } from './consumer-model';
 export function shopVisitContext(
   catalog: Catalog,
   storeId: string,
-  filters: { area?: string; language?: string } = {},
+  filters: { area?: string; language?: string; mode?: string } = {},
 ) {
   const services = serviceChoices(catalog, filters).filter((s) => s.store.id === storeId);
   const members = [
@@ -14,7 +14,7 @@ export function shopVisitContext(
     services,
     members,
     carry: Object.fromEntries(
-      ['area', 'language'].flatMap((k) =>
+      ['area', 'language', ...(filters.mode === 'INSTANT' ? ['mode'] : [])].flatMap((k) =>
         filters[k as keyof typeof filters] ? [[k, filters[k as keyof typeof filters]!]] : [],
       ),
     ),

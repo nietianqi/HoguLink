@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { ListingStats } from '@hogulink/contracts';
 import { serverApi, type Catalog } from '@/lib/api';
-import { asLocale, t, areaName, languageNames, money } from '@/lib/i18n';
+import { asLocale, t, languageNames, money } from '@/lib/i18n';
 import { vt, acceptanceLabel } from '@/lib/visit-i18n';
 import { visitTotal, visitServices } from '@/lib/visit-model';
 import { seo } from '@/lib/seo';
@@ -24,6 +24,8 @@ import { RememberProfile } from '@/components/consumer-journey';
 import { H5Badges, H5Price } from '@/components/h5-business';
 import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
+import { cui } from '@/lib/customer-ui-i18n';
+import { ShopStatsNotice } from '@/components/shop-stats-notice';
 const listingData = cache(async (slug: string) => {
   const catalog = await serverApi<Catalog>('public/staff-listings');
   const listing = catalog.listings.find((x) => x.slug === slug);
@@ -66,12 +68,11 @@ export default async function Page({
     return { total, compareTotal, promotionEndsAt };
   };
   // Aggregated only from approved reviews, completed visits and active favorites.
-  const stats: ListingStats = await serverApi<Record<string, ListingStats>>(
+  const stats: ListingStats | undefined = await serverApi<Record<string, ListingStats>>(
     `public/listing-stats?ids=${encodeURIComponent(listing.id)}`,
   )
     .then((all) => all[listing.id])
-    .catch(() => undefined)
-    .then((x) => x ?? { rating: null, reviewCount: 0, completed90d: 0, favorites: 0 });
+    .catch(() => undefined);
   const selectedOffering = offerings.find((o) => o.id === raw.offering) ?? offerings[0];
   const instantNow =
     !!selectedOffering && listing.onDuty && store.acceptanceMode !== 'MANUAL'
@@ -93,7 +94,7 @@ export default async function Page({
   return (
     <main id="main" className="wrap page-section detail-page therapist-detail-page">
       <RememberProfile id={listing.id} />
-      <DetailBreadcrumb locale={l} name={listing.name[l]} store={store} />
+      <DetailBreadcrumb locale={l} name={listing.name[l]} store={store} preferences={carry} />
       <div className="detail-columns">
         <div className="detail-main">
           <section className="therapist-intro detail-panel" id="about">
@@ -129,24 +130,30 @@ export default async function Page({
                 instantNow={instantNow}
                 freeTravel={offerings.some((o) => o.transportFee === 0)}
               />
-              <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
-                <div>
-                  <dt>{ht(l, 'statRating')}</dt>
-                  <dd>{stats.rating === null ? '—' : stats.rating.toFixed(1)}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statReviews')}</dt>
-                  <dd>{stats.reviewCount}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statCompleted')}</dt>
-                  <dd>{stats.completed90d}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statFavorites')}</dt>
-                  <dd>{stats.favorites}</dd>
-                </div>
-              </dl>
+              <>
+                {stats ? (
+                  <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
+                    <div>
+                      <dt>{ht(l, 'statRating')}</dt>
+                      <dd>{stats.rating === null ? '—' : stats.rating.toFixed(1)}</dd>
+                    </div>
+                    <div>
+                      <dt>{ht(l, 'statReviews')}</dt>
+                      <dd>{stats.reviewCount}</dd>
+                    </div>
+                    <div>
+                      <dt>{ht(l, 'statCompleted')}</dt>
+                      <dd>{stats.completed90d}</dd>
+                    </div>
+                    <div>
+                      <dt>{ht(l, 'statFavorites')}</dt>
+                      <dd>{stats.favorites}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <ShopStatsNotice locale={l} message={cui(l, 'statsUnavailable')} />
+                )}
+              </>
               <p className="profile-description">{listing.description[l]}</p>
               <dl className="detail-facts">
                 <div>

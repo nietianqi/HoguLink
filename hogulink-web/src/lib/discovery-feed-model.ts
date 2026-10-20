@@ -9,9 +9,12 @@ export type DiscoveryQuery = {
 };
 export function discoveryQuery(raw: Record<string, unknown>): DiscoveryQuery {
   return {
-    tab: discoveryTabs.includes(raw.tab as DiscoveryTab)
-      ? (raw.tab as DiscoveryTab)
-      : 'recommended',
+    tab:
+      raw.tab === 'stories'
+        ? 'shops'
+        : discoveryTabs.includes(raw.tab as DiscoveryTab)
+          ? (raw.tab as DiscoveryTab)
+          : 'recommended',
     ...(typeof raw.area === 'string' &&
     ['shinjuku', 'shibuya', 'minato', 'chuo', 'taito'].includes(raw.area)
       ? { area: raw.area }
@@ -39,7 +42,7 @@ export function postImage(post: DiscoveryPost, index = 0) {
     : photo;
 }
 export function postHref(l: Locale, post: DiscoveryPost, q: DiscoveryQuery) {
-  return `/${l}/discover/${post.id}?${discoveryParams(q)}`;
+  return `/${l}/discover/${post.id}?${discoveryBrowserParams(q)}`;
 }
 export function authorHref(l: Locale, p: DiscoveryPost, q: DiscoveryQuery) {
   return p.author.kind === 'editor'
@@ -52,4 +55,11 @@ export function postBookingHref(l: Locale, p: DiscoveryPost, q: DiscoveryQuery) 
     : p.author.kind === 'shop'
       ? `/${l}/shops/${p.author.slug}?${discoveryCarry(q)}`
       : `/${l}/therapists?${discoveryCarry(q)}`;
+}
+
+/** Public content URL: shop stories have a distinct URL from the legacy shop directory. */
+export function discoveryBrowserParams(q: DiscoveryQuery) {
+  const params = discoveryParams(q);
+  if (q.tab === 'shops') params.set('tab', 'stories');
+  return params;
 }

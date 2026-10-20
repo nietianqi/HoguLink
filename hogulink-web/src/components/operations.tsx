@@ -1,4 +1,5 @@
 'use client';
+import { cui } from '@/lib/customer-ui-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { goCustomerAccess } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -826,7 +827,7 @@ export function Operations({
                             <div>
                               <dt>{af(l, 'serviceItem')}</dt>
                               <dd>
-                                {b.quote.serviceName?.[l] ?? t(l, 'services')} ·{' '}
+                                {b.quote.serviceName?.[l] ?? cui(l, 'bookedService')} ·{' '}
                                 {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
                               </dd>
                             </div>

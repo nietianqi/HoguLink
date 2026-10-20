@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, Check, ShieldCheck, ReceiptText, MapPin } from 'lucide-react';
-import type { Locale } from '@hogulink/contracts';
+import type { Locale, Quote } from '@hogulink/contracts';
 import type { PublicStore, BookingRules } from '@/lib/api';
 import { t, areaName } from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
@@ -24,17 +24,23 @@ export function DetailBreadcrumb({
   locale: l,
   name,
   store,
+  preferences = {},
+  view = 'therapists',
 }: {
   locale: Locale;
   name: string;
   store?: PublicStore;
+  preferences?: Record<string, string>;
+  view?: 'therapists' | 'shops';
 }) {
   return (
     <nav
       className="detail-breadcrumb"
       aria-label={l === 'en' ? 'Breadcrumb' : l === 'ja' ? 'パンくず' : '面包屑导航'}
     >
-      <Link href={`/${l}#discover`}>
+      <Link
+        href={`/${l}/therapists?${new URLSearchParams({ ...Object.fromEntries(Object.entries(preferences).filter(([k]) => ['area', 'language', 'mode'].includes(k))), view })}`}
+      >
         <ArrowLeft size={14} />
         {t(l, 'explore')}
       </Link>
@@ -89,5 +95,26 @@ export function VisitNotes({
         </div>
       </div>
     </section>
+  );
+}
+
+/** Keep every cancellation band visible; move the long no-show procedure into expandable terms. */
+export function CancellationSummary({
+  locale: l,
+  policy,
+  mode,
+}: {
+  locale: Locale;
+  policy: Quote['cancellationPolicy'];
+  mode: Quote['bookingMode'];
+}) {
+  return (
+    <div className="ui-policy-summary">
+      <p>{policyText(l, { ...policy, noShow: undefined }, mode)}</p>
+      <details>
+        <summary>{t(l, 'terms')}</summary>
+        <p>{policyText(l, policy, mode)}</p>
+      </details>
+    </div>
   );
 }

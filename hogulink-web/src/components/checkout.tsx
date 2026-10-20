@@ -26,8 +26,8 @@ import type {
 import { api, ClientError } from '@/lib/api';
 import { t, errorText, dateTime, areaName, languageNames } from '@/lib/i18n';
 import { PriceLines } from './catalog';
-import { VisitSteps } from './visit-shared';
-import { vt, policyText, acceptanceHelp } from '@/lib/visit-i18n';
+import { VisitSteps, CancellationSummary } from './visit-shared';
+import { vt, acceptanceHelp } from '@/lib/visit-i18n';
 import { restoreVisitAddress } from '@/lib/visit-model';
 import { MobilePriceDock } from './mobile-ui';
 import { mt } from '@/lib/mobile-i18n';
@@ -604,9 +604,11 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
               <span>03</span>
               <h3>{t(l, 'policy')}</h3>
             </div>
-            <p className="policy-text">
-              {policyText(l, data.quote.cancellationPolicy, data.quote.bookingMode)}
-            </p>
+            <CancellationSummary
+              locale={l}
+              policy={data.quote.cancellationPolicy}
+              mode={data.quote.bookingMode}
+            />
             <p className="visit-help">
               {vt(l, 'frozenQuote')}{' '}
               <Link className="underlined" href={`/${l}/guides/terms`}>
@@ -817,9 +819,11 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 ? vt(l, 'paySaved')
                 : t(l, 'payExplain')}
             </p>
-            <p className="flow-muted">
-              {policyText(l, data.quote.cancellationPolicy, data.quote.bookingMode)}
-            </p>
+            <CancellationSummary
+              locale={l}
+              policy={data.quote.cancellationPolicy}
+              mode={data.quote.bookingMode}
+            />
             {remaining === 0 && (
               <p className="quality-error" role="alert">
                 {t(l, 'expired')}

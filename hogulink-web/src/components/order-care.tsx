@@ -23,10 +23,12 @@ export function OrderCarePanel({
   locale: l,
   booking: b,
   onUpdated,
+  showProgress = true,
 }: {
   locale: Locale;
   booking: Booking;
   onUpdated: () => void;
+  showProgress?: boolean;
 }) {
   const [data, setData] = useState<OrderCare>(),
     [open, setOpen] = useState(false),
@@ -35,6 +37,9 @@ export function OrderCarePanel({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true);
+  const [loadedVersion, setLoadedVersion] = useState<number>();
+  const latestOrder = useRef({ version: b.version, onUpdated });
+  latestOrder.current = { version: b.version, onUpdated };
   const retry = useRef({ body: '', key: '' }),
     generation = useRef(0),
     lock = useRef(false);
@@ -45,10 +50,19 @@ export function OrderCarePanel({
       const next = await api<OrderCare>(`customer/bookings/${b.id}/care`);
       if (gen === generation.current) {
         setData(next);
+        setLoadedVersion(next.bookingVersion ?? b.version);
         setError('');
+        if (
+          next.bookingVersion !== undefined &&
+          next.bookingVersion !== latestOrder.current.version
+        )
+          latestOrder.current.onUpdated();
       }
     } catch (e) {
-      if (gen === generation.current) setError(flowError(l, e));
+      if (gen === generation.current) {
+        setLoadedVersion(undefined);
+        setError(flowError(l, e));
+      }
     } finally {
       if (gen === generation.current) setLoading(false);
     }
@@ -62,6 +76,7 @@ export function OrderCarePanel({
   const pending = data?.requests.find((r) => r.status === 'PENDING');
   const latest = data?.requests[0];
   const stage = bookingStage(b.status);
+  const current = loadedVersion === b.version && !loading;
   return (
     <section
       className="order-care-panel"
@@ -69,29 +84,31 @@ export function OrderCarePanel({
       aria-busy={loading}
       aria-labelledby={`care-title-${b.id}`}
     >
-      <div className="order-journey">
-        <strong>
-          {t(l, 'timeline')} ·{' '}
-          {b.replacementConsent === 'PENDING' && b.proposedListingId
-            ? wt(l, 'consentPending')
-            : statusText(l, b.status)}
-        </strong>
-        {stage !== null && (
-          <ol aria-label={t(l, 'timeline')}>
-            {(['requestStep', 'confirmationStep', 'visitStep', 'completeStep'] as const).map(
-              (key, i) => (
-                <li
-                  key={key}
-                  data-done={i <= stage}
-                  aria-current={i === stage ? 'step' : undefined}
-                >
-                  {af(l, key)}
-                </li>
-              ),
-            )}
-          </ol>
-        )}
-      </div>
+      {showProgress && (
+        <div className="order-journey">
+          <strong>
+            {t(l, 'timeline')} ·{' '}
+            {b.replacementConsent === 'PENDING' && b.proposedListingId
+              ? wt(l, 'consentPending')
+              : statusText(l, b.status)}
+          </strong>
+          {stage !== null && (
+            <ol aria-label={t(l, 'timeline')}>
+              {(['requestStep', 'confirmationStep', 'visitStep', 'completeStep'] as const).map(
+                (key, i) => (
+                  <li
+                    key={key}
+                    data-done={i <= stage}
+                    aria-current={i === stage ? 'step' : undefined}
+                  >
+                    {af(l, key)}
+                  </li>
+                ),
+              )}
+            </ol>
+          )}
+        </div>
+      )}
       <div className="flow-section-head">
         <h3 id={`care-title-${b.id}`}>
           <LifeBuoy size={19} />
@@ -201,6 +218,7 @@ export function OrderCarePanel({
             {data.canRequest && (
               <button
                 className="quality-primary"
+                disabled={busy || !current}
                 onClick={() => {
                   setAmount(String(data.remaining));
                   setOpen(true);
@@ -261,7 +279,7 @@ export function OrderCarePanel({
             className="flow-sheet-content flow-form"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (lock.current || !data.canRequest) return;
+              if (lock.current || !data.canRequest || !current) return;
               lock.current = true;
               setBusy(true);
               setError('');
@@ -295,7 +313,7 @@ export function OrderCarePanel({
             <p className="flow-muted">
               {b.legalNameSnapshot} · {af(l, 'remaining')} {money(l, data.remaining)}
             </p>
-            <fieldset disabled={busy}>
+            <fieldset disabled={busy || !current}>
               <label>
                 {af(l, 'amount')}
                 <input
@@ -335,6 +353,21 @@ export function OrderCarePanel({
                 </button>
               </div>
             </fieldset>
+            {!current && (
+              <p className="flow-muted" role="status">
+                {af(l, 'refreshBeforeAction')}
+              </p>
+            )}
+            {error && (
+              <button
+                type="button"
+                className="quality-button"
+                disabled={busy || loading}
+                onClick={() => void load()}
+              >
+                {af(l, 'refresh')}
+              </button>
+            )}
           </form>
         )}
       </MobileSheet>
@@ -358,15 +391,19 @@ export function RefundCasePanel({
     [confirm, setConfirm] = useState<'APPROVE' | 'REJECT' | 'WITHDRAW' | null>(null),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedVersion, setLoadedVersion] = useState<number>();
   const retry = useRef({ body: '', key: '' }),
     gen = useRef(0),
     lock = useRef(false);
   const load = useCallback(async () => {
     const request = ++gen.current;
+    setLoading(true);
     try {
       const next = await api<RefundCase | null>(`support-tickets/${ticket.id}/refund-request`);
       if (request === gen.current) {
         setData(next);
+        setLoadedVersion(ticket.version);
         if (next)
           setAmount(
             (previous) => previous || String(Math.min(next.remaining, next.request.amount)),
@@ -374,7 +411,12 @@ export function RefundCasePanel({
         setError('');
       }
     } catch (e) {
-      if (request === gen.current) setError(flowError(l, e));
+      if (request === gen.current) {
+        setLoadedVersion(undefined);
+        setError(flowError(l, e));
+      }
+    } finally {
+      if (request === gen.current) setLoading(false);
     }
   }, [ticket.id, ticket.version, l]);
   useEffect(() => {
@@ -385,9 +427,10 @@ export function RefundCasePanel({
   }, [load]);
   const r = data?.request,
     pending = r?.status === 'PENDING',
+    current = loadedVersion === ticket.version && !loading,
     cap = r && data ? Math.min(r.amount, data.remaining) : 0;
   async function decide() {
-    if (!data || !r || !confirm || lock.current) return;
+    if (!data || !r || !confirm || lock.current || !current) return;
     lock.current = true;
     setBusy(true);
     setError('');
@@ -460,7 +503,11 @@ export function RefundCasePanel({
       <p className="flow-muted">{af(l, 'demoRefund')}</p>
       {data.request.decision && <p>{data.request.decision}</p>}
       {pending && actor.role === 'CUSTOMER' && (
-        <button className="quality-button" disabled={busy} onClick={() => setConfirm('WITHDRAW')}>
+        <button
+          className="quality-button"
+          disabled={busy || !current}
+          onClick={() => setConfirm('WITHDRAW')}
+        >
           {af(l, 'withdraw')}
         </button>
       )}
@@ -469,6 +516,7 @@ export function RefundCasePanel({
           className="flow-form"
           onSubmit={(e) => {
             e.preventDefault();
+            if (!current || busy) return;
             setConfirm('APPROVE');
           }}
         >
@@ -498,13 +546,13 @@ export function RefundCasePanel({
             />
           </label>
           <div className="flow-actions">
-            <button className="quality-primary" disabled={busy || cap < 1}>
+            <button className="quality-primary" disabled={busy || !current || cap < 1}>
               {af(l, 'approve')}
             </button>
             <button
               className="quality-button"
               type="button"
-              disabled={busy || text.trim().length < 10}
+              disabled={busy || !current || text.trim().length < 10}
               onClick={() => setConfirm('REJECT')}
             >
               {af(l, 'reject')}
@@ -521,6 +569,14 @@ export function RefundCasePanel({
       {error && (
         <p className="quality-error" role="alert">
           {error}
+          <button
+            type="button"
+            className="quality-link"
+            disabled={busy || loading}
+            onClick={() => void load()}
+          >
+            {af(l, 'refresh')}
+          </button>
         </p>
       )}
       <MobileSheet
@@ -559,6 +615,7 @@ export function RefundCasePanel({
               className="quality-primary"
               disabled={
                 busy ||
+                !current ||
                 (confirm === 'APPROVE' &&
                   (!Number.isSafeInteger(Number(amount)) ||
                     Number(amount) < 1 ||

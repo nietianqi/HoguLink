@@ -4,7 +4,12 @@ import { acceptanceScopeInput, type AcceptanceRule } from '@hogulink/contracts';
 import {
   makeCancellationPolicy,
   storeBookingRulesInput,
+  promotionInput,
+  promotionPriceFloor,
+  comparisonEligibility,
+  PROMOTION_RULES,
   type BookingRulesHistory,
+  type OfferingPromotion,
 } from '@hogulink/contracts';
 import { effectiveBookingRules } from './booking-rules.js';
 import type {
@@ -20,6 +25,7 @@ import type { Records } from './repository.js';
 import { ensure } from './errors.js';
 import { config } from './config.js';
 import { timeOffHistory } from './staff.js';
+import { closedPromotionHistory as closedHistory } from './promotion-history.js';
 
 export type TimeBlock = {
   id: string;
@@ -231,9 +237,102 @@ export class MerchantService {
         (service.active !== false) === data.active
       )
         return service;
-      const next = { ...service, ...data, version: service.version + 1 };
+      const priceChanged = service.price !== data.price;
+      const next: Offering = {
+        ...service,
+        ...data,
+        version: service.version + 1,
+        // A new regular price restarts the comparison clock and ends any promotion.
+        ...(priceChanged ? { priceSince: this.now(), promotion: undefined } : {}),
+        promotionHistory:
+          priceChanged && service.promotion
+            ? closedHistory(service, this.now())
+            : service.promotionHistory,
+      };
       await tx.put('offerings', next);
       await this.audit(tx, actor, 'SERVICE_PRICING_UPDATED', id);
+      return next;
+    });
+  }
+  /** Set or replace a time-limited shop promotion on one approved service. */
+  async promotion(actor: Actor, id: string, input: unknown) {
+    const data = promotionInput.parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor),
+        service = await tx.get<Offering>('offerings', id);
+      ensure(service?.storeId === store.id, 'NOT_FOUND', 'Service not found.', 404);
+      ensure(
+        service.version === data.version,
+        'VERSION_CONFLICT',
+        'This service changed. Refresh first.',
+        409,
+      );
+      ensure(
+        service.approved && service.active !== false && service.regulatoryCategory === 'RELAXATION',
+        'FORBIDDEN',
+        'Only active approved relaxation services can run a promotion.',
+        403,
+      );
+      const now = this.now(),
+        day = 86_400_000;
+      ensure(
+        data.price < service.price && data.price >= promotionPriceFloor(service.price),
+        'INVALID_PROMOTION',
+        `The promotion price must be below the regular price and at least ${Math.round(PROMOTION_RULES.minPriceRatio * 100)}% of it.`,
+      );
+      ensure(
+        data.startsAt >= now - 60_000 &&
+          data.startsAt <= now + PROMOTION_RULES.maxLeadDays * day &&
+          data.endsAt >= data.startsAt + 3_600_000 &&
+          data.endsAt - data.startsAt <= PROMOTION_RULES.maxDays * day,
+        'INVALID_PROMOTION',
+        `A promotion starts within ${PROMOTION_RULES.maxLeadDays} days and lasts between 1 hour and ${PROMOTION_RULES.maxDays} days.`,
+      );
+      const history = closedHistory(service, now);
+      const window = { startsAt: Math.max(data.startsAt, now), endsAt: data.endsAt };
+      const reason = comparisonEligibility(window, service.priceSince, history);
+      const promotion: OfferingPromotion = {
+        id: randomUUID(),
+        price: data.price,
+        regularPrice: service.price,
+        startsAt: window.startsAt,
+        endsAt: window.endsAt,
+        createdAt: now,
+        comparisonAllowed: reason === 'ELIGIBLE',
+        comparisonReason: reason,
+      };
+      const next: Offering = {
+        ...service,
+        promotion,
+        promotionHistory: history,
+        version: service.version + 1,
+      };
+      await tx.put('offerings', next);
+      await this.audit(tx, actor, 'SERVICE_PROMOTION_SET', `${id}:${data.price}`);
+      return next;
+    });
+  }
+  async clearPromotion(actor: Actor, id: string, input: unknown) {
+    const data = z.object({ version: z.number().int().positive() }).strict().parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor),
+        service = await tx.get<Offering>('offerings', id);
+      ensure(service?.storeId === store.id, 'NOT_FOUND', 'Service not found.', 404);
+      ensure(
+        service.version === data.version,
+        'VERSION_CONFLICT',
+        'This service changed. Refresh first.',
+        409,
+      );
+      if (!service.promotion) return service;
+      const next: Offering = {
+        ...service,
+        promotion: undefined,
+        promotionHistory: closedHistory(service, this.now()),
+        version: service.version + 1,
+      };
+      await tx.put('offerings', next);
+      await this.audit(tx, actor, 'SERVICE_PROMOTION_ENDED', id);
       return next;
     });
   }
@@ -406,3 +505,5 @@ export class MerchantService {
     });
   }
 }
+
+/** Keep the days a promotion actually ran (it may be ended early), newest last, bounded. */

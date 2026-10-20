@@ -27,8 +27,11 @@ export async function serverApi<T>(path: string): Promise<T> {
     { cache: 'no-store', signal: AbortSignal.timeout(8000) },
   );
   if (!response.ok)
-    throw new Error('HoguLink API is not available. Start both workspace services.');
+    throw new ServerApiError(response.status);
   return response.json();
+}
+export class ServerApiError extends Error {
+  constructor(public status: number) { super('HoguLink API is not available.'); }
 }
 export class ClientError extends Error {
   constructor(

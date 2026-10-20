@@ -216,7 +216,7 @@ const words = {
   status: ['ご予約の状況', 'Booking status', '预约状态'],
   original: ['ご指名のセラピスト', 'Originally nominated', '原指定技师'],
   assigned: ['担当セラピスト', 'Assigned therapist', '履约技师'],
-  unassigned: ['店舗が手配中', 'Shop is assigning', '店铺正在安排'],
+  unassigned: ['スタッフ未割当', 'No therapist assigned', '未分配技师'],
   cancel: ['予約をキャンセル', 'Cancel booking', '取消预约'],
   cancelConfirm: [
     '表示されたポリシーに従ってキャンセルしますか？',

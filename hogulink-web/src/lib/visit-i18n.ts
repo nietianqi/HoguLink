@@ -1,5 +1,43 @@
 import type { Locale, AcceptanceMode, Quote } from '@hogulink/contracts';
 const words = {
+  therapistUnavailable: [
+    '担当者のプロフィールを取得できません',
+    'Therapist profile unavailable',
+    '技师资料暂不可用',
+  ],
+  bookingProgress: ['予約の進捗', 'Booking progress', '预约进度'],
+  checkoutUnavailable: [
+    '予約内容を確認できません',
+    'Unable to load this reservation',
+    '暂时无法查看此预约',
+  ],
+  chooseAnotherTime: ['別の時間を選ぶ', 'Choose another time', '重新选择预约时段'],
+  noOrderMessages: [
+    'まだメッセージはありません。',
+    'No messages in this booking yet.',
+    '此预约暂无消息。',
+  ],
+  orderDetails: ['予約の詳細', 'Booking details', '预约详情'],
+  backBookings: ['予約一覧に戻る', 'Back to bookings', '返回预约列表'],
+  progressSubmitted: ['申込み', 'Request sent', '提交申请'],
+  progressResponse: ['店舗・担当者の確認', 'Shop & therapist review', '店铺与技师确认'],
+  progressConfirmed: ['予約確定', 'Visit confirmed', '预约确认'],
+  progressService: ['サービス中', 'In service', '服务中'],
+  progressApproval: ['完了の確認', 'Completion review', '完成验收'],
+  progressCompleted: ['完了', 'Completed', '已完成'],
+  closedOrderHelp: [
+    'この予約は終了しました。料金・条件・サポートは引き続き確認できます。',
+    'This booking is closed. Prices, terms and support remain available.',
+    '此预约已关闭，仍可查看原费用、政策及售后。',
+  ],
+  visitWindow: ['予約時間', 'Visit time', '预约时间'],
+  selectedTime: ['選択した時間', 'Selected time', '已选时段'],
+  nextStepHelp: [
+    '次に住所と確定見積りを確認します。',
+    'Next, review your address and final quote.',
+    '下一步填写地址并核对最终报价。',
+  ],
+  chooseScheduled: ['日時指定に切り替える', 'Choose a scheduled visit', '改为指定时间预约'],
   about: ['このセラピストについて', 'Meet your therapist', '了解这位技师'],
   shopAbout: ['お店について', 'About the shop', '了解这家店铺'],
   serviceMenu: ['サービスと料金', 'Services & prices', '服务项目与费用'],

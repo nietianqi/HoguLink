@@ -1,5 +1,6 @@
-import type { Listing, Offering, Store } from '@hogulink/contracts';
+import type { Actor, Listing, Offering, Store } from '@hogulink/contracts';
 import type { Repository } from './repository.js';
+import type { Engine } from './engine.js';
 const local = (ja: string, en: string, zh: string) => ({ ja, en, 'zh-cn': zh });
 export const stores: Store[] = [
   {
@@ -130,4 +131,43 @@ export async function seed(repo: Repository) {
     for (const value of listings) await tx.put('listings', value);
     await tx.put('meta', { id: 'seed-v1', createdAt: Date.now() });
   });
+  // Demo-only: the fictional sample services have used their regular price since
+  // before the demo began, so the promotion comparison rule can be demonstrated.
+  await repo.transaction(async (tx) => {
+    if (await tx.get('meta', 'demo-price-since-v1')) return;
+    const since = Date.now() - 60 * 86_400_000;
+    for (const sample of offerings) {
+      const current = await tx.get<Offering>('offerings', sample.id);
+      if (current && !current.priceSince && current.price === sample.price)
+        await tx.put('offerings', { ...current, priceSince: since });
+    }
+    await tx.put('meta', { id: 'demo-price-since-v1', createdAt: Date.now() });
+  });
+}
+
+/**
+ * Demo-only: one fictional shop runs a 7-day limited price once, through the same
+ * merchant rules as a real shop, so the H5 offer UI has honest sample data.
+ */
+export async function seedDemoPromotion(engine: Engine) {
+  const id = 'store-sora-90';
+  const owner: Actor = {
+    id: 'merchant-sora',
+    role: 'MERCHANT',
+    storeId: 'store-sora',
+    verificationLevel: 1,
+  };
+  const done = await engine.repo.transaction((tx) => tx.get('meta', 'demo-promotion-v1'));
+  if (done) return;
+  const service = await engine.repo.transaction((tx) => tx.get<Offering>('offerings', id));
+  if (service && !service.promotion)
+    await engine.merchant.promotion(owner, id, {
+      version: service.version,
+      price: Math.round((service.price * 0.84) / 100) * 100,
+      startsAt: engine.now(),
+      endsAt: engine.now() + 7 * 86_400_000,
+    });
+  await engine.repo.transaction((tx) =>
+    tx.put('meta', { id: 'demo-promotion-v1', createdAt: engine.now() }),
+  );
 }

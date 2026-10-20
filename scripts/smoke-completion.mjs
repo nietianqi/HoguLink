@@ -67,6 +67,10 @@ async function book() {
     },
     201,
   );
+  // Completion checks can advance across the shop's JST automatic-acceptance window.
+  // Follow the actual manual decision when required, before asking the therapist to confirm.
+  if (b.status === 'REQUESTED')
+    b = await call(m, `merchant/bookings/${b.id}/accept`, { version: b.version });
   b = await call(s, `staff/tasks/${b.id}/ack`, { version: b.version });
   for (const event of ['EN_ROUTE', 'ARRIVED'])
     b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event });

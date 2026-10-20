@@ -1,5 +1,9 @@
 'use client';
 import { CustomerSignIn } from './customer-signin';
+import { H5MessageCategories } from './h5-consumer';
+import { ht } from '@/lib/h5-i18n';
+import { pt } from '@/lib/discovery-post-i18n';
+import { H5EmptyArt, H5PageHeading } from './h5-overlays';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,6 +14,7 @@ import {
   Mail,
   MessageCircle,
   RefreshCw,
+  Settings,
   Store,
 } from 'lucide-react';
 import type {
@@ -64,14 +69,28 @@ export function CustomerAccess({
     </section>
   );
 }
-export function FavoriteKinds({ locale: l, shops = false }: { locale: Locale; shops?: boolean }) {
+export function FavoriteKinds({
+  locale: l,
+  shops = false,
+  content = false,
+}: {
+  locale: Locale;
+  shops?: boolean;
+  content?: boolean;
+}) {
   return (
     <nav className="discovery-tabs" aria-label={qt(l, 'favorites')}>
-      <Link href={`/${l}/account/favorites`} aria-current={!shops ? 'page' : undefined}>
+      <Link href={`/${l}/account/favorites`} aria-current={!shops && !content ? 'page' : undefined}>
         {xt(l, 'therapistFavorites')}
       </Link>
       <Link href={`/${l}/account/favorites?type=shops`} aria-current={shops ? 'page' : undefined}>
         {xt(l, 'shopFavorites')}
+      </Link>
+      <Link
+        href={`/${l}/account/favorites?type=content`}
+        aria-current={content ? 'page' : undefined}
+      >
+        {pt(l, 'saved')}
       </Link>
     </nav>
   );
@@ -249,7 +268,15 @@ export function StoreFavoritesPage({ locale: l }: { locale: Locale }) {
     </main>
   );
 }
-export function CustomerInboxPage({ locale: l, filter }: { locale: Locale; filter: InboxFilter }) {
+export function CustomerInboxPage({
+  locale: l,
+  filter,
+  channel,
+}: {
+  locale: Locale;
+  filter: InboxFilter;
+  channel?: 'orders';
+}) {
   const { actor, setActor, loading } = useSession(),
     router = useRouter();
   const [data, setData] = useState<CustomerInbox>(),
@@ -342,130 +369,174 @@ export function CustomerInboxPage({ locale: l, filter }: { locale: Locale; filte
   }
   const unreadItems = data?.items.filter((i) => i.unread) ?? [];
   return (
-    <main id="main" className="wrap engagement-page inbox-page">
-      <header className="discovery-intro">
-        <span className="quality-eyebrow">HOGULINK / MESSAGES</span>
-        <h1>{xt(l, 'inboxTitle')}</h1>
-        <p>{xt(l, 'inboxHelp')}</p>
-      </header>
-      <p className="inbox-delivery-note">
-        <Mail size={17} />
-        {xt(l, 'localOnly')}
-      </p>
-      {!loading && !signed ? (
-        <CustomerAccess locale={l} actor={actor} setActor={setActor} />
-      ) : (
-        <>
-          <div className="inbox-toolbar">
-            <nav className="discovery-tabs" aria-label={xt(l, 'inbox')}>
-              {(['all', 'unread', 'bookings', 'support'] as const).map((f) => (
-                <Link
-                  key={f}
-                  href={`/${l}/account/messages?filter=${f}`}
-                  aria-current={filter === f ? 'page' : undefined}
-                >
-                  {xt(l, f)}
-                  {f === 'unread' && data && <span>{data.unreadCount}</span>}
-                </Link>
-              ))}
-            </nav>
-            <div>
-              <button
-                className="quality-button"
-                disabled={busy || pending || !signed}
-                onClick={() => void load()}
-              >
-                <RefreshCw size={16} />
-                {xt(l, 'refresh')}
-              </button>
-              <button
-                className="quality-button"
-                disabled={busy || pending || !unreadItems.length || !signed}
-                onClick={() => void read(unreadItems)}
-              >
-                <CheckCheck size={16} />
-                {xt(l, 'markVisible')}
-              </button>
-            </div>
+    <main
+      id="main"
+      className="wrap engagement-page inbox-page h5-surface"
+      aria-busy={loading || (signed && !data && !error)}
+    >
+      {!channel && (
+        <div className="h5-message-landing">
+          <h1 className="sr-only">{xt(l, 'inbox')}</h1>
+          <H5MessageCategories locale={l} />
+          <div className="h5-message-idle">
+            <H5EmptyArt label={ht(l, 'emptyMessagesHelp')} />
           </div>
+          <nav className="h5-message-tools" aria-label={ht(l, 'settings')}>
+            <Link
+              href={`/${l}/account/messages?channel=orders&filter=all`}
+              aria-label={ht(l, 'allUpdates')}
+            >
+              <CheckCheck size={22} />
+            </Link>
+            <Link href={`/${l}/account/settings`} aria-label={ht(l, 'settings')}>
+              <Settings size={22} aria-hidden="true" />
+            </Link>
+          </nav>
           {error && (
             <p className="quality-error" role="alert">
               {error}
             </p>
           )}
-          {notice && (
-            <p className="notice" role="status">
-              {notice}
-            </p>
-          )}
-          {(loading || (pending && !data)) && <p role="status">{xt(l, 'loading')}</p>}
-          {signed && data && data.items.length === 0 && !pending && (
-            <p className="quality-empty">{xt(l, 'emptyInbox')}</p>
-          )}
-          <div className="inbox-list">
-            {signed &&
-              data?.items.map((i) => (
-                <article className={`inbox-item ${i.unread ? 'is-unread' : ''}`} key={i.id}>
-                  <div className="inbox-icon">
-                    {i.kind === 'BOOKING' ? <Mail size={21} /> : <MessageCircle size={21} />}
-                  </div>
-                  <div className="inbox-item-copy">
-                    <div>
-                      <small>
-                        {xt(l, i.kind === 'BOOKING' ? 'bookings' : 'support')} · #
-                        {i.targetId.slice(-8).toUpperCase()}
-                      </small>
-                      <span className="inbox-read-state">
-                        {xt(l, i.unread ? 'unread' : 'read')}
-                      </span>
-                    </div>
-                    <h2>{i.title[l]}</h2>
-                    <p>
-                      {i.kind === 'BOOKING'
-                        ? statusText(l, i.status as Parameters<typeof statusText>[1])
-                        : caseStatus(l, i.status as Parameters<typeof caseStatus>[1])}
-                    </p>
-                    <small>
-                      <time dateTime={new Date(i.updatedAt).toISOString()}>
-                        {dateTime(l, i.updatedAt)}
-                      </time>
-                      {i.replies > 0 && ` · ${i.replies} ${xt(l, 'replies')}`}
-                    </small>
-                  </div>
-                  <div className="inbox-actions">
-                    <button
-                      className="quality-button"
-                      disabled={busy || pending}
-                      onClick={() => void read([i], i)}
-                    >
-                      {xt(l, i.kind === 'BOOKING' ? 'openBooking' : 'openSupport')}
-                      <ArrowUpRight size={16} />
-                    </button>
-                    {i.unread && (
-                      <button
-                        className="quality-link"
-                        disabled={busy || pending}
-                        onClick={() => void read([i])}
-                      >
-                        {xt(l, 'markRead')}
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))}
-          </div>
-          {data?.nextCursor && (
-            <button
-              className="quality-button inbox-more"
-              disabled={busy || pending}
-              onClick={() => void load(data.nextCursor!)}
-            >
-              {pending ? xt(l, 'loading') : xt(l, 'more')}
-            </button>
-          )}
-          <p className="discovery-note">{xt(l, 'refreshHint')}</p>
-        </>
+        </div>
       )}
+      {channel && (
+        <div className="h5-message-channel-heading">
+          <H5PageHeading
+            locale={l}
+            title={filter === 'support' ? ht(l, 'onlineSupport') : ht(l, 'orderServices')}
+            back="account/messages"
+          />
+        </div>
+      )}
+      <div className={`h5-inbox-content ${channel ? 'is-channel' : 'is-landing'}`}>
+        <header className="discovery-intro">
+          <span className="quality-eyebrow">HOGULINK / MESSAGES</span>
+          <h1>{xt(l, 'inboxTitle')}</h1>
+          <p>{xt(l, 'inboxHelp')}</p>
+        </header>
+        <p className="inbox-delivery-note">
+          <Mail size={17} />
+          {xt(l, 'localOnly')}
+        </p>
+        {!loading && !signed ? (
+          <CustomerAccess locale={l} actor={actor} setActor={setActor} />
+        ) : (
+          <>
+            <div className="inbox-toolbar">
+              <nav className="discovery-tabs" aria-label={xt(l, 'inbox')}>
+                {(['all', 'unread', 'bookings', 'support'] as const).map((f) => (
+                  <Link
+                    key={f}
+                    href={`/${l}/account/messages?filter=${f}`}
+                    aria-current={filter === f ? 'page' : undefined}
+                  >
+                    {xt(l, f)}
+                    {f === 'unread' && data && <span>{data.unreadCount}</span>}
+                  </Link>
+                ))}
+              </nav>
+              <div>
+                <button
+                  className="quality-button"
+                  disabled={busy || pending || !signed}
+                  onClick={() => void load()}
+                >
+                  <RefreshCw size={16} />
+                  {xt(l, 'refresh')}
+                </button>
+                <button
+                  className="quality-button"
+                  disabled={busy || pending || !unreadItems.length || !signed}
+                  onClick={() => void read(unreadItems)}
+                >
+                  <CheckCheck size={16} />
+                  {xt(l, 'markVisible')}
+                </button>
+              </div>
+            </div>
+            {error && (
+              <p className="quality-error" role="alert">
+                {error}
+              </p>
+            )}
+            {notice && (
+              <p className="notice" role="status">
+                {notice}
+              </p>
+            )}
+            {(loading || (pending && !data)) && <p role="status">{xt(l, 'loading')}</p>}
+            {signed && data && data.items.length === 0 && !pending && (
+              <div className="quality-empty h5-message-empty">
+                <H5EmptyArt />
+                <h2>{ht(l, 'emptyMessages')}</h2>
+                <p>{ht(l, 'emptyMessagesHelp')}</p>
+              </div>
+            )}
+            <div className="inbox-list">
+              {signed &&
+                data?.items.map((i) => (
+                  <article className={`inbox-item ${i.unread ? 'is-unread' : ''}`} key={i.id}>
+                    <div className="inbox-icon">
+                      {i.kind === 'BOOKING' ? <Mail size={21} /> : <MessageCircle size={21} />}
+                    </div>
+                    <div className="inbox-item-copy">
+                      <div>
+                        <small>
+                          {xt(l, i.kind === 'BOOKING' ? 'bookings' : 'support')} · #
+                          {i.targetId.slice(-8).toUpperCase()}
+                        </small>
+                        <span className="inbox-read-state">
+                          {xt(l, i.unread ? 'unread' : 'read')}
+                        </span>
+                      </div>
+                      <h2>{i.title[l]}</h2>
+                      <p>
+                        {i.kind === 'BOOKING'
+                          ? statusText(l, i.status as Parameters<typeof statusText>[1])
+                          : caseStatus(l, i.status as Parameters<typeof caseStatus>[1])}
+                      </p>
+                      <small>
+                        <time dateTime={new Date(i.updatedAt).toISOString()}>
+                          {dateTime(l, i.updatedAt)}
+                        </time>
+                        {i.replies > 0 && ` · ${i.replies} ${xt(l, 'replies')}`}
+                      </small>
+                    </div>
+                    <div className="inbox-actions">
+                      <button
+                        className="quality-button"
+                        disabled={busy || pending}
+                        onClick={() => void read([i], i)}
+                      >
+                        {xt(l, i.kind === 'BOOKING' ? 'openBooking' : 'openSupport')}
+                        <ArrowUpRight size={16} />
+                      </button>
+                      {i.unread && (
+                        <button
+                          className="quality-link"
+                          disabled={busy || pending}
+                          onClick={() => void read([i])}
+                        >
+                          {xt(l, 'markRead')}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+            </div>
+            {data?.nextCursor && (
+              <button
+                className="quality-button inbox-more"
+                disabled={busy || pending}
+                onClick={() => void load(data.nextCursor!)}
+              >
+                {pending ? xt(l, 'loading') : xt(l, 'more')}
+              </button>
+            )}
+            <p className="discovery-note">{xt(l, 'refreshHint')}</p>
+          </>
+        )}
+      </div>
     </main>
   );
 }

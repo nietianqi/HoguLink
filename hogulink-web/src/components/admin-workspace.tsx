@@ -105,6 +105,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [fetching, setFetching] = useState(false),
     [error, setError] = useState(''),
+    [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
   const [search, setSearch] = useState(''),
     [shop, setShop] = useState(''),
@@ -144,21 +145,25 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     setFetching(true);
     try {
       const value = await api<Workspace>('admin/workspace');
-      if (version === generation.current) setData(value);
+      if (version === generation.current) {
+        setData(value);
+        setReadError('');
+      }
     } catch (e) {
       if (version === generation.current) {
-        fail(e);
+        setReadError(errorText(l, e instanceof ClientError ? e.code : undefined));
         if (e instanceof ClientError && ['FORBIDDEN', 'UNAUTHENTICATED'].includes(e.code))
           setData(undefined);
       }
     } finally {
       if (version === generation.current) setFetching(false);
     }
-  }, [actor, fail]);
+  }, [actor, l]);
   useEffect(() => {
     setData(undefined);
     setReview(null);
     setResolution(null);
+    setReadError('');
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
@@ -763,9 +768,9 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             {et(l, 'denied')}
           </p>
         )}
-        {error && !review && !resolution && (
+        {(error || readError) && !review && !resolution && (
           <p className="notice error" role="alert">
-            {error}
+            {error || readError}
           </p>
         )}
         {notice && (
@@ -775,7 +780,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
         )}
         {hasRole && !data && (
           <section className="admin-panel admin-empty" aria-busy={fetching}>
-            {error ? (
+            {error || readError ? (
               <button className="button secondary" onClick={() => refresh()}>
                 {at(l, 'refresh')}
               </button>

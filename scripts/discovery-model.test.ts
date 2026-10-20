@@ -1,7 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { shopChoices, shopVisitContext } from '../hogulink-web/src/lib/discovery-model';
+import {
+  shopCards,
+  shopMonogram,
+  shopTone,
+  shopPage,
+  shopCardHref,
+} from '../hogulink-web/src/lib/shop-model';
+import { loadShopStats, type ShopStatsMap } from '../hogulink-web/src/lib/shop-stats';
 import { discoveryArticles } from '../hogulink-web/src/lib/discovery-content';
+import {
+  discoveryQuery,
+  discoveryParams,
+  postBookingHref,
+  postHref,
+} from '../hogulink-web/src/lib/discovery-feed-model';
+import type { DiscoveryPost } from '@hogulink/contracts';
+import { safeAccountReturn } from '../hogulink-web/src/lib/customer-auth-i18n';
 import { listings, offerings, stores } from '../hogulink-api/src/seed';
 import type { Catalog } from '../hogulink-web/src/lib/api';
 const catalog = (): Catalog =>
@@ -65,4 +81,217 @@ test('editorial guides have unique stable routes and complete three-language con
         assert(s.text[l]);
       }
     }
+});
+
+test('discovery search and navigation carry only supported preferences, never stale transaction values', () => {
+  const q = discoveryQuery({
+    tab: 'therapists',
+    search: ' Ｎａｇｉ ',
+    area: 'taito',
+    language: 'zh',
+    hold: 'private',
+    start: 'old',
+  });
+  assert.deepEqual(q, { tab: 'therapists', search: 'Nagi', area: 'taito', language: 'zh' });
+  assert(!discoveryParams(q).has('hold'));
+  assert.deepEqual(discoveryQuery({ tab: 'unknown', area: 'unknown', language: 'unknown' }), {
+    tab: 'recommended',
+  });
+  const post = {
+    id: 'therapist-aoi-tokyo',
+    author: { kind: 'therapist', slug: 'aoi-tokyo' },
+  } as DiscoveryPost;
+  assert.equal(postBookingHref('ja', post, q), '/ja/book/aoi-tokyo?area=taito&language=zh');
+  assert(postHref('en', post, q).includes('tab=therapists'));
+  assert(!postBookingHref('en', post, q).includes('search='));
+  assert.equal(
+    safeAccountReturn(
+      'en',
+      '/zh-cn/discover/guide-choose-your-visit?tab=guides&area=taito&language=zh',
+    ),
+    '/en/discover/guide-choose-your-visit?tab=guides&area=taito&language=zh',
+  );
+});
+
+test('shop cards show the cheapest shop-arranged price, real stats only, and a fair offer comparison', () => {
+  const now = Date.UTC(2026, 9, 20);
+  const c = catalog();
+  const cards = shopCards(
+    c,
+    {},
+    { 'store-nagi': { rating: 4.6, reviewCount: 3, completed90d: 7, favorites: 2 } },
+    now,
+  );
+  assert.deepEqual(
+    cards.map((x) => x.store.id),
+    shopChoices(c).map((x) => x.store.id),
+    'same shops and order as the existing shop choices',
+  );
+  for (const card of cards) {
+    assert.equal(card.fromTotal, shopChoices(c).find((x) => x.store.id === card.store.id)!.total);
+    assert.ok(card.members.every((m) => m.storeId === card.store.id && m.identityVerified));
+    assert.equal(new Set(card.members.map((m) => m.id)).size, card.members.length);
+    assert.equal(card.promotion, false);
+    assert.equal(card.fromCompare, undefined);
+  }
+  const nagi = cards.find((x) => x.store.id === 'store-nagi')!;
+  assert.equal(nagi.stats?.rating, 4.6);
+  // Unknown is different from successfully read zero counts.
+  assert.equal(cards.find((x) => x.store.id === 'store-sora')!.stats, undefined);
+
+  // A fair offer on the cheapest menu lowers the "from" price and keeps the regular one.
+  const o = c.offerings.find((x) => x.storeId === 'store-nagi' && x.durationMinutes === 60)!;
+  o.promotion = {
+    id: 'p',
+    price: o.price - 1000,
+    regularPrice: o.price,
+    startsAt: now - 1,
+    endsAt: now + 86_400_000,
+    createdAt: now,
+    comparisonAllowed: true,
+    comparisonReason: 'ELIGIBLE',
+  };
+  const offered = shopCards(c, {}, {}, now).find((x) => x.store.id === 'store-nagi')!;
+  assert.equal(offered.promotion, true);
+  assert.equal(offered.fromTotal, o.price - 1000 + o.transportFee);
+  assert.equal(offered.fromCompare, o.price + o.transportFee);
+  o.promotion = {
+    ...o.promotion,
+    comparisonAllowed: false,
+    comparisonReason: 'REGULAR_PRICE_TOO_NEW',
+  };
+  assert.equal(
+    shopCards(c, {}, {}, now).find((x) => x.store.id === 'store-nagi')!.fromCompare,
+    undefined,
+  );
+
+  // Language filters narrow members and languages together.
+  const zh = shopCards(c, { language: 'zh' }, {}, now);
+  assert.ok(zh.every((x) => x.members.every((m) => m.languages.includes('zh'))));
+  assert.ok(zh.every((x) => x.languages.includes('zh')));
+});
+
+test('shop brand marks are stable per shop', () => {
+  assert.equal(shopTone('store-nagi'), shopTone('store-nagi'));
+  assert.equal(shopMonogram({ name: { ja: 'なぎ', en: 'nagi', 'zh-cn': '凪' } }), 'N');
+  assert.equal(shopMonogram({ name: { ja: 'なぎ', en: '', 'zh-cn': '凪' } }), 'な');
+});
+
+test('shop stats fetch every unique ID in bounded batches and retain successful batches on failure', async () => {
+  const ids = Array.from({ length: 251 }, (_, i) => `shop-${i}`);
+  const calls: string[][] = [];
+  let active = 0,
+    peak = 0;
+  const fact = { rating: 4.8, reviewCount: 12, completed90d: 23, favorites: 7 };
+  const all = await loadShopStats([...ids, ids[0]], async (path) => {
+    const batch = new URLSearchParams(path.split('?')[1]).get('ids')!.split(',');
+    calls.push(batch);
+    peak = Math.max(peak, ++active);
+    await Promise.resolve();
+    active--;
+    return Object.fromEntries(batch.map((id) => [id, fact]));
+  });
+  assert.equal(Object.keys(all).length, 251);
+  assert.equal(calls.length, 6);
+  assert(calls.every((batch) => batch.length <= 50));
+  assert.equal(peak, 4);
+  assert.deepEqual(all['shop-124'], fact);
+  assert.deepEqual(all['shop-250'], fact);
+  const partial = await loadShopStats(ids, async (path) => {
+    const batch = new URLSearchParams(path.split('?')[1]).get('ids')!.split(',');
+    if (batch.includes('shop-50')) throw new Error('temporary outage');
+    return Object.fromEntries(batch.map((id) => [id, fact]));
+  });
+  assert.deepEqual(partial['shop-0'], fact);
+  assert.deepEqual(partial['shop-124'], fact);
+  assert.equal(partial['shop-50'], undefined);
+  let emptyCalled = false;
+  assert.deepEqual(
+    await loadShopStats([], async () => {
+      emptyCalled = true;
+      return {};
+    }),
+    {},
+  );
+  assert.equal(emptyCalled, false);
+});
+
+test('unknown shop statistics stay unknown while a real zero history remains available', async () => {
+  const c = catalog();
+  const zero = { rating: null, reviewCount: 0, completed90d: 0, favorites: 0 };
+  const failed = await loadShopStats(['store-nagi'], async () => {
+    throw new Error('offline');
+  });
+  assert.equal(shopCards(c, {}, failed).find((x) => x.store.id === 'store-nagi')!.stats, undefined);
+  const read: ShopStatsMap = { 'store-nagi': zero };
+  assert.deepEqual(shopCards(c, {}, read).find((x) => x.store.id === 'store-nagi')!.stats, zero);
+});
+
+test('a cheaper long menu keeps its actual duration, menu and localized service alongside the from-price', () => {
+  const c = catalog(),
+    now = Date.UTC(2026, 9, 20);
+  const long = c.offerings.find((o) => o.storeId === 'store-nagi' && o.durationMinutes === 90)!;
+  long.promotion = {
+    id: 'long-offer',
+    price: 1000,
+    regularPrice: long.price,
+    startsAt: now - 1,
+    endsAt: now + 86_400_000,
+    createdAt: now,
+    comparisonAllowed: true,
+    comparisonReason: 'ELIGIBLE',
+  };
+  const card = shopCards(c, { locale: 'zh-cn' }, {}, now).find((x) => x.store.id === 'store-nagi')!;
+  assert.equal(card.fromTotal, 1000 + long.transportFee);
+  assert.equal(card.fromDuration, 90);
+  assert.equal(card.fromOfferingId, long.id);
+  assert(card.serviceNames.includes(long.name['zh-cn']));
+  for (const locale of ['ja', 'en', 'zh-cn'] as const) {
+    const preferences = {
+      area: 'taito',
+      language: 'zh',
+      hold: 'private',
+      start: 'old',
+      payment: 'old',
+    };
+    const url = new URL(shopCardHref(locale, card, preferences), 'http://localhost:3000');
+    assert.equal(url.pathname, `/${locale}/shops/${card.store.slug}`);
+    assert.deepEqual(Object.fromEntries(url.searchParams), {
+      area: 'taito',
+      language: 'zh',
+      offering: long.id,
+      nomination: 'FREE',
+    });
+  }
+  assert.equal(
+    shopCards(c, {}, {}, long.promotion.endsAt + 1).find((x) => x.store.id === 'store-nagi')!
+      .fromDuration,
+    60,
+  );
+});
+
+test('shop pages cover shops beyond 50 without duplicates and clamp invalid pages', () => {
+  const first = shopCards(catalog())[0];
+  const cards = Array.from({ length: 51 }, (_, i) => ({
+    ...first,
+    store: { ...first.store, id: `shop-${i}` },
+  }));
+  const seen = Array.from({ length: 5 }, (_, i) => shopPage(cards, String(i + 1)).items).flat();
+  assert.equal(seen.length, 51);
+  assert.equal(new Set(seen.map((card) => card.store.id)).size, 51);
+  assert.equal(shopPage(cards, '5').items.length, 3);
+  assert.equal(shopPage(cards, '99999').page, 5);
+  for (const raw of ['-1', '0', 'garbage', '1.5', 'Infinity'])
+    assert.equal(shopPage(cards, raw).page, 1);
+  assert.equal(shopPage([], '9').page, 1);
+});
+
+test('shop browsing ignores unrelated URL menu-duration and budget fields', () => {
+  const c = catalog();
+  const expected = shopCards(c, { area: 'taito' });
+  const actual = shopCards(c, {
+    area: 'taito',
+    ...{ duration: '90', maxTotal: '10000', promo: '1' },
+  });
+  assert.deepEqual(actual, expected);
 });

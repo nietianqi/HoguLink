@@ -26,6 +26,7 @@ import { PriceLines } from './catalog';
 import { MobilePriceDock } from './mobile-ui';
 import { mt } from '@/lib/mobile-i18n';
 import { qt } from '@/lib/quality-i18n';
+import { visibleVisitTimes, visitTimeRange } from '@/lib/booking-presentation';
 
 export function useSession() {
   const [actor, setActor] = useState<Actor | null>(null);
@@ -316,6 +317,15 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
           <button type="button" className="text-button" onClick={v.reload}>
             {vt(l, 'retry')}
           </button>
+          {v.mode === 'INSTANT' && (
+            <button
+              type="button"
+              className="button secondary small"
+              onClick={() => v.setMode('SCHEDULED')}
+            >
+              {vt(l, 'chooseScheduled')}
+            </button>
+          )}
         </div>
       ) : v.mode === 'INSTANT' ? (
         <div className="instant-arrival">
@@ -370,7 +380,7 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
             role="group"
             aria-label={vt(l, 'selectTime')}
           >
-            {times.slice(0, expanded ? undefined : compact ? 8 : 12).map((slot) => (
+            {visibleVisitTimes(times, Number(v.start), expanded, compact ? 8 : 12).map((slot) => (
               <button
                 type="button"
                 key={slot}
@@ -391,6 +401,21 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
       {v.slotChanged && (
         <p className="selection-warning" role="status">
           {vt(l, 'staleSlot')}
+        </p>
+      )}
+      {v.validStart && (
+        <p className="visit-selected-time" role="status">
+          <Check size={16} />
+          <span>
+            {vt(l, 'selectedTime')}
+            <strong>
+              {visitTimeRange(
+                l,
+                Number(v.start),
+                Number(v.start) + v.offering.durationMinutes * 60000,
+              )}
+            </strong>
+          </span>
         </p>
       )}
       <p className="availability-disclaimer">{vt(l, 'slotHint')}</p>
@@ -468,17 +493,19 @@ export function BookingForm(props: PlannerProps) {
   const router = useRouter();
   const { actor, setActor, loading } = useSession();
   const [busy, setBusy] = useState(false);
+  const submitLock = useRef(false);
   async function login() {
     const returnTo = v.href;
     router.push(`/${l}/account/access?${new URLSearchParams({ returnTo })}`);
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!v.validStart || !v.offering) return;
+    if (submitLock.current || !v.validStart || !v.offering) return;
     if (actor?.role !== 'CUSTOMER') {
       v.setError(t(l, 'loginRequired'));
       return;
     }
+    submitLock.current = true;
     setBusy(true);
     v.setError('');
     try {
@@ -500,6 +527,7 @@ export function BookingForm(props: PlannerProps) {
         v.reload();
       }
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
@@ -654,7 +682,7 @@ export function BookingForm(props: PlannerProps) {
         </fieldset>
       </form>
       <aside className="summary-card visit-summary">
-        <span className="eyebrow small">YOUR VISIT</span>
+        <span className="eyebrow small">{vt(l, 'session')}</span>
         <div className="mini-profile">
           {v.nomination === 'NOMINATED' ? (
             <img src={v.listing.photo} width="64" height="64" alt="" />
@@ -679,8 +707,16 @@ export function BookingForm(props: PlannerProps) {
             </dd>
           </div>
           <div>
-            <dt>{t(l, 'start')}</dt>
-            <dd>{v.validStart ? `${dateTime(l, Number(v.start))} JST` : vt(l, 'selectTime')}</dd>
+            <dt>{vt(l, 'visitWindow')}</dt>
+            <dd>
+              {v.validStart && v.offering
+                ? visitTimeRange(
+                    l,
+                    Number(v.start),
+                    Number(v.start) + v.offering.durationMinutes * 60000,
+                  )
+                : vt(l, 'selectTime')}
+            </dd>
           </div>
           <div>
             <dt>{vt(l, 'location')}</dt>
@@ -692,6 +728,34 @@ export function BookingForm(props: PlannerProps) {
         </dl>
         {v.estimated && <PriceLines locale={l} quote={v.estimated} />}
         <p className="summary-estimate">{vt(l, 'estimate')}</p>
+        <div className="booking-desktop-action">
+          {!v.validStart ? (
+            <a className="button full" href="#visit-time">
+              {vt(l, 'selectTime')}
+              <ArrowRight size={16} />
+            </a>
+          ) : actor?.role !== 'CUSTOMER' ? (
+            <button
+              type="button"
+              className="button full"
+              disabled={busy || loading}
+              onClick={login}
+            >
+              {ca(l, 'login')} / {ca(l, 'register')}
+            </button>
+          ) : (
+            <button form="visit-form" type="submit" className="button full" disabled={busy}>
+              {busy ? <LoaderCircle size={17} className="spin" /> : <ArrowRight size={17} />}
+              {t(l, 'getQuote')}
+            </button>
+          )}
+          <p>{vt(l, 'nextStepHelp')}</p>
+          {v.error && (
+            <p className="error-message" role="alert">
+              {v.error}
+            </p>
+          )}
+        </div>
         <div className="summary-provider">
           <ShieldCheck size={18} />
           <div>

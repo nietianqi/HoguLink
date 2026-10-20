@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Clock3, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
+import { Clock3, ShieldCheck, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import type { Booking, Locale, Role } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
 import { dateTime, money } from '@/lib/i18n';
@@ -28,6 +28,7 @@ export function CompletionPanel({
   const [view, setView] = useState<View>(),
     [now, setNow] = useState(0),
     [error, setError] = useState(''),
+    [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false);
   const [action, setAction] = useState<string>(),
     [note, setNote] = useState(''),
@@ -35,19 +36,26 @@ export function CompletionPanel({
   const clock = useRef({ server: 0, local: 0 }),
     retry = useRef<{ payload: string; key: string } | null>(null);
   const generation = useRef(0);
+  const submitLock = useRef(false);
   const latest = useRef({ version: b.version, onUpdated });
   latest.current = { version: b.version, onUpdated };
   const relevant =
     ['ARRIVED', 'IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) || !!b.completion;
   const load = useCallback(async () => {
     const request = ++generation.current;
-    const value = await api<View>(`bookings/${b.id}/completion`);
-    if (request !== generation.current) return value;
-    clock.current = { server: value.serverNow, local: Date.now() };
-    setNow(value.serverNow);
-    setView(value);
-    if (value.bookingVersion !== latest.current.version) latest.current.onUpdated();
-    return value;
+    setLoading(true);
+    try {
+      const value = await api<View>(`bookings/${b.id}/completion`);
+      if (request !== generation.current) return value;
+      clock.current = { server: value.serverNow, local: Date.now() };
+      setNow(value.serverNow);
+      setView(value);
+      setError('');
+      if (value.bookingVersion !== latest.current.version) latest.current.onUpdated();
+      return value;
+    } finally {
+      if (request === generation.current) setLoading(false);
+    }
   }, [b.id]);
   useEffect(() => {
     if (!relevant) return;
@@ -84,7 +92,15 @@ export function CompletionPanel({
     retry.current = null;
   };
   async function submit() {
-    if (!action || !view) return;
+    if (
+      submitLock.current ||
+      !action ||
+      !view ||
+      view.bookingVersion !== b.version ||
+      (action === 'CONFIRM' && !consent)
+    )
+      return;
+    submitLock.current = true;
     setBusy(true);
     setError('');
     try {
@@ -110,12 +126,13 @@ export function CompletionPanel({
       retry.current = null;
       await load();
     } catch (e) {
-      setError(cpt(l, e instanceof ClientError ? e.code : 'error'));
       if (e instanceof ClientError && e.code === 'VERSION_CONFLICT') {
         retry.current = null;
-        await load();
+        await load().catch(() => {});
       }
+      setError(cpt(l, e instanceof ClientError ? e.code : 'error'));
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
@@ -148,12 +165,13 @@ export function CompletionPanel({
           <ShieldCheck size={22} />
         </span>
         <div>
-          <span className="eyebrow">SERVICE ASSURANCE</span>
+          <span className="eyebrow">{cpt(l, 'assurance')}</span>
           <h3>{cpt(l, 'title')}</h3>
         </div>
         {status && <span className="completion-status">{cpt(l, status)}</span>}
       </div>
       <p className="completion-intro">{cpt(l, 'intro')}</p>
+      {loading && !view && <p role="status">{cpt(l, 'loading')}</p>}
       <dl className="completion-times">
         <div>
           <dt>{cpt(l, 'scheduled')}</dt>
@@ -286,9 +304,18 @@ export function CompletionPanel({
         </details>
       )}
       {error && !action && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
+        <div role="alert">
+          <p className="form-error">{error}</p>
+          <button
+            type="button"
+            className="button secondary small"
+            disabled={loading || busy}
+            onClick={() => void load().catch(() => setError(cpt(l, 'error')))}
+          >
+            <RefreshCw size={15} />
+            {cpt(l, 'retry')}
+          </button>
+        </div>
       )}
       <MobileSheet
         open={!!action}
@@ -369,7 +396,7 @@ export function CompletionPanel({
           <div className="completion-actions">
             <button
               className="button"
-              disabled={busy || (action === 'CONFIRM' && !consent)}
+              disabled={locked || (action === 'CONFIRM' && !consent)}
               type="submit"
             >
               {cpt(l, 'submit')}

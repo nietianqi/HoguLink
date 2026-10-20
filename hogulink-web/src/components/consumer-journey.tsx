@@ -19,7 +19,17 @@ import {
   RefreshCw,
   Leaf,
   MapPin,
+  XCircle,
+  TicketPercent,
+  Settings,
 } from 'lucide-react';
+import {
+  H5AccountProfile,
+  H5AccountFeatures,
+  H5AccountUtilities,
+  H5OrderPrompt,
+} from './h5-consumer';
+import { ht } from '@/lib/h5-i18n';
 import type { Actor, CustomerOverview, Locale } from '@hogulink/contracts';
 import { api, type Catalog } from '@/lib/api';
 import { areaName, areas, dateTime, languageNames, money, statusText, t } from '@/lib/i18n';
@@ -35,10 +45,12 @@ import {
   type VisitHistory,
 } from '@/lib/consumer-model';
 import { useSession } from './booking-form';
+import { H5Badges, H5Price } from './h5-business';
 import { MobileSheet } from './mobile-ui';
 import { PriceLines } from './catalog';
 import { WorkdayTools } from './workday-tools';
 import { wt } from '@/lib/workday-i18n';
+import { instantServiceMembers } from '@/lib/service-availability';
 
 const durationWords = { 60: 'short', 90: 'medium', 120: 'long' } as const;
 const safeCarry = (q: Record<string, string>) =>
@@ -135,9 +147,12 @@ export function ServiceCatalog({
     search: q.search,
     locale: l,
     sort: q.sort,
+    promotions: q.promo === '1',
   });
   const href = (changes: Record<string, string>) =>
-    `/${l}/services?${new URLSearchParams({ ...q, ...changes })}`;
+    `/${l}/services?${new URLSearchParams(
+      Object.entries({ ...q, ...changes }).filter(([, v]) => v !== ''),
+    )}`;
   async function choose(item: Choice) {
     const request = ++choiceRequest.current;
     setOpen(true);
@@ -155,17 +170,10 @@ export function ServiceCatalog({
       if (!current) throw Error('unavailable');
       let candidates = current.members;
       if (mode === 'INSTANT') {
-        const checked = await Promise.all(
-          candidates.map(async (member) => ({
-            member,
-            slots: (
-              await api<{ slots: number[] }>(
-                `public/staff-listings/${member.id}/availability?${new URLSearchParams({ offeringId: item.offering.id, mode, language: q.language ?? '' })}`,
-              )
-            ).slots,
-          })),
-        );
-        candidates = checked.filter((c) => c.slots.length).map((c) => c.member);
+        candidates = await instantServiceMembers(candidates, item.offering.id, {
+          area: q.area,
+          language: q.language,
+        });
       }
       if (request !== choiceRequest.current) return;
       setSelected(current);
@@ -182,6 +190,16 @@ export function ServiceCatalog({
       if (request === choiceRequest.current) setBusy(false);
     }
   }
+  useEffect(() => {
+    if (!q.offering) return;
+    const item = choices.find((choice) => choice.offering.id === q.offering);
+    if (item) void choose(item);
+    return () => {
+      choiceRequest.current++;
+    };
+    // This selection belongs to the URL; subsequent state updates must not reopen the sheet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.offering]);
   const advancedFields = (
     <>
       <label>
@@ -228,6 +246,11 @@ export function ServiceCatalog({
     `/${l}/book/${member.slug}?${new URLSearchParams({ ...safeCarry(q), mode, offering: selected!.offering.id, nomination: free ? 'FREE' : 'NOMINATED' })}`;
   return (
     <main id="main" className="wrap consumer-page">
+      {q.offering && !choices.some((item) => item.offering.id === q.offering) && (
+        <p className="quality-error" role="alert">
+          {qt(l, 'unavailable')}
+        </p>
+      )}
       <div className="consumer-intro">
         <span className="quality-eyebrow">YOUR TIME / YOUR CHOICE</span>
         <h1>{ut(l, 'serviceTitle')}</h1>
@@ -270,6 +293,14 @@ export function ServiceCatalog({
             {n} {t(l, 'minutes')}
           </Link>
         ))}
+        <Link
+          className="consumer-promo-tab"
+          href={href({ promo: q.promo === '1' ? '' : '1' })}
+          aria-current={q.promo === '1' ? 'page' : undefined}
+        >
+          <TicketPercent size={14} aria-hidden="true" />
+          {ht(l, 'promotions')}
+        </Link>
       </nav>
       <div className="consumer-section-head">
         <h2>
@@ -294,9 +325,19 @@ export function ServiceCatalog({
                 {item.offering.durationMinutes} {t(l, 'minutes')} ·{' '}
                 {t(l, mode === 'INSTANT' ? 'instant' : 'scheduled')}
               </p>
+              <H5Badges
+                locale={l}
+                promotion={!!item.promotionEndsAt}
+                freeTravel={item.offering.transportFee === 0}
+              />
               <div className="consumer-service-bottom">
                 <div>
-                  <strong>{money(l, item.total)}</strong>
+                  <H5Price
+                    locale={l}
+                    total={item.total}
+                    compareTotal={item.compareTotal}
+                    promotionEndsAt={item.promotionEndsAt}
+                  />
                   <small>{ut(l, 'total')}</small>
                 </div>
                 <button className="quality-primary" onClick={() => void choose(item)}>
@@ -351,7 +392,7 @@ export function ServiceCatalog({
             <PriceLines
               locale={l}
               quote={{
-                serviceFee: selected.offering.price,
+                serviceFee: selected.freeTotal - selected.offering.transportFee,
                 nominationFee: selected.total - selected.freeTotal,
                 transportFee: selected.offering.transportFee,
                 total: selected.total,
@@ -576,9 +617,16 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
       ? `/${l}/account/bookings/${overview.reviewBookingId}`
       : `/${l}/account/bookings?status=completed`,
     support: `/${l}/account/support`,
+    closed: `/${l}/account/bookings?status=closed`,
   };
   return (
-    <main id="main" className="wrap consumer-page consumer-account workday-customer">
+    <main
+      id="main"
+      className="wrap consumer-page consumer-account workday-customer h5-surface"
+      aria-busy={loading || (signed && !overview && !error)}
+    >
+      <H5AccountProfile locale={l} actor={actor} loading={loading} />
+      <H5AccountFeatures locale={l} />
       <section className="consumer-account-hero">
         <div className="consumer-avatar">
           <UserRound size={30} strokeWidth={1.4} />
@@ -588,15 +636,25 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
           <h1>{signed ? ut(l, 'accountTitle') : ut(l, 'guest')}</h1>
           <p>{ut(l, 'accountHelp')}</p>
         </div>
-        {signed && (
-          <button
-            className="quality-button consumer-refresh"
-            aria-label={ut(l, 'refresh')}
-            onClick={() => void load()}
-          >
-            <RefreshCw size={17} />
-          </button>
-        )}
+        <div className="customer-account-actions">
+          <Link className="quality-button" href={`/${l}/account/support`}>
+            <ShieldCheck size={17} />
+            {ht(l, 'support')}
+          </Link>
+          <Link className="quality-button" href={`/${l}/account/settings`}>
+            <Settings size={17} />
+            {ht(l, 'settings')}
+          </Link>
+          {signed && (
+            <button
+              className="quality-button consumer-refresh"
+              aria-label={ut(l, 'refresh')}
+              onClick={() => void load()}
+            >
+              <RefreshCw size={17} />
+            </button>
+          )}
+        </div>
       </section>
       {signed && overview?.focus && (
         <section className="workday-customer-focus" aria-label={wt(l, 'currentVisit')}>
@@ -679,17 +737,21 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
               [ReceiptText, 'checkout'],
               [CalendarDays, 'active'],
               [Star, 'review'],
-              [MessageCircle, 'support'],
+              [XCircle, 'closed'],
             ] as const
           ).map(([Icon, key]) => (
-            <Link key={key} href={links[key]}>
+            <Link
+              key={key}
+              href={links[key]}
+              title={key === 'closed' ? ht(l, 'closedHelp') : undefined}
+            >
               <span>
-                <Icon size={24} strokeWidth={1.5} />
+                <Icon size={24} strokeWidth={1.6} />
                 {signed && overview && overview.counts[key] > 0 && (
                   <b>{overview.counts[key] > 99 ? '99+' : overview.counts[key]}</b>
                 )}
               </span>
-              <strong>{ut(l, key)}</strong>
+              <strong>{key === 'closed' ? ht(l, 'closed') : ut(l, key)}</strong>
             </Link>
           ))}
         </div>
@@ -709,12 +771,17 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
           </Link>
         )}
         {signed && overview && !overview.recent.length && (
-          <Link className="consumer-start" href={`/${l}/services`}>
+          <Link className="consumer-start h5-desktop-start" href={`/${l}/services`}>
             <Leaf size={22} />
             <span>{ut(l, 'start')}</span>
             <ArrowRight size={18} />
           </Link>
         )}
+        {!overview?.resumeCheckout &&
+          !overview?.focus &&
+          ((!loading && !signed) || overview?.counts.active === 0) && (
+            <H5OrderPrompt locale={l} signed={signed} />
+          )}
       </section>
       {overview && overview.recent.length > 0 && (
         <section className="consumer-recent">
@@ -738,6 +805,7 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
           ))}
         </section>
       )}
+      <H5AccountUtilities locale={l} />
       <section className="consumer-utilities">
         <h2>{ut(l, 'utilities')}</h2>
         <div>

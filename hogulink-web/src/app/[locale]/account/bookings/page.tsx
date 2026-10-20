@@ -1,7 +1,14 @@
 import { Operations } from '@/components/operations';
 import { asLocale } from '@/lib/i18n';
 import type { BookingFilter } from '@/lib/desktop-model';
-export const metadata = { title: 'My bookings', robots: { index: false, follow: false } };
+import { H5PageHeading } from '@/components/h5-overlays';
+import { ht } from '@/lib/h5-i18n';
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  return {
+    title: ht(asLocale((await params).locale), 'orders'),
+    robots: { index: false, follow: false },
+  };
+}
 export default async function Page({
   params,
   searchParams,
@@ -15,14 +22,13 @@ export default async function Page({
   )
     ? (q.status as BookingFilter)
     : 'all';
+  const l = asLocale((await params).locale);
   return (
-    <main id="main" className="wrap page-section">
-      <Operations
-        key={filter}
-        locale={asLocale((await params).locale)}
-        role="CUSTOMER"
-        initialFilter={filter}
-      />
+    <main id="main" className="wrap page-section h5-order-list-page h5-surface">
+      <div className="h5-order-list-heading">
+        <H5PageHeading locale={l} title={ht(l, 'orders')} />
+      </div>
+      <Operations key={filter} locale={l} role="CUSTOMER" initialFilter={filter} />
     </main>
   );
 }

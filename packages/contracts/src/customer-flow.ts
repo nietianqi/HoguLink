@@ -27,6 +27,8 @@ export type RefundRequest = {
 export type RefundRequestView = Omit<RefundRequest, 'customerId' | 'storeId'>;
 export type RefundCase = { request: RefundRequestView; remaining: number; bookingVersion: number };
 export type OrderCare = {
+  /** Version of the booking used for this balance snapshot (optional during rollout). */
+  bookingVersion?: number;
   captured: number;
   refunded: number;
   remaining: number;

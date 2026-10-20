@@ -1,8 +1,9 @@
 import { Operations } from '@/components/operations';
-import { asLocale, t } from '@/lib/i18n';
+import { asLocale } from '@/lib/i18n';
+import { vt } from '@/lib/visit-i18n';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   return {
-    title: t(asLocale((await params).locale), 'orders'),
+    title: vt(asLocale((await params).locale), 'orderDetails'),
     robots: { index: false, follow: false },
   };
 }

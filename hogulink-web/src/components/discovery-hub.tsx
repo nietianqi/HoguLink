@@ -2,25 +2,38 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowUpRight, BookOpen, MapPin, Store, UsersRound } from 'lucide-react';
 import type { Locale } from '@hogulink/contracts';
+import type { DiscoveryFeed } from '@hogulink/contracts';
+import { discoveryQuery } from '@/lib/discovery-feed-model';
 import type { Catalog } from '@/lib/api';
 import { areaName, areas, languageNames, money } from '@/lib/i18n';
 import { xt } from '@/lib/discovery-i18n';
 import { discoveryArticles } from '@/lib/discovery-content';
 import { shopChoices } from '@/lib/discovery-model';
 import { acceptanceLabel } from '@/lib/visit-i18n';
+import { H5DiscoveryFeed } from './h5-discovery-feed';
+import { H5ShopList } from './h5-shops';
+import { shopCards, shopPage, shopCardHref } from '@/lib/shop-model';
+import type { ShopStatsMap } from '@/lib/shop-stats';
 
 export function DiscoveryHub({
   locale: l,
   catalog,
   q,
+  feed,
+  shopStats = {},
 }: {
   locale: Locale;
   catalog: Catalog;
   q: Record<string, string>;
+  feed: DiscoveryFeed | null;
+  shopStats?: ShopStatsMap;
 }) {
   const tabs = ['recommended', 'shops', 'guides', 'safety'] as const;
   const tab = tabs.find((t) => t === q.tab) ?? 'recommended';
   const shops = shopChoices(catalog, q);
+  const page = shopPage(shopCards(catalog, { ...q, locale: l }, shopStats), q.shopPage);
+  const pageHref = (number: number) =>
+    `/${l}/discover?${new URLSearchParams({ ...q, tab: 'shops', shopPage: String(number) })}`;
   const shopHref = (slug: string) =>
     `/${l}/shops/${slug}?${new URLSearchParams(Object.fromEntries(['area', 'language'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`;
   const articles = discoveryArticles.filter((a) => tab !== 'safety' || a.category === 'safety');
@@ -36,7 +49,7 @@ export function DiscoveryHub({
         {articles.map((a, i) => (
           <Link
             className={`discovery-story story-${i}`}
-            href={`/${l}/guides/${a.slug}`}
+            href={`/${l}/discover/guide-${a.slug}?${new URLSearchParams(Object.fromEntries(['area', 'language', 'tab'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`}
             key={a.slug}
           >
             <div className="discovery-story-art">
@@ -72,7 +85,28 @@ export function DiscoveryHub({
     </section>
   );
   return (
-    <main id="main" className="wrap discovery-page" data-tab={tab}>
+    <main id="main" className="wrap discovery-page h5-surface" data-tab={tab}>
+      <H5DiscoveryFeed
+        locale={l}
+        initial={feed}
+        q={discoveryQuery(q)}
+        lead={
+          tab === 'shops' ? (
+            <H5ShopList
+              locale={l}
+              cards={page.items}
+              pagination={{
+                page: page.page,
+                pages: page.pages,
+                previous: pageHref(page.page - 1),
+                next: pageHref(page.page + 1),
+              }}
+              demo={catalog.demo}
+              href={(_, card) => shopCardHref(l, card, q)}
+            />
+          ) : undefined
+        }
+      />
       <header className="discovery-intro">
         <span className="quality-eyebrow">HOGULINK / DISCOVER</span>
         <h1>{xt(l, 'title')}</h1>

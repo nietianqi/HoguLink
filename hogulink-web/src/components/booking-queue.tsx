@@ -9,12 +9,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { Booking, Locale, Role } from '@hogulink/contracts';
 import type { Catalog } from '@/lib/api';
 import { dt } from '@/lib/desktop-i18n';
 import { csvCell, japanDay, needsAttention, type BookingFilter } from '@/lib/desktop-model';
 import { dateTime, money, statusText, t } from '@/lib/i18n';
+import { ht } from '@/lib/h5-i18n';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export function BookingQueue({
   locale: l,
@@ -35,7 +39,7 @@ export function BookingQueue({
   role: Role;
   bookings: Booking[];
   allBookings: Booking[];
-  catalog?: Catalog;
+  catalog?: Pick<Catalog, 'stores' | 'listings'>;
   selectedId?: string;
   onSelect: (id: string) => void;
   search: string;
@@ -46,6 +50,8 @@ export function BookingQueue({
   onPeriod: (v: string) => void;
 }) {
   const [view, setView] = useState('queue');
+  const router = useRouter();
+  const [mobileFilters, setMobileFilters] = useState(false);
   const [page, setPage] = useState(0);
   useEffect(() => setPage(0), [search, status, period]);
   const pageCount = Math.max(1, Math.ceil(bookings.length / 8));
@@ -58,6 +64,10 @@ export function BookingQueue({
       l
     ] ?? t(l, 'unassigned');
   function select(id: string) {
+    if (role === 'CUSTOMER') {
+      router.push(`/${l}/account/bookings/${id}`);
+      return;
+    }
     onSelect(id);
     document.getElementById('booking-detail')?.scrollIntoView({
       block: 'start',
@@ -107,11 +117,15 @@ export function BookingQueue({
     grouped.set(key, [...(grouped.get(key) ?? []), b]);
   }
   return (
-    <section className="queue-panel" aria-label={dt(l, 'worklist')} id="worklist">
+    <section
+      className="queue-panel"
+      aria-label={role === 'CUSTOMER' ? ht(l, 'bookingRecords') : dt(l, 'worklist')}
+      id="worklist"
+    >
       <div className="queue-heading">
         <div>
-          <span className="eyebrow small">DAILY OPERATIONS</span>
-          <h2>{dt(l, 'worklist')}</h2>
+          {role !== 'CUSTOMER' && <span className="eyebrow small">DAILY OPERATIONS</span>}
+          <h2>{role === 'CUSTOMER' ? ht(l, 'bookingRecords') : dt(l, 'worklist')}</h2>
         </div>
         <button className="button secondary small" onClick={exportCsv} disabled={!bookings.length}>
           <Download size={15} />
@@ -141,7 +155,22 @@ export function BookingQueue({
           </button>
         ))}
       </div>
-      <div className="queue-toolbar">
+      {role === 'CUSTOMER' && (
+        <button
+          type="button"
+          className="h5-order-filter-toggle"
+          aria-label={ht(l, 'filters')}
+          aria-expanded={mobileFilters}
+          aria-controls="h5-customer-order-filters"
+          onClick={() => setMobileFilters(!mobileFilters)}
+        >
+          <SlidersHorizontal size={20} />
+        </button>
+      )}
+      <div
+        id={role === 'CUSTOMER' ? 'h5-customer-order-filters' : undefined}
+        className={`queue-toolbar ${role === 'CUSTOMER' ? `h5-customer-order-filters ${mobileFilters ? 'is-open' : ''}` : ''}`}
+      >
         <label className="queue-search">
           <Search size={17} />
           <input
@@ -186,8 +215,10 @@ export function BookingQueue({
                 type="button"
                 className="mobile-booking-row"
                 key={b.id}
-                aria-pressed={b.id === selectedId}
-                onClick={() => select(b.id)}
+                aria-pressed={role === 'CUSTOMER' ? undefined : b.id === selectedId}
+                onClick={() =>
+                  role === 'CUSTOMER' ? router.push(`/${l}/account/bookings/${b.id}`) : select(b.id)
+                }
               >
                 <span className="mobile-booking-top">
                   <span className={`status-badge status-${b.status.toLowerCase()}`}>
@@ -322,17 +353,27 @@ export function BookingQueue({
       {!bookings.length && (
         <div className="queue-empty">
           <Search size={25} />
-          <p>{dt(l, 'noMatches')}</p>
-          <button
-            className="text-button"
-            onClick={() => {
-              onSearch('');
-              onStatus('all');
-              onPeriod('all');
-            }}
-          >
-            {dt(l, 'reset')}
-          </button>
+          <p>
+            {role === 'CUSTOMER' && !allBookings.length
+              ? ht(l, 'emptyBookings')
+              : dt(l, 'noMatches')}
+          </p>
+          {role === 'CUSTOMER' && !allBookings.length ? (
+            <Link className="button" href={`/${l}/therapists`}>
+              {ht(l, 'reserve')}
+            </Link>
+          ) : (
+            <button
+              className="text-button"
+              onClick={() => {
+                onSearch('');
+                onStatus('all');
+                onPeriod('all');
+              }}
+            >
+              {dt(l, 'reset')}
+            </button>
+          )}
         </div>
       )}
       <div className="queue-footer">

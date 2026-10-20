@@ -1,6 +1,12 @@
 import { CustomerHub } from '@/components/consumer-journey';
 import { asLocale } from '@/lib/i18n';
-export const metadata = { title: 'My HoguLink', robots: { index: false, follow: false } };
+import { ut } from '@/lib/consumer-i18n';
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  return {
+    title: ut(asLocale((await params).locale), 'mine'),
+    robots: { index: false, follow: false },
+  };
+}
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   return <CustomerHub locale={asLocale((await params).locale)} />;
 }

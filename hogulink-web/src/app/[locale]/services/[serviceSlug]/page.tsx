@@ -37,6 +37,7 @@ export default async function Page({
         {catalog.listings.map((listing) => (
           <TherapistCard
             key={listing.id}
+            demo={catalog.demo}
             listing={listing}
             store={catalog.stores.find((x) => x.id === listing.storeId)!}
             offerings={catalog.offerings}

@@ -1,5 +1,11 @@
 import type { Locale } from '@hogulink/contracts';
 const words = {
+  messagesFailed: [
+    'メッセージを読み込めませんでした。再試行してください。',
+    'Messages could not be loaded. Please retry.',
+    '任务消息读取失败，请重试。',
+  ],
+  retryMessages: ['メッセージを再読み込み', 'Retry messages', '重新读取消息'],
   demoContact: ['デモ連絡先・未接続', 'Demo contact · not connected', '演示联系人 · 尚未接通'],
   rearranging: ['店舗が調整中', 'Shop rearranging', '店铺重新安排中'],
   you: ['自分', 'You', '我'],

@@ -32,7 +32,7 @@ export default async function Page({
       </Link>
       <VisitSteps locale={l} step={1} />
       <div className="visit-page-heading">
-        <span className="eyebrow small">PLAN YOUR VISIT</span>
+        <span className="eyebrow small">{vt(l, 'step1')}</span>
         <h1>{vt(l, 'bookingTitle')}</h1>
         <p>{vt(l, 'bookingText')}</p>
       </div>

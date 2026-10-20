@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import { encodeRecord, decodeRecord } from './record-codec.js';
+import type { ListingStats } from '@hogulink/contracts';
 
 type Row = { id: string; body: string };
 type Scalar = string | number | boolean | null;
@@ -14,6 +15,7 @@ const numericFields = new Set([
   'expiresAt',
   'createdAt',
   'updatedAt',
+  'completedAt',
   'startAt',
   'endAt',
   'dueAt',
@@ -30,8 +32,14 @@ const indexedFields = [
   'status',
   'storeId',
   'customerId',
+  'postId',
+  'slug',
+  'saved',
+  'liked',
   'staffId',
   'assignedStaffId',
+  'assignedListingId',
+  'listingId',
   'bookingId',
   'holdId',
   'ownerId',
@@ -98,6 +106,9 @@ export interface Records {
   clearDue(now: number): Promise<void>;
   counts(kind: string, field: string): Promise<Record<string, number>>;
   count(kind: string, filters: RecordFilter): Promise<number>;
+  listingStats(listingIds: string[], since: number): Promise<Record<string, ListingStats>>;
+  /** Same facts per shop: approved shop reviews, completed shop visits and active shop saves. */
+  storeStats(storeIds: string[], since: number): Promise<Record<string, ListingStats>>;
   assertEmpty(): Promise<void>;
   put<T extends { id: string }>(kind: string, value: T): Promise<void>;
   interval(value: {
@@ -162,6 +173,9 @@ export class Repository {
       active_expiry: ['active', 'expiresAt'],
       shop_service: ['storeId', 'quote.startAt'],
       owner_created: ['customerId', 'createdAt'],
+      listing_reviews: ['listingId', 'status'],
+      listing_favorites: ['listingId', 'active'],
+      listing_completions: ['assignedListingId', 'status', 'updatedAt'],
     }))
       await execute(
         `CREATE INDEX IF NOT EXISTS records_${name} ON records(kind,${fields.map((f) => expression(f, !!this.pool)).join(',')})`,
@@ -269,7 +283,10 @@ export class Repository {
     const writable = () => {
       if (readOnly) throw new Error('Cannot write in a read-only transaction');
     };
-    const query = async (sql: string, args: (string | number | null)[] = []) => {
+    const query = async <T = Row>(
+      sql: string,
+      args: (string | number | null)[] = [],
+    ): Promise<T[]> => {
       if (client) {
         let n = 0;
         return (
@@ -277,10 +294,10 @@ export class Repository {
             sql.replace(/\?/g, () => `$${++n}`),
             args,
           )
-        ).rows as Row[];
+        ).rows as T[];
       }
       const stmt = this.sqlite!.prepare(sql);
-      if (/^SELECT/i.test(sql)) return stmt.all(...args) as unknown as Row[];
+      if (/^SELECT/i.test(sql)) return stmt.all(...args) as unknown as T[];
       stmt.run(...args);
       return [];
     };
@@ -312,6 +329,71 @@ export class Repository {
         }
       }
       return { clauses, args };
+    };
+    // Read-only aggregates over indexed fields; review bodies and booking addresses are never decoded.
+    const aggregateStats = async (
+      keys: string[],
+      since: number,
+      by: { review: string; booking: string; favorite: [kind: string, field: string] },
+    ) => {
+      const ids = [...new Set(keys)];
+      const result: Record<string, ListingStats> = Object.fromEntries(
+        ids.map((id) => [
+          id,
+          {
+            rating: null,
+            reviewCount: 0,
+            completed90d: 0,
+            favorites: 0,
+          },
+        ]),
+      );
+      if (!ids.length) return result;
+      const exp = (field: string) => expression(field, !!client);
+      const grouped = async (
+        kind: string,
+        filters: RecordFilter,
+        field: string,
+        extra = '',
+        average = false,
+        extraArgs: number[] = [],
+      ) => {
+        const { clauses, args } = where(kind, filters);
+        const score = client
+          ? "CAST(body::jsonb #>> '{scores,overall}' AS DOUBLE PRECISION)"
+          : "json_extract(body,'$.scores.overall')";
+        return query<{ id: string; count: string | number; average: number | null }>(
+          `SELECT ${exp(field)} AS id,COUNT(*) AS count${average ? `,AVG(${score}) AS average` : ''} FROM records WHERE ${clauses.join(' AND ')}${extra} GROUP BY ${exp(field)}`,
+          [...args, ...extraArgs],
+        );
+      };
+      for (const row of await grouped(
+        'experienceReviews',
+        { [by.review]: ids, status: 'APPROVED' },
+        by.review,
+        '',
+        true,
+      )) {
+        result[row.id].reviewCount = Number(row.count);
+        result[row.id].rating =
+          row.average === null ? null : Math.round(Number(row.average) * 10) / 10;
+      }
+      for (const row of await grouped(
+        'bookings',
+        { [by.booking]: ids, status: 'COMPLETED', updatedAt: { gte: since } },
+        by.booking,
+        ` AND COALESCE(${exp('completedAt')},${exp('updatedAt')})>=?`,
+        false,
+        [since],
+      ))
+        result[row.id].completed90d = Number(row.count);
+      for (const row of await grouped(
+        by.favorite[0],
+        { [by.favorite[1]]: ids, active: true },
+        by.favorite[1],
+      ))
+        result[row.id].favorites = Number(row.count);
+      return result;
     };
     return {
       get: async <T>(kind: string, id: string) => {
@@ -361,6 +443,18 @@ export class Repository {
           )[0].body,
         );
       },
+      listingStats: (listingIds, since) =>
+        aggregateStats(listingIds, since, {
+          review: 'listingId',
+          booking: 'assignedListingId',
+          favorite: ['favorites', 'listingId'],
+        }),
+      storeStats: (storeIds, since) =>
+        aggregateStats(storeIds, since, {
+          review: 'storeId',
+          booking: 'storeId',
+          favorite: ['storeFavorites', 'storeId'],
+        }),
       counts: async (kind, field) => {
         const exp = expression(field, !!client);
         const rows = await query(

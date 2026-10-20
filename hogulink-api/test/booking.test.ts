@@ -503,6 +503,18 @@ test('checkout restores server-verified payment authentication after navigation'
     assert.equal(checkout.payment?.status, 'AUTHORIZED');
   }));
 
+test('checkout returns the server time used for the remaining hold, independent of the customer clock', () =>
+  fixture(async (e, clock) => {
+    const p = await prepare(e);
+    clock.value += 45000;
+    const checkout = await e.checkout(customer, p.h.id);
+    assert.equal(checkout.serverNow, clock.value);
+    assert.equal(
+      checkout.hold.expiresAt - checkout.serverNow,
+      config.holdTtlSeconds * 1000 - 45000,
+    );
+  }));
+
 test('repeated SOS responses never expose an unconfirmed customer address', () =>
   fixture(async (e) => {
     const b = await create(e);

@@ -34,6 +34,51 @@ const app = await NestFactory.create<NestExpressApplication>(TestModule, {
   logger: ['error', 'warn'],
 });
 app.useBodyParser('json', { limit: '512kb' });
+// Fault injection is confined to this disposable, memory-only test entry point.
+const failures = new Set<string>();
+const supportedFailures = [
+  'catalog',
+  'completion',
+  'messages',
+  'care',
+  'merchant',
+  'staff',
+  'admin',
+];
+app.use('/__qa/faults', (req: any, res: any) => {
+  if (req.get('x-qa-token') !== token) return res.status(404).end();
+  if (req.method === 'POST') {
+    if (
+      !Array.isArray(req.body?.failures) ||
+      req.body.failures.some(
+        (x: unknown) => typeof x !== 'string' || !supportedFailures.includes(x),
+      )
+    )
+      return res.status(422).end();
+    failures.clear();
+    for (const item of req.body.failures) failures.add(item);
+  } else if (req.method !== 'GET') return res.status(405).end();
+  res.json({ disposable: true, failures: [...failures] });
+});
+app.use('/v1', (req: any, res: any, next: () => void) => {
+  if (req.method !== 'GET') return next();
+  const failed =
+    (failures.has('catalog') && req.path === '/public/staff-listings') ||
+    (failures.has('completion') && /^\/bookings\/[^/]+\/completion$/.test(req.path)) ||
+    (failures.has('messages') &&
+      /^\/(?:customer\/bookings|merchant\/bookings|staff\/tasks)\/[^/]+\/messages$/.test(
+        req.path,
+      )) ||
+    (failures.has('merchant') && req.path === '/merchant/workspace') ||
+    (failures.has('staff') && req.path === '/staff/workspace') ||
+    (failures.has('admin') && req.path === '/admin/workspace') ||
+    (failures.has('care') && /^\/customer\/bookings\/[^/]+\/care$/.test(req.path));
+  if (failed)
+    return res
+      .status(503)
+      .json({ error: { code: 'QA_UNAVAILABLE', message: 'Disposable read failure' } });
+  next();
+});
 app.use('/__qa/clock', (req: any, res: any) => {
   if (req.get('x-qa-token') !== token) return res.status(404).end();
   if (req.method === 'POST') {

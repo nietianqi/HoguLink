@@ -14,6 +14,7 @@ import {
   UserRound,
   House,
   MessageCircle,
+  Compass,
 } from 'lucide-react';
 import { xt } from '@/lib/discovery-i18n';
 import { InboxUnreadBadge } from './inbox-badge';
@@ -25,6 +26,7 @@ import { api } from '@/lib/api';
 import { money, t } from '@/lib/i18n';
 import { mt } from '@/lib/mobile-i18n';
 import { ut } from '@/lib/consumer-i18n';
+import { ht } from '@/lib/h5-i18n';
 import { PriceLines } from './catalog';
 
 // Native modal provides focus containment, Escape, and an inert background.
@@ -35,6 +37,7 @@ export function MobileSheet({
   locale,
   children,
   className,
+  closeIcon,
 }: {
   open: boolean;
   onClose: () => void;
@@ -42,6 +45,7 @@ export function MobileSheet({
   locale: Locale;
   children: ReactNode;
   className?: string;
+  closeIcon?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -89,7 +93,7 @@ export function MobileSheet({
           <div className="sheet-heading">
             <h2 id={titleId}>{title}</h2>
             <button type="button" autoFocus onClick={onClose} aria-label={mt(locale, 'close')}>
-              <X size={21} />
+              {closeIcon ?? <X size={21} />}
             </button>
           </div>
           {children}
@@ -210,7 +214,7 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
     };
   }, [path]);
   if (
-    /\/(therapists|shops|book|checkout)\//.test(path) ||
+    /\/(therapists|shops|book|checkout|discover)\//.test(path) ||
     /\/admin\/(login|activate)/.test(path) ||
     /\/onboarding(\/|$)/.test(path)
   )
@@ -309,14 +313,16 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
               {
                 href: `/${locale}/discover`,
                 label: xt(locale, 'discover'),
-                Icon: Search,
+                Icon: Compass,
                 active: path.startsWith(`/${locale}/discover`) || path.includes('/guides/'),
               },
               {
-                href: `/${locale}/services`,
-                label: ut(locale, 'services'),
-                Icon: ListChecks,
-                active: path.startsWith(`/${locale}/services`),
+                href: `/${locale}/therapists`,
+                label: ht(locale, 'booking'),
+                Icon: CalendarDays,
+                active:
+                  path.startsWith(`/${locale}/therapists`) ||
+                  path.startsWith(`/${locale}/services`),
               },
               {
                 href: `${base}/messages`,
@@ -343,15 +349,28 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
       : items;
   return (
     <nav
-      className="mobile-bottom-nav"
+      className={`mobile-bottom-nav ${role ? '' : 'h5-bottom-nav'}`}
       style={{ gridTemplateColumns: `repeat(${visibleItems.length},minmax(0,1fr))` }}
       aria-label={
         locale === 'ja' ? 'メインメニュー' : locale === 'en' ? 'Main navigation' : '底部导航'
       }
     >
-      {visibleItems.map(({ href, label, Icon, active }) => (
-        <Link href={href} key={href} aria-current={active ? 'page' : undefined}>
-          <Icon size={21} strokeWidth={active ? 2.3 : 1.6} />
+      {visibleItems.map(({ href, label, Icon, active }, index) => (
+        <Link
+          href={href}
+          key={href}
+          aria-label={!role && index === 0 ? label : undefined}
+          aria-current={active ? 'page' : undefined}
+        >
+          {role ? (
+            <Icon size={21} strokeWidth={active ? 2.3 : 1.6} />
+          ) : index === 2 ? (
+            <strong className="h5-nav-book-word">{ht(locale, 'booking')}</strong>
+          ) : index === 0 && active ? (
+            <strong className="h5-nav-home-word">Hogu</strong>
+          ) : (
+            <Icon className="h5-nav-icon" size={22} strokeWidth={active ? 2.2 : 1.7} />
+          )}
           {href === `/${locale}/account/messages` && <InboxUnreadBadge />}
           <span>{label}</span>
         </Link>

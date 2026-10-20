@@ -146,6 +146,8 @@ export type Store = {
   merchantId: string;
   slug: string;
   name: Localized;
+  /** Public introduction, copied only from an approved merchant application. */
+  description?: Localized;
   legalName: string;
   acceptanceMode: AcceptanceMode;
   active: boolean;
@@ -174,12 +176,18 @@ export type Offering = {
   approved: boolean;
   active?: boolean;
   regulatoryCategory: 'RELAXATION' | 'LICENSED';
+  /** When the current regular price took effect (for fair price comparisons). */
+  priceSince?: number;
+  promotion?: OfferingPromotion;
+  /** Past promotion windows, newest last, kept for the comparison look-back. */
+  promotionHistory?: PromotionWindow[];
 };
 export type PublicStore = Pick<
   Store,
   | 'id'
   | 'slug'
   | 'name'
+  | 'description'
   | 'legalName'
   | 'legalAddress'
   | 'contact'
@@ -234,6 +242,9 @@ export type Quote = {
   area: string;
   requiredLanguage: string;
   serviceFee: number;
+  /** Set when serviceFee is a shop promotion price; the regular price at quote time. */
+  promotionId?: string;
+  regularServiceFee?: number;
   nominationFee: number;
   transportFee: number;
   total: number;
@@ -667,11 +678,13 @@ export function scheduledCancellationBps(policy: CancellationPolicy, minutesBefo
       : 0;
 }
 export type * from './engagement.js';
+export type * from './discovery.js';
 export type * from './customer-flow.js';
 export type * from './coordination.js';
 export type * from './subscription.js';
 export type * from './invoicing.js';
 export type * from './reporting.js';
+export type * from './mobile.js';
 export const acceptanceScopeInput = z
   .object({
     active: z.boolean(),
@@ -762,4 +775,161 @@ export function automaticAcceptanceReason(
   if (quote.total < r.minTotal || quote.total > r.maxTotal) return 'AMOUNT';
   if (used >= r.dailyLimit) return 'DAILY_LIMIT';
   return 'ELIGIBLE';
+}
+
+// ---- Limited-time prices (限时优惠), listing stats and coarse distance ----
+const promotionDayMs = 86_400_000;
+/** A shop-funded, time-limited price for one service (限时优惠). */
+export type OfferingPromotion = {
+  id: string;
+  price: number;
+  /** The shop's regular price when the promotion was saved. */
+  regularPrice: number;
+  startsAt: number;
+  endsAt: number;
+  createdAt: number;
+  /**
+   * Whether the regular price may be shown struck through (二重価格表示).
+   * Decided when the promotion is saved; see `comparisonEligibility`.
+   */
+  comparisonAllowed: boolean;
+  comparisonReason: 'ELIGIBLE' | 'REGULAR_PRICE_TOO_NEW' | 'TOO_MANY_PROMOTION_DAYS';
+};
+export type PromotionWindow = { startsAt: number; endsAt: number };
+
+export const PROMOTION_RULES = {
+  maxDays: 14,
+  maxLeadDays: 30,
+  minPriceRatio: 0.3,
+  /** Regular price must have applied this long before a struck-through comparison. */
+  regularPriceMinDays: 28,
+  /** Look-back window; promotions may cover at most half of it. */
+  lookbackDays: 56,
+  maxPromotionDaysInLookback: 28,
+} as const;
+
+export const promotionInput = z
+  .object({
+    version: z.number().int().positive(),
+    price: z.number().int().min(500).max(200000),
+    startsAt: z.number().int().positive(),
+    endsAt: z.number().int().positive(),
+  })
+  .strict();
+
+export const promotionPriceFloor = (regular: number) =>
+  Math.ceil(regular * PROMOTION_RULES.minPriceRatio);
+
+/** Union elapsed intervals so edits neither erase nor double-count discounted time. */
+export function mergePromotionWindows(
+  windows: PromotionWindow[],
+  from = -Infinity,
+  to = Infinity,
+): PromotionWindow[] {
+  const sorted = windows
+    .filter((w) => Number.isFinite(w.startsAt) && Number.isFinite(w.endsAt))
+    .map((w) => ({ startsAt: Math.max(from, w.startsAt), endsAt: Math.min(to, w.endsAt) }))
+    .filter((w) => w.startsAt < w.endsAt)
+    .sort((a, b) => a.startsAt - b.startsAt);
+  const merged: PromotionWindow[] = [];
+  for (const window of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && window.startsAt <= last.endsAt) last.endsAt = Math.max(last.endsAt, window.endsAt);
+    else merged.push({ ...window });
+  }
+  return merged;
+}
+
+/**
+ * Japan's Premiums and Representations Act guidance treats a "regular price"
+ * comparison as fair only when that price was genuinely charged for most of the
+ * recent period. Promotions may still run when this fails; the UI then shows
+ * the promotional price without a struck-through comparison.
+ */
+export function comparisonEligibility(
+  promotion: PromotionWindow,
+  priceSince: number | undefined,
+  history: PromotionWindow[],
+): OfferingPromotion['comparisonReason'] {
+  if (
+    !priceSince ||
+    promotion.startsAt - priceSince < PROMOTION_RULES.regularPriceMinDays * promotionDayMs
+  )
+    return 'REGULAR_PRICE_TOO_NEW';
+  const from = promotion.startsAt - PROMOTION_RULES.lookbackDays * promotionDayMs;
+  const covered = mergePromotionWindows([...history, promotion], from, promotion.endsAt).reduce(
+    (sum, w) => sum + w.endsAt - w.startsAt,
+    0,
+  );
+  return covered > PROMOTION_RULES.maxPromotionDaysInLookback * promotionDayMs
+    ? 'TOO_MANY_PROMOTION_DAYS'
+    : 'ELIGIBLE';
+}
+
+type PricedOffering = { price: number; promotion?: OfferingPromotion };
+
+/** The active promotion for an offering at `now`, if it still matches the regular price. */
+export function activePromotion(offering: PricedOffering, now: number) {
+  const p = offering.promotion;
+  return p && p.startsAt <= now && now < p.endsAt && p.regularPrice === offering.price
+    ? p
+    : undefined;
+}
+
+/** Service price a customer pays at `now`, with the comparison price only when allowed. */
+export function effectiveServicePrice(offering: PricedOffering, now: number) {
+  const promotion = activePromotion(offering, now);
+  return {
+    price: promotion?.price ?? offering.price,
+    promotion,
+    comparePrice: promotion?.comparisonAllowed ? offering.price : undefined,
+  };
+}
+
+/** Public, aggregated facts for a therapist listing. Never fabricated. */
+export type ListingStats = {
+  rating: number | null;
+  reviewCount: number;
+  completed90d: number;
+  favorites: number;
+};
+
+/** Ward office coordinates for the served Tokyo areas (approximate centroids). */
+export const areaCentroids: Record<string, { lat: number; lng: number }> = {
+  shinjuku: { lat: 35.6938, lng: 139.7034 },
+  shibuya: { lat: 35.6633, lng: 139.6977 },
+  minato: { lat: 35.658, lng: 139.7515 },
+  chuo: { lat: 35.6706, lng: 139.772 },
+  taito: { lat: 35.7125, lng: 139.7799 },
+};
+
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = Math.PI / 180,
+    dLat = (b.lat - a.lat) * rad,
+    dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/** Nearest served area to a point, and the distance to it. */
+export function nearestArea(point: { lat: number; lng: number }, areas: string[]) {
+  let best: { area: string; km: number } | undefined;
+  for (const area of areas) {
+    const c = areaCentroids[area];
+    if (!c) continue;
+    const km = distanceKm(point, c);
+    if (!best || km < best.km) best = { area, km };
+  }
+  return best;
+}
+
+/** Distance between two served areas' centroids, used for coarse server-side ordering. */
+export function areaDistanceKm(from: string, to: string[]) {
+  const a = areaCentroids[from];
+  if (!a) return Infinity;
+  return Math.min(
+    ...to.map((x) => (areaCentroids[x] ? distanceKm(a, areaCentroids[x]) : Infinity)),
+  );
 }

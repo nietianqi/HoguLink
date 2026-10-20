@@ -1,3 +1,4 @@
+import { effectiveServicePrice } from '@hogulink/contracts';
 import type { Booking, Listing, Offering, Role } from '@hogulink/contracts';
 
 export function japanDay(time: number): string {
@@ -6,10 +7,17 @@ export function japanDay(time: number): string {
 export function matchingOffering(listing: Listing, offerings: Offering[], duration: number) {
   return offerings
     .filter((o) => listing.offeringIds.includes(o.id) && o.durationMinutes === duration)
-    .sort((a, b) => a.price + a.transportFee - b.price - b.transportFee)[0];
+    .sort(
+      (a, b) =>
+        effectiveServicePrice(a, Date.now()).price +
+        a.transportFee -
+        effectiveServicePrice(b, Date.now()).price -
+        b.transportFee,
+    )[0];
 }
-export const nominatedTotal = (offering: Offering, fee = 500) =>
-  offering.price + offering.transportFee + fee;
+/** Nominated total at the price charged now (a live shop promotion is applied). */
+export const nominatedTotal = (offering: Offering, fee = 500, now = Date.now()) =>
+  effectiveServicePrice(offering, now).price + offering.transportFee + fee;
 export function needsAttention(b: Booking, role: Role): boolean {
   if (['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status)) return false;
   if (role === 'CUSTOMER')

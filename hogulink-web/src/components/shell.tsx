@@ -9,6 +9,10 @@ import {
   UserRound,
   MapPin,
   ChevronLeft,
+  House,
+  Compass,
+  CalendarDays,
+  MessageCircle,
 } from 'lucide-react';
 import { mt } from '@/lib/mobile-i18n';
 import { ut } from '@/lib/consumer-i18n';
@@ -17,14 +21,19 @@ import type { Locale } from '@hogulink/contracts';
 import { localeMap, locales, t } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
+import { ht } from '@/lib/h5-i18n';
 export function Header({ locale }: { locale: Locale }) {
   const path = usePathname();
   const query = useSearchParams();
-  const workspace = /^\/(ja|en|zh-cn)\/(merchant|staff|admin|account)(\/|$)/.test(path);
+  const workspace = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   const base = path.split('/').slice(0, 3).join('/');
+  const h5Tab = ['', '/discover', '/therapists', '/account', '/account/messages'].some(
+    (suffix) => path === `/${locale}${suffix}`,
+  );
+  const business = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   return (
     <>
-      <div className="demo-bar">
+      <div className={`demo-bar ${business ? '' : 'h5-consumer-demo'}`}>
         <span>
           <span className="demo-dot" />
           {t(locale, 'demo')}
@@ -44,7 +53,9 @@ export function Header({ locale }: { locale: Locale }) {
           </Link>
         </nav>
       </div>
-      <header className={`header wrap ${workspace ? 'workspace-header' : ''}`}>
+      <header
+        className={`header wrap ${workspace ? 'workspace-header' : 'customer-header'} ${h5Tab ? 'h5-tab-header' : ''}`}
+      >
         {/\/(therapists|shops|book)\//.test(path) && (
           <Link
             className="mobile-back"
@@ -75,24 +86,38 @@ export function Header({ locale }: { locale: Locale }) {
             <Link href={`${base}/support`}>{ct(locale, 'center')}</Link>
           </nav>
         ) : (
-          <nav className="main-nav">
-            <Link href={`/${locale}`} aria-current={path === `/${locale}` ? 'page' : undefined}>
-              {t(locale, 'explore')}
-            </Link>
-            <Link
-              href={`/${locale}/discover`}
-              aria-current={path === `/${locale}/discover` ? 'page' : undefined}
-            >
-              {xt(locale, 'discover')}
-            </Link>
-            <Link
-              href={`/${locale}/services`}
-              aria-current={path === `/${locale}/services` ? 'page' : undefined}
-            >
-              {ut(locale, 'services')}
-            </Link>
-            <Link href={`/${locale}#how`}>{t(locale, 'how')}</Link>
-            <Link href={`/${locale}#safety`}>{t(locale, 'safety')}</Link>
+          <nav className="main-nav customer-main-nav" aria-label={ht(locale, 'navigation')}>
+            {[
+              {
+                href: `/${locale}`,
+                label: ht(locale, 'home'),
+                Icon: House,
+                active: path === `/${locale}`,
+              },
+              {
+                href: `/${locale}/discover`,
+                label: xt(locale, 'discover'),
+                Icon: Compass,
+                active: path.startsWith(`/${locale}/discover`),
+              },
+              {
+                href: `/${locale}/therapists`,
+                label: ht(locale, 'booking'),
+                Icon: CalendarDays,
+                active: /\/(therapists|shops|book|services)(\/|$)/.test(path),
+              },
+              {
+                href: `/${locale}/account/messages`,
+                label: xt(locale, 'inbox'),
+                Icon: MessageCircle,
+                active: path.startsWith(`/${locale}/account/messages`),
+              },
+            ].map(({ href, label, Icon, active }) => (
+              <Link key={href} href={href} aria-current={active ? 'page' : undefined}>
+                <Icon size={17} aria-hidden="true" />
+                {label}
+              </Link>
+            ))}
           </nav>
         )}
         <div className="header-actions">
@@ -118,6 +143,13 @@ export function Header({ locale }: { locale: Locale }) {
           <Link
             className="account-link"
             href={base.endsWith('/admin') ? base : `/${locale}/account`}
+            aria-current={
+              !business &&
+              path.startsWith(`/${locale}/account`) &&
+              !path.startsWith(`/${locale}/account/messages`)
+                ? 'page'
+                : undefined
+            }
           >
             <UserRound size={17} />
             <span>{base.endsWith('/admin') ? t(locale, 'admin') : ut(locale, 'mine')}</span>

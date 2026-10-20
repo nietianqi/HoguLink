@@ -1,4 +1,4 @@
-import type { Locale } from '@hogulink/contracts';
+import { effectiveServicePrice, type Locale } from '@hogulink/contracts';
 import { nominationFeeFor, type Catalog } from './api';
 export const historyKey = 'hogulink-device-history-v1';
 export type VisitHistory = { id: string; at: number };
@@ -46,7 +46,9 @@ export function serviceChoices(
     search?: string;
     locale?: Locale;
     sort?: string;
+    promotions?: boolean;
   } = {},
+  now = Date.now(),
 ) {
   const query = (filters.search ?? '').trim().toLocaleLowerCase();
   const result = catalog.offerings.flatMap((offering) => {
@@ -59,7 +61,8 @@ export function serviceChoices(
       offering.regulatoryCategory !== 'RELAXATION' ||
       (filters.duration && offering.durationMinutes !== filters.duration) ||
       (filters.area && !store.areas.includes(filters.area)) ||
-      (filters.mode === 'INSTANT' && store.acceptanceMode === 'MANUAL')
+      (filters.mode === 'INSTANT' && store.acceptanceMode === 'MANUAL') ||
+      (filters.promotions && !effectiveServicePrice(offering, now).promotion)
     )
       return [];
     const members = catalog.listings.filter(
@@ -87,8 +90,17 @@ export function serviceChoices(
         store,
         members,
         total:
-          offering.price + offering.transportFee + nominationFeeFor(store, catalog.bookingRules),
-        freeTotal: offering.price + offering.transportFee,
+          effectiveServicePrice(offering, now).price +
+          offering.transportFee +
+          nominationFeeFor(store, catalog.bookingRules),
+        freeTotal: effectiveServicePrice(offering, now).price + offering.transportFee,
+        compareTotal:
+          effectiveServicePrice(offering, now).comparePrice === undefined
+            ? undefined
+            : effectiveServicePrice(offering, now).comparePrice! +
+              offering.transportFee +
+              nominationFeeFor(store, catalog.bookingRules),
+        promotionEndsAt: effectiveServicePrice(offering, now).promotion?.endsAt,
       },
     ];
   });

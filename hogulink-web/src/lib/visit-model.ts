@@ -1,3 +1,4 @@
+import { effectiveServicePrice } from '@hogulink/contracts';
 import type { Address, Listing, Offering } from '@hogulink/contracts';
 export function visitServices(
   offerings: Offering[],
@@ -33,12 +34,20 @@ export function visitTeam(
       (mode !== 'INSTANT' || x.onDuty),
   );
 }
-export function visitTotal(offering: Offering, nomination: string, fee: number) {
+export function visitTotal(offering: Offering, nomination: string, fee: number, now = Date.now()) {
+  const priced = effectiveServicePrice(offering, now);
+  const nominationFee = nomination === 'FREE' ? 0 : fee;
   return {
-    serviceFee: offering.price,
+    serviceFee: priced.price,
     transportFee: offering.transportFee,
-    nominationFee: nomination === 'FREE' ? 0 : fee,
-    total: offering.price + offering.transportFee + (nomination === 'FREE' ? 0 : fee),
+    nominationFee,
+    total: priced.price + offering.transportFee + nominationFee,
+    /** Regular total, only when a fair struck-through comparison is allowed. */
+    compareTotal:
+      priced.comparePrice === undefined
+        ? undefined
+        : priced.comparePrice + offering.transportFee + nominationFee,
+    promotionEndsAt: priced.promotion?.endsAt,
   };
 }
 export function restoreVisitAddress(value: unknown, area: string, hotelOnly: boolean): Address {

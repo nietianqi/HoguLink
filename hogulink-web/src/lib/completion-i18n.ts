@@ -1,5 +1,8 @@
 import type { Locale } from '@hogulink/contracts';
 const words = {
+  assurance: ['サービス保証', 'Service assurance', '服务保障'],
+  retry: ['完了状況を再確認', 'Refresh completion status', '重新读取完成状态'],
+  loading: ['完了状況を確認しています…', 'Checking completion status…', '正在读取完成状态…'],
   title: ['サービスの完了確認', 'Service completion', '服务完成确认'],
   intro: [
     '購入時間を実際の開始時刻から計測します。お客様の確認後にのみ請求します。',

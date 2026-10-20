@@ -111,6 +111,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [fetching, setFetching] = useState(false),
     [error, setError] = useState(''),
+    [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
   const [now, setNow] = useState(Date.now()),
     [updated, setUpdated] = useState<number>(),
@@ -128,7 +129,10 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       reason: 'BREAK' as TimeOffRequest['reason'],
     });
   const [messages, setMessages] = useState<Message[]>([]),
-    [draft, setDraft] = useState('');
+    [draft, setDraft] = useState(''),
+    [messageState, setMessageState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const messageGeneration = useRef(0),
+    sendLock = useRef(false);
   const [requestLimit, setRequestLimit] = useState(12);
   const generation = useRef(0),
     retry = useRef({ payload: '', key: '' });
@@ -163,12 +167,20 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       setAccount(workspace.listing.staffId);
       setUpdated(Date.now());
       setNow(Date.now());
+      setReadError('');
     } catch (e) {
-      if (version === generation.current) fail(e);
+      if (version === generation.current) {
+        setReadError(errorText(l, e instanceof ClientError ? e.code : undefined));
+        if (e instanceof ClientError && ['FORBIDDEN', 'UNAUTHENTICATED'].includes(e.code)) {
+          setData(undefined);
+          setBookings([]);
+          setMessages([]);
+        }
+      }
     } finally {
       if (version === generation.current) setFetching(false);
     }
-  }, [actor, fail]);
+  }, [actor, l]);
   useEffect(() => {
     if (!demoAccess) return;
     api<{ staffId: string; name: Listing['name']; storeName: Listing['name'] }[]>('auth/demo-staff')
@@ -182,6 +194,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     setDraft('');
     setReview(null);
     setLeaveOpen(false);
+    setReadError('');
     void refresh();
     const poll = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
@@ -264,21 +277,28 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     setMessages([]);
     setDraft('');
   }, [selectedId, actor?.id]);
+  const loadMessages = useCallback(async () => {
+    const generation = ++messageGeneration.current;
+    setMessageState('loading');
+    if (!messageAllowed || !selectedId) {
+      setMessages([]);
+      return;
+    }
+    try {
+      const value = await api<Message[]>(`staff/tasks/${selectedId}/messages`);
+      if (generation !== messageGeneration.current) return;
+      setMessages(value);
+      setMessageState('ready');
+    } catch {
+      if (generation === messageGeneration.current) setMessageState('error');
+    }
+  }, [selectedId, actor?.id, messageAllowed]);
   useEffect(() => {
-    let current = true;
-    if (!messageAllowed) setMessages([]);
-    if (messageAllowed && selectedId)
-      api<Message[]>(`staff/tasks/${selectedId}/messages`)
-        .then((x) => {
-          if (current) setMessages(x);
-        })
-        .catch((e) => {
-          if (current) fail(e);
-        });
+    void loadMessages();
     return () => {
-      current = false;
+      messageGeneration.current++;
     };
-  }, [selectedId, selected?.version, messageAllowed, fail, updated]);
+  }, [loadMessages, selected?.version, updated]);
   const stats = staffNumbers(bookings, now),
     focus = focusTask(bookings),
     online = !!data?.listing.onDuty && data.dutyExpiresAt > now;
@@ -573,8 +593,18 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 <MessageCircle size={17} />
                 {ft(l, 'messages')}
               </h3>
-              <div className="staff-message-list">
-                {messages.length ? (
+              {messageState === 'error' && (
+                <p className="notice error" role="alert">
+                  {ft(l, 'messagesFailed')}{' '}
+                  <button type="button" className="text-button" onClick={() => void loadMessages()}>
+                    {ft(l, 'retryMessages')}
+                  </button>
+                </p>
+              )}
+              <div className="staff-message-list" aria-busy={messageState === 'loading'}>
+                {messageState === 'loading' ? (
+                  <p role="status">{ft(l, 'loading')}</p>
+                ) : messages.length ? (
                   messages.map((m) => (
                     <div key={m.id} className={m.role === 'STAFF' ? 'mine' : ''}>
                       <span>{m.text}</span>
@@ -584,22 +614,29 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                       </small>
                     </div>
                   ))
-                ) : (
+                ) : messageState === 'ready' ? (
                   <p>{ft(l, 'noMessages')}</p>
-                )}
+                ) : null}
               </div>
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const text = draft.trim();
-                  if (!text) return;
-                  if (
-                    await mutate(async () => {
-                      const value = await api<Message[]>(`staff/tasks/${b.id}/messages`, { text });
-                      setMessages(value);
-                    })
-                  )
-                    setDraft('');
+                  if (!text || messageState !== 'ready' || sendLock.current) return;
+                  sendLock.current = true;
+                  try {
+                    if (
+                      await mutate(async () => {
+                        const value = await api<Message[]>(`staff/tasks/${b.id}/messages`, {
+                          text,
+                        });
+                        setMessages(value);
+                      })
+                    )
+                      setDraft('');
+                  } finally {
+                    sendLock.current = false;
+                  }
                 }}
               >
                 <label className="sr-only" htmlFor="staff-message">
@@ -613,7 +650,10 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   placeholder={ft(l, 'messagePlaceholder')}
                   rows={2}
                 />
-                <button className="button secondary" disabled={busy || !draft.trim()}>
+                <button
+                  className="button secondary"
+                  disabled={busy || !draft.trim() || messageState !== 'ready'}
+                >
                   {ft(l, 'send')}
                 </button>
               </form>
@@ -690,7 +730,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
         </Link>
         <div className="staff-identity">
           {data?.listing.photo ? (
-            <Image src={data.listing.photo} alt="" width={72} height={72} />
+            <Image src={data.listing.photo} alt="" width={72} height={72} loading="eager" />
           ) : (
             <span>
               <UserRound size={29} />
@@ -796,9 +836,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             {rt(l, 'partnerLogin')}
           </Link>
         )}
-        {error && !review && !leaveOpen && (
+        {(error || readError) && !review && !leaveOpen && (
           <p className="notice error" role="alert">
-            {error}
+            {error || readError}
           </p>
         )}
         {notice && (
@@ -808,7 +848,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
         )}
         {hasRole && !data && (
           <div className="staff-panel staff-empty" aria-busy={fetching}>
-            {error ? (
+            {error || readError ? (
               <button
                 className="button secondary"
                 onClick={() => {
@@ -1217,6 +1257,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                     alt={data.listing.name[l]}
                     width={120}
                     height={120}
+                    loading="eager"
                   />
                   <span className="eyebrow">YOUR THERAPIST PROFILE</span>
                   <h2>{data.listing.name[l]}</h2>

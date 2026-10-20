@@ -46,7 +46,7 @@ import type {
   BookingRulesHistory,
 } from '@hogulink/contracts';
 import { ft } from '@/lib/staff-i18n';
-import { api, ClientError, type Catalog } from '@/lib/api';
+import { api, ClientError } from '@/lib/api';
 import { areaName, dateTime, errorText, languageNames, money, statusText, t } from '@/lib/i18n';
 import { acceptanceHelp, acceptanceLabel } from '@/lib/visit-i18n';
 import { st, merchantTabs, type MerchantTab } from '@/lib/merchant-i18n';
@@ -67,6 +67,7 @@ import { QualityEntry, SafetyDeskPanel } from './quality-workspace';
 import { merchantWorkday } from '@/lib/workday-model';
 import { wt } from '@/lib/workday-i18n';
 import { WorkdayTools } from './workday-tools';
+import { MerchantPromotion } from './merchant-promotion';
 
 type Block = {
   id: string;
@@ -107,8 +108,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
   const tab = merchantTabs.includes(requested) ? requested : 'overview';
   const { actor, setActor, loading } = useSession();
   const demoAccess = useDemoAccess();
-  const [catalog, setCatalog] = useState<Catalog>(),
-    [demoShops, setDemoShops] = useState<Pick<Store, 'id' | 'name'>[]>([]),
+  const [demoShops, setDemoShops] = useState<Pick<Store, 'id' | 'name'>[]>([]),
     [data, setData] = useState<Workspace>(),
     [bookings, setBookings] = useState<Booking[]>([]),
     [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -116,6 +116,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [fetching, setFetching] = useState(false),
     [error, setError] = useState(''),
+    [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
   const [day, setDay] = useState(japanDay(Date.now())),
     [member, setMember] = useState('');
@@ -147,9 +148,16 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       setBookings(orders);
       setTickets(cases);
       setShop(workspace.store.id);
+      setReadError('');
     } catch (e) {
-      if (version === generation.current)
-        setError(errorText(l, e instanceof ClientError ? e.code : undefined));
+      if (version === generation.current) {
+        setReadError(errorText(l, e instanceof ClientError ? e.code : undefined));
+        if (e instanceof ClientError && ['FORBIDDEN', 'UNAUTHENTICATED'].includes(e.code)) {
+          setData(undefined);
+          setBookings([]);
+          setTickets([]);
+        }
+      }
     } finally {
       if (version === generation.current) setFetching(false);
     }
@@ -159,15 +167,13 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       api<Pick<Store, 'id' | 'name'>[]>('auth/demo-shops')
         .then(setDemoShops)
         .catch(() => {});
-    api<Catalog>('public/staff-listings')
-      .then(setCatalog)
-      .catch(() => setError(t(l, 'error')));
   }, [l, demoAccess]);
   const requestedMember = query.get('member') ?? '';
   useEffect(() => {
     setData(undefined);
     setBookings([]);
     setTickets([]);
+    setReadError('');
     setMember(requestedMember);
     void refresh();
     return () => {
@@ -456,9 +462,9 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             )}
           </div>
         </details>
-        {error && !editor && !blockOpen && (
+        {(error || readError) && !editor && !blockOpen && (
           <p className="error-message" role="alert">
-            {error}
+            {error || readError}
             <button
               className="text-button"
               disabled={busy}
@@ -477,7 +483,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             {notice}
           </p>
         )}
-        {hasRole && !data && (
+        {hasRole && !data && fetching && (
           <div className="merchant-loading" role="status">
             <LoaderCircle className="spin" size={24} />
             {st(l, 'loading')}
@@ -898,6 +904,12 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                         <span className={`merchant-pill ${o.active === false ? 'muted' : ''}`}>
                           {st(l, o.active === false ? 'paused' : 'live')}
                         </span>
+                        <MerchantPromotion
+                          locale={l}
+                          offering={o}
+                          disabled={busy}
+                          onChanged={() => mutate(async () => {})}
+                        />
                       </div>
                       <strong>{money(l, o.price)}</strong>
                       <button

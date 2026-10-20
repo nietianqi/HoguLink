@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, ArrowUpRight, Star, ShieldCheck, RefreshCw } from 'lucide-react';
 import {
+  effectiveServicePrice,
   experienceDimensions,
   type Actor,
   type Booking,
@@ -523,7 +524,10 @@ export function FavoritesPage({ locale: l }: { locale: Locale }) {
                       <p>{f.store.name[l]}</p>
                       <small>
                         {f.offerings
-                          .map((o) => `${o.name[l]} · ${money(l, o.price + o.transportFee)}`)
+                          .map(
+                            (o) =>
+                              `${o.name[l]} · ${money(l, effectiveServicePrice(o, Date.now()).price + o.transportFee)}`,
+                          )
                           .join(' / ')}
                       </small>
                       <Link className="quality-button" href={`/${l}/therapists/${f.listing.slug}`}>

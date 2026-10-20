@@ -148,3 +148,48 @@ test('history keeps the newest visit once and limits stored public references to
   assert.equal(next[0].at, now);
   assert.equal(next.filter((r) => r.id === 'aoi').length, 1);
 });
+test('limited prices: charged total uses the offer, regular total only when comparison is fair, filter keeps live offers', () => {
+  const now = Date.UTC(2026, 9, 19);
+  const c = catalog();
+  const o = c.offerings.find((x) => x.id === 'store-nagi-60')!;
+  const base = {
+    id: 'p1',
+    regularPrice: o.price,
+    startsAt: now - 1000,
+    endsAt: now + 86_400_000,
+    createdAt: now,
+  };
+  o.promotion = { ...base, price: 6000, comparisonAllowed: true, comparisonReason: 'ELIGIBLE' };
+  const fair = serviceChoices(c, { duration: 60 }, now).find((x) => x.offering.id === o.id)!;
+  assert.equal(fair.total, 6000 + o.transportFee + 500);
+  assert.equal(fair.compareTotal, o.price + o.transportFee + 500);
+  assert.equal(fair.promotionEndsAt, base.endsAt);
+  const onlyOffers = serviceChoices(c, { promotions: true }, now);
+  assert.deepEqual(
+    onlyOffers.map((x) => x.offering.id),
+    ['store-nagi-60'],
+  );
+
+  o.promotion = {
+    ...base,
+    price: 6000,
+    comparisonAllowed: false,
+    comparisonReason: 'REGULAR_PRICE_TOO_NEW',
+  };
+  const unfair = serviceChoices(c, { duration: 60 }, now).find((x) => x.offering.id === o.id)!;
+  assert.equal(unfair.total, 6000 + o.transportFee + 500);
+  assert.equal(unfair.compareTotal, undefined, 'no struck-through price without a fair basis');
+
+  // Ended, not started, or for a different regular price → regular pricing, no offer.
+  for (const promotion of [
+    { ...o.promotion, endsAt: now },
+    { ...o.promotion, startsAt: now + 1 },
+    { ...o.promotion, regularPrice: o.price + 100 },
+  ]) {
+    o.promotion = promotion;
+    const row = serviceChoices(c, { duration: 60 }, now).find((x) => x.offering.id === o.id)!;
+    assert.equal(row.total, o.price + o.transportFee + 500);
+    assert.equal(row.promotionEndsAt, undefined);
+    assert.equal(serviceChoices(c, { promotions: true }, now).length, 0);
+  }
+});

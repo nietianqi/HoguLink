@@ -2,6 +2,7 @@
 import { useDemoAccess } from '@/lib/use-runtime';
 import { goCustomerAccess } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Check,
   LifeBuoy,
@@ -39,6 +40,7 @@ import { et } from '@/lib/member-i18n';
 import { ht, isHandlingKey } from '@/lib/handling-i18n';
 import { RefundCasePanel } from './order-care';
 import { af } from '@/lib/customer-flow-i18n';
+import { ca } from '@/lib/customer-auth-i18n';
 import { CaseDecisionPanel } from './case-decision';
 import { gt, isGovernanceKey } from '@/lib/governance-i18n';
 import type { CaseDecisionDetail } from '@hogulink/contracts';
@@ -63,6 +65,7 @@ export function CareCenter({
   initialTicketId?: string;
   initialCategory?: string;
 }) {
+  const router = useRouter();
   const { actor, setActor, loading } = useSession();
   const demoAccess = useDemoAccess();
   const [demoShops, setDemoShops] = useState<Pick<Store, 'id' | 'name'>[]>([]);
@@ -104,7 +107,8 @@ export function CareCenter({
   const [duration, setDuration] = useState(24);
   const [safetyNotes, setSafetyNotes] = useState<Record<string, string>>({});
   const loadVersion = useRef(0);
-  const creationKey = useRef('');
+  const creationRetry = useRef({ body: '', key: '' });
+  const creationLock = useRef(false);
   const signedIn = actor?.role === role && (role !== 'ADMIN' || canAdmin(actor, 'cases.read'));
   useEffect(() => {
     if (actor?.role === role) {
@@ -294,24 +298,40 @@ export function CareCenter({
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    await task(async () => {
-      if (!creationKey.current) creationKey.current = crypto.randomUUID();
-      const ticket =
-        role === 'STAFF'
-          ? await api<SupportTicket>('staff/customer-feedback', { bookingId, text: description })
-          : await api<SupportTicket>(
-              'customer/support-tickets',
-              { ...(bookingId ? { bookingId } : {}), category, subject, description },
-              'POST',
-              creationKey.current,
-            );
-      creationKey.current = '';
-      setSelected(ticket.id);
-      setCaseSearch('');
-      setCaseFilter('all');
-      setSubject('');
-      setDescription('');
-    });
+    if (creationLock.current || busy) return;
+    creationLock.current = true;
+    let createdId = '';
+    try {
+      await task(async () => {
+        const body = { ...(bookingId ? { bookingId } : {}), category, subject, description };
+        const fingerprint = JSON.stringify(body);
+        if (creationRetry.current.body !== fingerprint)
+          creationRetry.current = { body: fingerprint, key: crypto.randomUUID() };
+        const ticket =
+          role === 'STAFF'
+            ? await api<SupportTicket>('staff/customer-feedback', { bookingId, text: description })
+            : await api<SupportTicket>(
+                'customer/support-tickets',
+                body,
+                'POST',
+                creationRetry.current.key,
+              );
+        creationRetry.current = { body: '', key: '' };
+        createdId = ticket.id;
+        setSelected(ticket.id);
+        setCaseSearch('');
+        setCaseFilter('all');
+        setSubject('');
+        setDescription('');
+      });
+      if (createdId && role === 'CUSTOMER')
+        router.replace(
+          `/${l}/account/support?ticket=${encodeURIComponent(createdId)}#case-detail`,
+          { scroll: false },
+        );
+    } finally {
+      creationLock.current = false;
+    }
   }
   function ticketAction(action: 'ESCALATE' | 'RESOLVE' | 'CLOSE' | 'REOPEN') {
     if (!detail) return;
@@ -366,7 +386,7 @@ export function CareCenter({
       <div className="workspace-content">
         <div className="workspace-title">
           <div>
-            <span className="eyebrow small">HOGULINK / CARE</span>
+            {role !== 'CUSTOMER' && <span className="eyebrow small">HOGULINK / CARE</span>}
             <h1>
               <LifeBuoy size={26} />
               {ct(l, 'center')}
@@ -435,11 +455,12 @@ export function CareCenter({
               ))}
             </select>
           )}
-          {!(role === 'ADMIN' && actor?.adminRole && actor.id !== 'demo-admin') && (
-            <button className="button small" disabled={busy || loading} onClick={login}>
-              {ct(l, 'login')}
-            </button>
-          )}
+          {!(role === 'ADMIN' && actor?.adminRole && actor.id !== 'demo-admin') &&
+            (role !== 'CUSTOMER' || !signedIn) && (
+              <button className="button small" disabled={busy || loading} onClick={login}>
+                {role === 'CUSTOMER' ? ca(l, 'login') : ct(l, 'login')}
+              </button>
+            )}
           {role === 'ADMIN' && (
             <Link className="button secondary small" href={`/${l}/admin`}>
               {et(l, 'back')}
@@ -623,6 +644,11 @@ export function CareCenter({
                     key={item.id}
                     onClick={() => {
                       setSelected(item.id);
+                      if (role === 'CUSTOMER')
+                        router.replace(
+                          `/${l}/account/support?ticket=${encodeURIComponent(item.id)}#case-detail`,
+                          { scroll: false },
+                        );
                       if (window.matchMedia('(max-width: 760px)').matches)
                         document.getElementById('case-detail')?.scrollIntoView({
                           block: 'start',
@@ -659,7 +685,9 @@ export function CareCenter({
                   <>
                     <div className="case-detail-heading">
                       <span className="eyebrow small">
-                        CASE / {ticket.id.slice(-8).toUpperCase()} · v{ticket.version}
+                        {role === 'CUSTOMER'
+                          ? `${ct(l, 'caseReference')} ${ticket.id.slice(-8).toUpperCase()}`
+                          : `CASE / ${ticket.id.slice(-8).toUpperCase()} · v${ticket.version}`}
                       </span>
                       <h2>{ticketTitle(ticket)}</h2>
                       <div className="button-row">
@@ -693,6 +721,14 @@ export function CareCenter({
                     {ticket.bookingId && (
                       <p className="muted">
                         {ct(l, 'related')}: {ticket.bookingId.slice(-8)}
+                        {role === 'CUSTOMER' && (
+                          <Link
+                            className="governance-link"
+                            href={`/${l}/account/bookings/${ticket.bookingId}`}
+                          >
+                            {ct(l, 'openBooking')} ↗
+                          </Link>
+                        )}
                         {role === 'MERCHANT' && (
                           <Link
                             className="governance-link"

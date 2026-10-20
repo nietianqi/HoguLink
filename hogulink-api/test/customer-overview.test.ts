@@ -47,7 +47,14 @@ async function pending(e: Parameters<Parameters<typeof fixture>[0]>[0]) {
 test('customer overview starts empty and rejects workspace identities', () =>
   fixture(async (e) => {
     const o = await e.experience.overview(customer);
-    assert.deepEqual(o.counts, { checkout: 0, active: 0, review: 0, support: 0, favorites: 0 });
+    assert.deepEqual(o.counts, {
+      checkout: 0,
+      active: 0,
+      review: 0,
+      support: 0,
+      favorites: 0,
+      closed: 0,
+    });
     assert.deepEqual(o.recent, []);
     for (const actor of [staff, shop, admin])
       await assert.rejects(() => e.experience.overview(actor), fail('FORBIDDEN'));

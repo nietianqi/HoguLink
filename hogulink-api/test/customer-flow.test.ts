@@ -298,6 +298,8 @@ test('partial approval records the actual refunded amount and retains the remain
     const overview = await e.refunds.overview(customer, b.id);
     assert.equal(overview.remaining, b.capturedAmount - 1000);
     assert.equal(overview.canRequest, true);
+    assert.equal(overview.bookingVersion, (await e.bookings(customer))[0].version);
+    assert.ok(overview.bookingVersion! > b.version);
   }));
 test('an external shop refund invalidates stale approval and cannot cause an over-refund', () =>
   fixture(async (e, clock) => {

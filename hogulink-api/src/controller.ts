@@ -10,6 +10,7 @@ import {
   type AdminMember,
 } from '@hogulink/contracts';
 import { Engine } from './engine.js';
+import { listingStats, mobileBootstrap, mobileTherapists, storeStats } from './mobile.js';
 import { DomainError, ensure } from './errors.js';
 import { authorizeAdminRoute, bootstrapMember, currentAdmin } from './admin-access.js';
 import { activeStaffMembership } from './staff-access.js';
@@ -344,6 +345,43 @@ export class ApiController {
             cursor: typeof req.query.cursor === 'string' ? req.query.cursor : undefined,
           }),
         );
+      if (path === 'public/h5/bootstrap' && method === 'GET')
+        return res.json(await mobileBootstrap(this.engine));
+      if (path === 'public/discovery' && method === 'GET')
+        return res.json(await this.engine.discovery.feed(req.query));
+      const discoveryPost = path.match(/^public\/discovery\/([a-zA-Z0-9_-]{1,160})$/);
+      if (discoveryPost && method === 'GET')
+        return res.json(await this.engine.discovery.detail(discoveryPost[1], req.query));
+      if (path === 'public/h5/therapists' && method === 'GET')
+        return res.json(await mobileTherapists(this.engine, req.query));
+      if (path === 'public/listing-stats' && method === 'GET') {
+        const ids = z
+          .string()
+          .regex(/^[a-zA-Z0-9_-]{1,80}(,[a-zA-Z0-9_-]{1,80}){0,49}$/)
+          .parse(req.query.ids)
+          .split(',');
+        const live = new Set((await this.engine.publicCatalog()).listings.map((x) => x.id));
+        return res.json(
+          await listingStats(
+            this.engine,
+            ids.filter((id) => live.has(id)),
+          ),
+        );
+      }
+      if (path === 'public/store-stats' && method === 'GET') {
+        const ids = z
+          .string()
+          .regex(/^[a-zA-Z0-9_-]{1,80}(,[a-zA-Z0-9_-]{1,80}){0,49}$/)
+          .parse(req.query.ids)
+          .split(',');
+        const live = new Set((await this.engine.publicCatalog()).stores.map((x) => x.id));
+        return res.json(
+          await storeStats(
+            this.engine,
+            ids.filter((id) => live.has(id)),
+          ),
+        );
+      }
       if (path === 'public/staff-listings' && method === 'GET')
         return res.json(
           await this.engine.publicCatalog({
@@ -359,7 +397,7 @@ export class ApiController {
             decodeURIComponent(match[1]),
             typeof req.query.offeringId === 'string' ? req.query.offeringId : undefined,
             false,
-            '',
+            typeof req.query.language === 'string' ? req.query.language : '',
             req.query.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
             typeof req.query.area === 'string' ? req.query.area : '',
           ),
@@ -410,6 +448,19 @@ export class ApiController {
         return res.send(portrait.bytes);
       }
       const actor = await this.actor(req);
+      if (path === 'customer/discovery/saved' && method === 'GET')
+        return res.json(await this.engine.discovery.saved(actor));
+      const discoveryAction = path.match(/^customer\/discovery\/([a-zA-Z0-9_-]{1,160})(\/view)?$/);
+      if (discoveryAction) {
+        if (['PUT', 'POST'].includes(method))
+          await this.engine.limits.check('discovery-write', actor.id, 60);
+        if (discoveryAction[2] && method === 'POST')
+          return res.json(await this.engine.discovery.view(actor, discoveryAction[1]));
+        if (!discoveryAction[2] && method === 'GET')
+          return res.json(await this.engine.discovery.state(actor, discoveryAction[1]));
+        if (!discoveryAction[2] && method === 'PUT')
+          return res.json(await this.engine.discovery.react(actor, discoveryAction[1], body));
+      }
       if (path === 'admin/content-reviews' && method === 'GET')
         return res.json(await this.engine.contentReview.list(actor));
       const contentReview = path.match(/^admin\/content-reviews\/([^/]+)$/);
@@ -592,6 +643,11 @@ export class ApiController {
       match = path.match(/^merchant\/time-blocks\/([^/]+)$/);
       if (match && method === 'DELETE')
         return res.json(await this.engine.merchant.releaseBlock(actor, match[1], body));
+      match = path.match(/^merchant\/services\/([^/]+)\/promotion$/);
+      if (match && method === 'PUT')
+        return res.json(await this.engine.merchant.promotion(actor, match[1], body));
+      if (match && method === 'DELETE')
+        return res.json(await this.engine.merchant.clearPromotion(actor, match[1], body));
       match = path.match(/^merchant\/services\/([^/]+)$/);
       if (match && method === 'PUT')
         return res.json(await this.engine.merchant.service(actor, match[1], body));

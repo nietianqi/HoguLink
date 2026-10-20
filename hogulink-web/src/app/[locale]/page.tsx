@@ -14,11 +14,17 @@ import {
   LayoutGrid,
   List,
 } from 'lucide-react';
+import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
+import { shopCards, shopCardHref } from '@/lib/shop-model';
+import { H5ShopSection } from '@/components/h5-shops';
 import { serverApi, nominationFeeFor, type Catalog } from '@/lib/api';
 import { asLocale, t, areas, areaName } from '@/lib/i18n';
 import { seo } from '@/lib/seo';
 import { TherapistCard } from '@/components/catalog';
 import { MobileConsumerEntries } from '@/components/consumer-journey';
+import { H5Home } from '@/components/h5-consumer';
+import { DesktopHomeServices } from '@/components/desktop-home-services';
+import { ht } from '@/lib/h5-i18n';
 import { DiscoveryFilters } from '@/components/discovery-filters';
 import { dt } from '@/lib/desktop-i18n';
 import { japanDay, matchingOffering, nominatedTotal } from '@/lib/desktop-model';
@@ -48,6 +54,12 @@ export default async function Home({
   const catalog = await serverApi<Catalog>(
     `public/staff-listings?${new URLSearchParams({ ...(q.area ? { area: q.area } : {}), ...(q.language ? { language: q.language } : {}), mode })}`,
   );
+  const shopFilters = { area: q.area, language: q.language, mode, locale: l };
+  const featuredShops = shopCards(catalog, shopFilters).slice(0, 3);
+  const shopStatsPromise = loadShopStats(
+    featuredShops.map((card) => card.store.id),
+    (path) => serverApi<ShopStatsMap>(path),
+  );
   const candidates = catalog.listings.flatMap((listing) => {
     const offering = matchingOffering(listing, catalog.offerings, duration);
     const store = catalog.stores.find((s) => s.id === listing.storeId)!;
@@ -61,14 +73,14 @@ export default async function Home({
     if (q.acceptance === 'auto' && store.acceptanceMode === 'MANUAL') return [];
     return [{ listing, offering, store }];
   });
-  const available = await Promise.all(
+  const availablePromise = Promise.all(
     candidates.map(async (item) => {
       let slots: number[] | undefined;
       if (mode === 'SCHEDULED') {
         try {
           slots = (
             await serverApi<{ slots: number[] }>(
-              `public/staff-listings/${item.listing.id}/availability?offeringId=${item.offering.id}`,
+              `public/staff-listings/${item.listing.id}/availability?${new URLSearchParams({ offeringId: item.offering.id, area: q.area ?? '', language: q.language ?? '' })}`,
             )
           ).slots;
         } catch {
@@ -81,6 +93,7 @@ export default async function Home({
       };
     }),
   );
+  const [available, shopStats] = await Promise.all([availablePromise, shopStatsPromise]);
   const cards = available.filter(
     (item) => mode === 'INSTANT' || !date || (item.slots?.length ?? 0) > 0,
   );
@@ -94,15 +107,16 @@ export default async function Home({
     cards.sort((a, b) => (a.slots?.[0] ?? Infinity) - (b.slots?.[0] ?? Infinity));
   return (
     <main id="main" className="market-page">
+      <H5Home locale={l} catalog={catalog} q={q} shopStats={shopStats} />
       <section className="hero wrap">
         <div className="hero-copy">
           <span className="eyebrow">
             <span /> {t(l, 'eyebrow')}
           </span>
           <h1>
-            {t(l, 'hero1')}
+            {ht(l, 'homeHeadline')}
             <br />
-            <em>{t(l, 'hero2')}</em>
+            <em>{ht(l, 'homeSubline')}</em>
           </h1>
           <p>{t(l, 'heroText')}</p>
           <a className="hero-discover" href="#discover">
@@ -115,10 +129,10 @@ export default async function Home({
         </div>
         <div className="hero-art">
           <Image
-            src="/images/quiet-interior-v1.png"
+            src="/images/h5-home-banner.png"
             alt=""
-            width={1536}
-            height={1024}
+            width={2068}
+            height={760}
             sizes="(max-width: 760px) 100vw, 660px"
             loading="eager"
             fetchPriority="high"
@@ -189,6 +203,16 @@ export default async function Home({
         </form>
       </div>
       <MobileConsumerEntries locale={l} catalog={catalog} q={q} />
+      <H5ShopSection
+        locale={l}
+        cards={shopCards(catalog, shopFilters, shopStats).slice(0, 3)}
+        demo={catalog.demo}
+        id="desktop-shops-title"
+        className="desktop-home-shops wrap"
+        href={(_, card) => shopCardHref(l, card, q)}
+        allHref={`/${l}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language'].flatMap((key) => (q[key] ? [[key, q[key]]] : []))) })}`}
+      />
+      <DesktopHomeServices locale={l} catalog={catalog} q={q} />
       <section className="wrap discovery" id="discover">
         <div className="section-heading">
           <div>
@@ -249,6 +273,7 @@ export default async function Home({
               {cards.map(({ listing, store, offering, slots }) => (
                 <TherapistCard
                   key={listing.id}
+                  demo={catalog.demo}
                   listing={listing}
                   store={store}
                   offering={offering}

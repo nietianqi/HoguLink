@@ -8,12 +8,14 @@ import type {
   PartnerApplication,
   PortraitConsent,
   Store,
+  Offering,
 } from '@hogulink/contracts';
 import { Repository } from '../src/repository.js';
 import { Engine } from '../src/engine.js';
 import { seed } from '../src/seed.js';
 import { DomainError } from '../src/errors.js';
 import { CONSENT_TERMS } from '../src/onboarding.js';
+import { toPublicStore } from '../src/public-catalog.js';
 import sharp from 'sharp';
 import { registerClock, finishVisit } from './helpers/visit-fixture.js';
 const root: Actor = { id: 'demo-admin', role: 'ADMIN', verificationLevel: 3 };
@@ -139,6 +141,73 @@ async function approveStaff(e: Engine, actor: Actor) {
   a = (await e.onboarding.snapshot(actor)).application!;
   return review(e, a);
 }
+
+test('merchant introductions become public only after application approval', () =>
+  fixture(async (e) => {
+    const owner = await e.onboarding.register({
+      role: 'MERCHANT',
+      email: 'intro@example.test',
+      password,
+      name: 'Introduction studio',
+    });
+    await complete(e, owner);
+    const application = await submit(e, owner);
+    const before = await e.repo.read((tx) => tx.get<Store>('stores', application.storeId));
+    assert.equal(toPublicStore(before!).description, undefined);
+    await review(e, application);
+    const approved = await e.repo.read((tx) => tx.get<Store>('stores', application.storeId));
+    assert.deepEqual(toPublicStore(approved!).description, application.draft.description);
+  }));
+
+test('merchant approval preserves elapsed offer history when rebuilding its service', () =>
+  fixture(async (e) => {
+    const owner = await e.onboarding.register({
+      role: 'MERCHANT',
+      email: 'history@example.test',
+      password,
+      name: 'History studio',
+    });
+    await complete(e, owner);
+    const application = await submit(e, owner);
+    const now = e.now(),
+      day = 86400000;
+    await e.repo.transaction((tx) =>
+      tx.put<Offering>('offerings', {
+        id: `${owner.storeId}-onboarding`,
+        storeId: owner.storeId!,
+        name: tr('History service'),
+        price: application.draft.price,
+        transportFee: 0,
+        durationMinutes: 60,
+        version: 2,
+        approved: true,
+        active: true,
+        regulatoryCategory: 'RELAXATION',
+        priceSince: now - 60 * day,
+        promotionHistory: [{ startsAt: now - 20 * day, endsAt: now - 10 * day }],
+        promotion: {
+          id: 'previous',
+          price: 1000,
+          regularPrice: application.draft.price,
+          startsAt: now - day,
+          endsAt: now + day,
+          createdAt: now - day,
+          comparisonAllowed: true,
+          comparisonReason: 'ELIGIBLE',
+        },
+      }),
+    );
+    await review(e, application);
+    const saved = (await e.repo.read((tx) =>
+      tx.get<Offering>('offerings', `${owner.storeId}-onboarding`),
+    ))!;
+    assert.equal(saved.promotion, undefined);
+    assert.equal(saved.priceSince, now - 60 * day);
+    assert.deepEqual(saved.promotionHistory, [
+      { startsAt: now - 20 * day, endsAt: now - 10 * day },
+      { startsAt: now - day, endsAt: now },
+    ]);
+  }));
 
 test('merchant onboarding stores private drafts, enforces required evidence and declarations, and opens only after a checked approval', () =>
   fixture(async (e) => {

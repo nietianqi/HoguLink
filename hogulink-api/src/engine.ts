@@ -7,6 +7,7 @@ import {
   automaticAcceptanceReason,
   dailyAutomaticCount,
   scheduledCancellationBps,
+  effectiveServicePrice,
   type Actor,
   type Audit,
   type Booking,
@@ -20,7 +21,7 @@ import {
   type TimeOffRequest,
 } from '@hogulink/contracts';
 import { config } from './config.js';
-import { toPublicStore, toPublicListing } from './public-catalog.js';
+import { toPublicStore, toPublicListing, toPublicOffering } from './public-catalog.js';
 import { CustomerAuth } from './customer-auth.js';
 import { NotificationWorker, configuredSender } from './notifications.js';
 import { RateLimiter } from './rate-limit.js';
@@ -38,6 +39,7 @@ import { requireAdmin } from './admin-access.js';
 import { staffBookingAccess } from './staff-access.js';
 import { ExperienceService } from './experience.js';
 import { EngagementService } from './engagement.js';
+import { DiscoveryService } from './discovery.js';
 import { AddressService } from './addresses.js';
 import { RefundService } from './refund-requests.js';
 import { CoordinationService } from './coordination.js';
@@ -97,6 +99,7 @@ export class Engine {
   readonly onboarding: OnboardingService;
   readonly experience: ExperienceService;
   readonly engagement: EngagementService;
+  readonly discovery: DiscoveryService;
   readonly addresses: AddressService;
   readonly refunds: RefundService;
   readonly fulfillment: FulfillmentService;
@@ -123,6 +126,7 @@ export class Engine {
     this.onboarding = new OnboardingService((fn) => this.run(fn), now);
     this.experience = new ExperienceService((fn) => this.run(fn), now);
     this.engagement = new EngagementService((fn) => this.run(fn), now);
+    this.discovery = new DiscoveryService(this);
     this.addresses = new AddressService((fn) => this.run(fn), now);
     this.refunds = new RefundService(
       (fn) => this.run(fn),
@@ -391,7 +395,9 @@ export class Engine {
                             startAt: firstInstant,
                             endAt: firstInstant + o.durationMinutes * minute,
                             total:
-                              o.price + o.transportFee + effectiveBookingRules(s).nominationFee,
+                              effectiveServicePrice(o, this.now()).price +
+                              o.transportFee +
+                              effectiveBookingRules(s).nominationFee,
                           },
                           x.id,
                           catalogCounts.get(s.id) ?? 0,
@@ -425,7 +431,8 @@ export class Engine {
             (x) =>
               x.approved && x.active !== false && visibleStores.some((s) => s.id === x.storeId),
           )
-          .sort((a, b) => a.durationMinutes - b.durationMinutes),
+          .sort((a, b) => a.durationMinutes - b.durationMinutes)
+          .map((x) => toPublicOffering(x, this.now())),
         demo: true,
         bookingRules: {
           nominationFee: config.nominationFee,
@@ -482,6 +489,7 @@ export class Engine {
       );
       const candidates = pool.filter(
         (x) =>
+          (!area || store.areas.includes(area)) &&
           !serving.has(x.staffId) &&
           (!language || x.languages.includes(language)) &&
           (!instant ||
@@ -514,7 +522,7 @@ export class Engine {
                   startAt: value,
                   endAt: value + offering.durationMinutes * minute,
                   total:
-                    offering.price +
+                    effectiveServicePrice(offering, this.now()).price +
                     offering.transportFee +
                     (free ? 0 : effectiveBookingRules(store).nominationFee),
                 },
@@ -582,7 +590,17 @@ export class Engine {
         storeRuleVersion: store.ruleVersion,
         endAt: data.startAt + offering.durationMinutes * minute,
         expiresAt: this.now() + config.quoteTtlSeconds * 1000,
-        serviceFee: offering.price,
+        ...(() => {
+          // A shop promotion applies to orders placed while it is active.
+          const priced = effectiveServicePrice(offering, this.now());
+          return priced.promotion
+            ? {
+                serviceFee: priced.price,
+                promotionId: priced.promotion.id,
+                regularServiceFee: offering.price,
+              }
+            : { serviceFee: offering.price };
+        })(),
         nominationFee:
           data.nominationType === 'NOMINATED' ? effectiveBookingRules(store).nominationFee : 0,
         bookingRulesVersion: effectiveBookingRules(store).version,
@@ -728,6 +746,7 @@ export class Engine {
           x.expiresAt > this.now(),
       );
       return {
+        serverNow: this.now(),
         hold,
         quote,
         legalName: store.legalName,
@@ -893,7 +912,12 @@ export class Engine {
         offering &&
           offering.approved &&
           offering.version === q.offeringVersion &&
-          offering.price === q.serviceFee &&
+          // The unchanged version also freezes the promotion; a valid quote keeps its price.
+          (q.promotionId
+            ? offering.promotion?.id === q.promotionId &&
+              offering.promotion.price === q.serviceFee &&
+              offering.price === q.regularServiceFee
+            : offering.price === q.serviceFee) &&
           offering.transportFee === q.transportFee,
         'PRICE_CHANGED',
         'The service or price changed. Request a new quote.',

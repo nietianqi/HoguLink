@@ -1,10 +1,17 @@
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Languages, Clock3, ArrowUpRight } from 'lucide-react';
-import type { Listing, Locale, Offering } from '@hogulink/contracts';
+import {
+  effectiveServicePrice,
+  type Listing,
+  type Locale,
+  type Offering,
+} from '@hogulink/contracts';
 import type { PublicStore } from '@/lib/api';
 import { money, t, languageNames } from '@/lib/i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { nominatedTotal } from '@/lib/desktop-model';
+import { h5Portrait } from '@/lib/h5-media';
+import { ht } from '@/lib/h5-i18n';
 export function TherapistCard({
   listing,
   store,
@@ -16,6 +23,7 @@ export function TherapistCard({
   area,
   language,
   nominationFee,
+  demo = false,
 }: {
   listing: Listing;
   store: PublicStore;
@@ -27,6 +35,7 @@ export function TherapistCard({
   area?: string;
   language?: string;
   nominationFee?: number;
+  demo?: boolean;
 }) {
   const selected =
     offering ??
@@ -38,7 +47,10 @@ export function TherapistCard({
           x.regulatoryCategory === 'RELAXATION' &&
           listing.offeringIds.includes(x.id),
       )
-      .sort((a, b) => a.price - b.price)[0];
+      .sort(
+        (a, b) =>
+          effectiveServicePrice(a, Date.now()).price - effectiveServicePrice(b, Date.now()).price,
+      )[0];
   if (!selected) return null;
   const bookingHref = (start?: number) =>
     `/${locale}/book/${listing.slug}?${new URLSearchParams({ mode, offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}), ...(start ? { start: String(start) } : {}) })}`;
@@ -46,7 +58,10 @@ export function TherapistCard({
   return (
     <article className="therapist-card">
       <Link className="portrait-link" href={profileHref} tabIndex={-1} aria-hidden="true">
-        <img src={listing.photo} alt="" width="600" height="440" loading="lazy" />
+        <img src={h5Portrait(listing, demo)} alt="" width="600" height="440" loading="lazy" />
+        {h5Portrait(listing, demo) !== listing.photo && (
+          <span className="portrait-sample">{ht(locale, 'sample')}</span>
+        )}
         <span className={`availability ${listing.onDuty ? 'online' : ''}`}>
           <i />
           {t(locale, listing.onDuty ? 'available' : 'byAppointment')}

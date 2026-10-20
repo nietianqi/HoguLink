@@ -1,7 +1,6 @@
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -11,6 +10,7 @@ import {
   ShieldCheck,
   ReceiptText,
 } from 'lucide-react';
+import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
 import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale, t, areaName, money } from '@/lib/i18n';
 import { vt, acceptanceLabel, acceptanceHelp } from '@/lib/visit-i18n';
@@ -22,6 +22,10 @@ import { StoreFavoriteToggle } from '@/components/engagement-ui';
 import { BookingPreview } from '@/components/booking-form';
 import { ShopTeam } from '@/components/shop-team';
 import { shopVisitContext } from '@/lib/discovery-model';
+import { H5Badges, H5Price } from '@/components/h5-business';
+import { H5ShopCover, ShopFacts } from '@/components/h5-shops';
+import { shopCards, shopMonogram, shopTone } from '@/lib/shop-model';
+import { ht } from '@/lib/h5-i18n';
 const shopData = cache(async (slug: string) => {
   const catalog = await serverApi<Catalog>('public/staff-listings');
   const store = catalog.stores.find((x) => x.slug === slug);
@@ -55,49 +59,74 @@ export default async function Page({
     language: typeof q.language === 'string' ? q.language : undefined,
   });
   const offerings = context.services.map((s) => s.offering);
+  // Shop-level facts from approved reviews, completed visits and shop saves only.
+  const stats = (await loadShopStats([s.id], (path) => serverApi<ShopStatsMap>(path)))[s.id];
+  const shop = shopCards(catalog, { ...context.carry, locale: l }).find(
+    (card) => card.store.id === s.id,
+  );
+  const priced = offerings.map((o) => ({ o, ...visitTotal(o, 'FREE', 0) }));
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page">
       <DetailBreadcrumb locale={l} name={s.name[l]} />
       <section className="shop-detail-hero">
+        <H5ShopCover store={s} className="shop-hero-cover" />
         <div className="shop-hero-copy">
-          <span className="eyebrow small">LOCAL CARE / TOKYO</span>
-          <span className="shop-monogram">{s.name.en.slice(0, 1)}</span>
+          <span className="eyebrow small">{ht(l, 'shopHomeVisit')}</span>
+          <span className={`shop-monogram tone-${shopTone(s.id)}`}>{shopMonogram(s)}</span>
           <h1>{s.name[l]}</h1>
           <p>{s.legalName}</p>
+          <p className="shop-hero-description">
+            {s.description?.[l] || shop?.serviceNames.slice(0, 2).join(' · ')}
+          </p>
           <div className="shop-hero-meta">
             <span>
               <UsersRound size={15} />
-              {team.length} {l === 'en' ? 'therapists' : l === 'ja' ? '名のセラピスト' : '位技师'}
+              {ht(l, team.length === 1 ? 'shopTeamOne' : 'shopTeam').replace(
+                '{n}',
+                String(team.length),
+              )}
             </span>
             <span>
               <MapPin size={15} />
-              {s.areas.length} {l === 'en' ? 'service areas' : l === 'ja' ? 'エリア' : '个服务地区'}
+              {ht(l, s.areas.length === 1 ? 'shopAreaOne' : 'shopAreas').replace(
+                '{n}',
+                String(s.areas.length),
+              )}
             </span>
             <span>
               <Clock3 size={15} />
               {acceptanceLabel(l, s.acceptanceMode)}
             </span>
           </div>
+          <H5Badges
+            locale={l}
+            verified={ht(l, 'shopReviewed')}
+            promotion={priced.some((x) => x.promotionEndsAt)}
+            freeTravel={offerings.some((o) => o.transportFee === 0)}
+          />
+          <ShopFacts locale={l} stats={stats} />
+          {shop && (
+            <div className="shop-hero-price">
+              <small>{ht(l, 'shopArranged')}</small>
+              <H5Price
+                locale={l}
+                total={shop.fromTotal}
+                durationMinutes={shop.fromDuration}
+                compareTotal={shop.fromCompare}
+              />
+              <p>{ht(l, 'shopFees')}</p>
+            </div>
+          )}
           <div className="shop-hero-actions">
-            <a className="button inverse" href={context.members[0] ? '#reserve' : '#services'}>
+            <a
+              className="button shop-primary-action"
+              href={context.members[0] ? '#reserve' : '#services'}
+            >
               {vt(l, context.members[0] ? 'preview' : 'serviceMenu')}
               <ArrowRight size={17} />
             </a>
             <StoreFavoriteToggle locale={l} storeId={s.id} />
           </div>
-        </div>
-        <div className="shop-hero-art">
-          <Image
-            src="/images/quiet-interior-v1.png"
-            width={1536}
-            height={1024}
-            sizes="(max-width: 760px) 100vw, 560px"
-            alt=""
-            loading="eager"
-          />
-          <span>
-            AT YOUR PLACE.<small>HoguLink / Tokyo</small>
-          </span>
         </div>
       </section>
       <nav className="detail-anchor-nav" aria-label={vt(l, 'shopAbout')}>
@@ -137,7 +166,7 @@ export default async function Page({
                   </Link>
                 </p>
               )}
-              {offerings.map((o) => {
+              {priced.map(({ o, total, compareTotal, promotionEndsAt }) => {
                 const representative = context.members.find((x) => x.offeringIds.includes(o.id))!;
                 return (
                   <Link
@@ -151,11 +180,17 @@ export default async function Page({
                     <div>
                       <h3>{o.name[l]}</h3>
                       <p>
-                        {t(l, 'serviceFee')} {money(l, o.price)} · {t(l, 'transportFee')}{' '}
-                        {money(l, o.transportFee)} · {t(l, 'nominationFee')} {money(l, 0)}
+                        {t(l, 'serviceFee')} {money(l, visitTotal(o, 'FREE', 0).serviceFee)} ·{' '}
+                        {t(l, 'transportFee')} {money(l, o.transportFee)} · {t(l, 'nominationFee')}{' '}
+                        {money(l, 0)}
                       </p>
                     </div>
-                    <strong>{money(l, visitTotal(o, 'FREE', 0).total)}</strong>
+                    <H5Price
+                      locale={l}
+                      total={total}
+                      compareTotal={compareTotal}
+                      promotionEndsAt={promotionEndsAt}
+                    />
                     <ArrowRight size={17} />
                   </Link>
                 );
@@ -166,6 +201,7 @@ export default async function Page({
             <span className="eyebrow small">PEOPLE BEHIND YOUR VISIT</span>
             <h2>{vt(l, 'team')}</h2>
             <ShopTeam
+              demo={catalog.demo}
               locale={l}
               store={s}
               listings={team}
@@ -226,6 +262,7 @@ export default async function Page({
             <ShieldCheck size={17} />
             {t(l, 'nonMedical')}
           </p>
+          <p className="h5-footnote">{ht(l, 'shopStatsNote')}</p>
         </div>
         <aside className="detail-booking-sidebar">
           {context.members[0] && (

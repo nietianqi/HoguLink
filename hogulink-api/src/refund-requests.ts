@@ -60,6 +60,7 @@ export class RefundService {
           .filter((r) => r.bookingId === b.id)
           .sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id));
       return {
+        bookingVersion: b.version,
         captured: b.capturedAmount,
         refunded: b.refundedAmount,
         remaining: b.capturedAmount - b.refundedAmount,

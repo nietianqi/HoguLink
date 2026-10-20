@@ -107,6 +107,13 @@ const q = await call(
   201,
 );
 const h = await call(customer, 'booking-holds', { quoteId: q.id }, 'POST', 201);
+const holdView = await call(customer, `booking-holds/${h.id}`);
+check(
+  holdView.serverNow > 0 &&
+    holdView.hold.expiresAt - holdView.serverNow > 0 &&
+    holdView.hold.expiresAt - holdView.serverNow <= 600000,
+  'Checkout countdown uses a current server-time snapshot',
+);
 check(
   (await call(customer, `booking-holds/${h.id}/submission`)).bookingId === null,
   'No order before submission',
@@ -220,6 +227,10 @@ check(
   'Normal case resolved with refund',
 );
 b = (await call(customer, 'bookings')).find((x) => x.id === b.id);
+check(
+  care.bookingVersion === b.version,
+  'Care balance identifies the current original booking version',
+);
 request = await call(
   customer,
   `customer/bookings/${b.id}/refund-requests`,

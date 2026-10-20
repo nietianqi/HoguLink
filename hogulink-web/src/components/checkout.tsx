@@ -41,7 +41,10 @@ import {
 } from '@/lib/customer-flow-model';
 import { CheckoutAddresses } from './address-book';
 import { MobileSheet } from './mobile-ui';
+import { holdSecondsRemaining, visitTimeRange } from '@/lib/booking-presentation';
+import { ca } from '@/lib/customer-auth-i18n';
 type CheckoutData = {
+  serverNow?: number;
   hold: Hold;
   quote: Quote;
   legalName: string;
@@ -62,6 +65,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
   const router = useRouter();
   const [data, setData] = useState<CheckoutData>();
   const [error, setError] = useState('');
+  const [loadCode, setLoadCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [paymentId, setPaymentId] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -75,6 +79,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
     touched = useRef(false),
     submitLock = useRef(false),
     retryKey = useRef('');
+  const holdClock = useRef({ serverNow: 0, local: 0 });
   const [address, setAddress] = useState<Address>({
     name: '',
     type: 'HOTEL',
@@ -92,6 +97,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
       setPaymentId('');
       setReady(false);
       setError(t(l, 'loginRequired'));
+      setLoadCode('UNAUTHENTICATED');
     };
     const changed = () => {
       invalid();
@@ -115,6 +121,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
     retryKey.current = '';
     setAgreed(false);
     setError('');
+    setLoadCode('');
     setPaymentStatus('');
     setInstantUnavailable(false);
     api<{ bookingId: string | null }>(`booking-holds/${holdId}/submission`)
@@ -130,7 +137,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         if (cancelled || gen !== generation.current || !value) return;
         setData(value);
         setPaymentId(value.payment?.id ?? '');
-        setRemaining(Math.max(0, Math.floor((value.hold.expiresAt - Date.now()) / 1000)));
+        const serverNow = value.serverNow ?? Math.max(Date.now(), value.hold.createdAt);
+        holdClock.current = { serverNow, local: performance.now() };
+        setRemaining(holdSecondsRemaining(value.hold.expiresAt, serverNow, 0, value.hold.active));
         try {
           const prefix = `${flowDraftPrefix}${value.hold.customerId}:`;
           const exact = sessionStorage.getItem(`${prefix}${holdId}`);
@@ -153,8 +162,10 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         setReady(true);
       })
       .catch((e) => {
-        if (!cancelled && gen === generation.current)
+        if (!cancelled && gen === generation.current) {
           setError(errorText(l, e instanceof ClientError ? e.code : undefined));
+          setLoadCode(e instanceof ClientError ? e.code : 'error');
+        }
       });
     return () => {
       cancelled = true;
@@ -173,7 +184,15 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
   useEffect(() => {
     if (!data) return;
     const timer = setInterval(
-      () => setRemaining(Math.max(0, Math.floor((data.hold.expiresAt - Date.now()) / 1000))),
+      () =>
+        setRemaining(
+          holdSecondsRemaining(
+            data.hold.expiresAt,
+            holdClock.current.serverNow,
+            performance.now() - holdClock.current.local,
+            data.hold.active,
+          ),
+        ),
       1000,
     );
     return () => clearInterval(timer);
@@ -351,15 +370,46 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
   if (!data || data.hold.id !== holdId)
     return (
       <div className="form-card">
+        {error && <h1>{vt(l, 'checkoutUnavailable')}</h1>}
         <p role={error ? 'alert' : 'status'}>{error || t(l, 'waiting')}</p>
-        <Link href={`/${l}`}>{t(l, 'back')}</Link>
+        {error && (
+          <div className="button-row">
+            {loadCode === 'UNAUTHENTICATED' ? (
+              <Link
+                className="button"
+                href={`/${l}/account/access?${new URLSearchParams({ returnTo: `/${l}/checkout/${holdId}` })}`}
+              >
+                {ca(l, 'login')}
+              </Link>
+            ) : (
+              ![
+                'HOLD_EXPIRED',
+                'QUOTE_EXPIRED',
+                'PRICE_CHANGED',
+                'SHOP_RULES_CHANGED',
+                'LISTING_UNAVAILABLE',
+              ].includes(loadCode) && (
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => setSessionVersion((v) => v + 1)}
+                >
+                  {t(l, 'refresh')}
+                </button>
+              )
+            )}
+            <Link className="button secondary" href={`/${l}/therapists`}>
+              {vt(l, 'chooseAnotherTime')}
+            </Link>
+          </div>
+        )}
       </div>
     );
   return (
     <>
       <VisitSteps locale={l} step={2} />
       <div className="visit-page-heading">
-        <span className="eyebrow small">REVIEW YOUR VISIT</span>
+        <span className="eyebrow small">{vt(l, 'step2')}</span>
         <h1>{t(l, 'checkout')}</h1>
         <p>{vt(l, 'checkoutText')}</p>
       </div>
@@ -372,12 +422,13 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         <div className="mobile-checkout-recap">
           <span>{mt(l, 'review')}</span>
           <strong>
-            {data.visit.listingName?.[l] ?? t(l, 'free')} · {data.storeName[l]}
+            {data.quote.nominationType === 'FREE' ? t(l, 'free') : data.visit.listingName?.[l]} ·{' '}
+            {data.storeName[l]}
           </strong>
           <p>
             {data.visit.offeringName?.[l]} · {data.visit.durationMinutes} {t(l, 'minutes')}
           </p>
-          <time>{dateTime(l, data.quote.startAt)} JST</time>
+          <time>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</time>
           <button type="button" className="text-button" disabled={busy} onClick={editVisit}>
             {vt(l, 'edit')}
           </button>
@@ -387,14 +438,18 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
             <span>01</span>
             <h2>{t(l, 'addressType')}</h2>
           </div>
-          <p className={`hold-timer ${remaining === 0 ? 'error-message' : ''}`} role="status">
+          <p
+            className={`hold-timer ${remaining === 0 ? 'error-message' : ''}`}
+            role="timer"
+            aria-live="off"
+          >
             <Clock3 size={16} />
             {remaining > 0
               ? `${t(l, 'timeHeld')} · ${t(l, 'expires')} ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
               : t(l, 'expired')}
           </p>
           {remaining === 0 && (
-            <div className="exception-panel">
+            <div className="exception-panel" role="alert">
               <p>{error || t(l, 'expired')}</p>
               <button
                 type="button"
@@ -583,7 +638,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           </fieldset>
         </form>
         <aside className="summary-card visit-summary checkout-summary">
-          <span className="eyebrow small">YOUR RESERVED VISIT</span>
+          <span className="eyebrow small">{vt(l, 'session')}</span>
           <div className="mini-profile">
             {data.visit.photo ? (
               <img src={data.visit.photo} width="64" height="64" alt="" />
@@ -593,7 +648,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
               </span>
             )}
             <div>
-              <h3>{data.visit.listingName?.[l] ?? t(l, 'free')}</h3>
+              <h3>
+                {data.quote.nominationType === 'FREE' ? t(l, 'free') : data.visit.listingName?.[l]}
+              </h3>
               <Link href={`/${l}/shops/${data.storeSlug}`}>{data.storeName[l]}</Link>
             </div>
           </div>
@@ -605,8 +662,8 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
               </dd>
             </div>
             <div>
-              <dt>{t(l, 'start')}</dt>
-              <dd>{dateTime(l, data.quote.startAt)} JST</dd>
+              <dt>{vt(l, 'visitWindow')}</dt>
+              <dd>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</dd>
             </div>
             <div>
               <dt>{vt(l, 'location')}</dt>
@@ -620,6 +677,32 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           </dl>
           <PriceLines locale={l} quote={data.quote} />
           <p className="summary-estimate">{vt(l, 'frozenQuote')}</p>
+          <div className="booking-desktop-action">
+            {remaining === 0 ? (
+              <button type="button" className="button full" onClick={editVisit} disabled={busy}>
+                {xt(l, 'retryTime')}
+              </button>
+            ) : !paymentId ? (
+              <a className="button full" href="#checkout-payment">
+                {mt(l, 'payment')}
+              </a>
+            ) : !agreed ? (
+              <a className="button full" href="#checkout-policy">
+                {mt(l, 'agree')}
+              </a>
+            ) : (
+              <button className="button full" form="checkout-form" type="submit" disabled={busy}>
+                {busy ? <LoaderCircle size={17} className="spin" /> : <ArrowRight size={17} />}
+                {af(l, 'review')}
+              </button>
+            )}
+            <p>{vt(l, 'requestNote')}</p>
+            {error && (
+              <p className="error-message" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             className="button secondary full"
@@ -709,8 +792,8 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 </dd>
               </div>
               <div>
-                <dt>{t(l, 'start')}</dt>
-                <dd>{dateTime(l, data.quote.startAt)} JST</dd>
+                <dt>{vt(l, 'visitWindow')}</dt>
+                <dd>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</dd>
               </div>
               <div>
                 <dt>{t(l, 'address')}</dt>

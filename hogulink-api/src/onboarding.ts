@@ -22,6 +22,7 @@ import type {
 import type { Records } from './repository.js';
 import { ensure } from './errors.js';
 import { currentAdmin, requireAdmin } from './admin-access.js';
+import { closedPromotionHistory } from './promotion-history.js';
 
 const hash = (v: string) => createHash('sha256').update(v).digest('hex');
 const uid = (p: string) => `${p}_${randomUUID()}`;
@@ -1370,6 +1371,7 @@ export class OnboardingService {
           const s = await tx.get<Store>('stores', a.storeId);
           ensure(s, 'NOT_FOUND', 'Shop not found.', 404);
           s.name = a.draft.displayName;
+          s.description = a.draft.description;
           s.legalName = a.draft.legalName;
           s.legalAddress = a.draft.legalAddress;
           s.contact = a.draft.contact;
@@ -1393,6 +1395,11 @@ export class OnboardingService {
             approved: true,
             active: true,
             regulatoryCategory: 'RELAXATION',
+            promotionHistory: closedPromotionHistory(existing, this.now()),
+            priceSince:
+              existing?.price === a.draft.price && existing.priceSince
+                ? existing.priceSince
+                : this.now(),
           });
         }
         a.status = 'APPROVED';

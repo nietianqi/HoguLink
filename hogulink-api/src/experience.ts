@@ -17,6 +17,7 @@ import {
   type ExperienceScores,
   type ExperienceSummary,
   type FavoriteItem,
+  effectiveServicePrice,
   type FavoriteRecord,
   type StoreFavoriteRecord,
   type Listing,
@@ -206,6 +207,8 @@ export class ExperienceService {
       return {
         counts: {
           checkout: resumable.length,
+          closed: bookings.filter((b) => ['CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status))
+            .length,
           active: bookings.filter(
             (b) => !['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status),
           ).length,
@@ -222,7 +225,8 @@ export class ExperienceService {
             ).length +
             (await tx.list<StoreFavoriteRecord>('storeFavorites')).filter(
               (f) => f.customerId === actor.id && f.active,
-            ).length,
+            ).length +
+            (await tx.count('discoveryReactions', { customerId: actor.id, saved: true })),
         },
         resumeCheckout: resumable[0],
         reviewBookingId: actionable[0]?.id,
@@ -478,7 +482,7 @@ export class ExperienceService {
         area: live.store.areas.includes(b.quote.area) ? b.quote.area : live.store.areas[0],
         language: b.quote.requiredLanguage,
         priceChanged:
-          o.price !== b.quote.serviceFee ||
+          effectiveServicePrice(o, this.now()).price !== b.quote.serviceFee ||
           o.transportFee !== b.quote.transportFee ||
           o.version !== b.quote.offeringVersion,
       };

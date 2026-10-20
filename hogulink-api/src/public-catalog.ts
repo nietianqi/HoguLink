@@ -1,4 +1,4 @@
-import type { Store, Listing, PublicStore } from '@hogulink/contracts';
+import type { Store, Listing, PublicStore, Offering } from '@hogulink/contracts';
 import { effectiveBookingRules } from './booking-rules.js';
 export function toPublicStore(
   store: Store,
@@ -8,6 +8,7 @@ export function toPublicStore(
     id: store.id,
     slug: store.slug,
     name: store.name,
+    ...(store.description ? { description: store.description } : {}),
     legalName: store.legalName,
     legalAddress: store.legalAddress,
     contact: store.contact,
@@ -44,4 +45,11 @@ export function toPublicListing(x: Listing, onDuty = x.onDuty): Listing {
     hotelOnly: x.hotelOnly,
     photo: x.photo,
   };
+}
+/** Public view of a service: the live promotion is kept, internal price history is not. */
+export function toPublicOffering(x: Offering, now: number): Offering {
+  const { promotionHistory: _history, priceSince: _since, promotion, ...rest } = x;
+  return promotion && promotion.endsAt > now && promotion.regularPrice === x.price
+    ? { ...rest, promotion }
+    : rest;
 }

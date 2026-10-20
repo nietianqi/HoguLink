@@ -1,5 +1,10 @@
 import type { Locale } from '@hogulink/contracts';
 const words = {
+  refreshBeforeAction: [
+    '请先刷新并核对当前售后金额，再继续操作。',
+    '現在の返金状況と金額を更新してから操作してください。',
+    'Refresh the current support status and balance before continuing.',
+  ],
   orderOverview: ['订单信息', '予約の詳細', 'Visit details'],
   refundProgress: ['退款申请进度', '返金申請の進捗', 'Refund request progress'],
   refundReceived: ['申请已提交', '申請済み', 'Request sent'],

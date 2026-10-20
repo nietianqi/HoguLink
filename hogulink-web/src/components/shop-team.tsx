@@ -13,6 +13,7 @@ export function ShopTeam({
   nominationFee,
   initialLanguage = '',
   area,
+  demo = false,
 }: {
   locale: Locale;
   store: PublicStore;
@@ -21,6 +22,7 @@ export function ShopTeam({
   nominationFee?: number;
   initialLanguage?: string;
   area?: string;
+  demo?: boolean;
 }) {
   const [language, setLanguage] = useState(initialLanguage);
   const languages = [...new Set(listings.flatMap((x) => x.languages))];
@@ -51,6 +53,7 @@ export function ShopTeam({
         {filtered.map((listing) => (
           <TherapistCard
             key={listing.id}
+            demo={demo}
             locale={l}
             listing={listing}
             store={store}

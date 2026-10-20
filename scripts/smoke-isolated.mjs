@@ -29,6 +29,7 @@ if (
     'invoicing',
     'reporting',
     'completion',
+    'h5',
   ].includes(only)
 )
   throw new Error('Unknown isolated smoke suite.');
@@ -143,48 +144,46 @@ try {
   if (only) {
     await run(only === 'base' ? 'smoke.mjs' : `smoke-${only}.mjs`);
   } else {
-    await run('smoke.mjs');
-    await run('smoke-care.mjs');
-    await run('smoke-merchant.mjs');
-    await run('smoke-staff.mjs');
-    await run('smoke-admin.mjs');
-    await run('smoke-handling.mjs');
-    await run('smoke-employees.mjs');
-    await run('smoke-experience.mjs');
-    await run('smoke-engagement.mjs');
-    // This independent suite uses a fresh memory database and login-rate window.
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-customer-flow.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-coordination.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-governance.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-finance.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-subscription.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-invoicing.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-reporting.mjs');
-    await stopApi();
-    instance = startApi();
-    await waitReady();
-    await run('smoke-completion.mjs');
+    const suites = [
+      'base',
+      'care',
+      'merchant',
+      'staff',
+      'admin',
+      'handling',
+      'employees',
+      'experience',
+      'engagement',
+      'customer-flow',
+      'coordination',
+      'governance',
+      'finance',
+      'subscription',
+      'invoicing',
+      'reporting',
+      'completion',
+      'h5',
+    ];
+    // Handling, employee and engagement checks intentionally reuse prior bookings.
+    // Give the staff capacity checks a fresh fixture so the preceding completed
+    // merchant visit's travel buffer does not consume its instant-booking window.
+    const reuseFixture = new Set([
+      'care',
+      'merchant',
+      'admin',
+      'handling',
+      'employees',
+      'experience',
+      'engagement',
+    ]);
+    for (const [index, suite] of suites.entries()) {
+      if (index > 0 && !reuseFixture.has(suite)) {
+        await stopApi();
+        instance = startApi();
+        await waitReady();
+      }
+      await run(suite === 'base' ? 'smoke.mjs' : `smoke-${suite}.mjs`);
+    }
   }
 } finally {
   await stopApi();

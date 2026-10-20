@@ -17,6 +17,7 @@ export default async function Page({
   return (
     <main id="main" className="wrap page-section">
       <CareCenter
+        key={JSON.stringify([q.booking, q.ticket, q.category])}
         locale={asLocale((await params).locale)}
         role="CUSTOMER"
         initialBookingId={q.booking}

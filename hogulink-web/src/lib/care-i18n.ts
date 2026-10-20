@@ -1,5 +1,7 @@
 import type { Locale, SupportCategory, SupportTicketStatus } from '@hogulink/contracts';
 const words = {
+  caseReference: ['相談番号', 'Request number', '工单编号'],
+  openBooking: ['予約の詳細を確認', 'View original booking', '查看原订单'],
   linkedMissing: [
     'リンク先の相談が見つからないか、アクセスできません。一覧から選択してください。',
     'The linked case is unavailable or inaccessible. Choose a case from your list.',

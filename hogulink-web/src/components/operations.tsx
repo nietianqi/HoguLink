@@ -15,17 +15,7 @@ import {
   UserRound,
   ShieldCheck,
 } from 'lucide-react';
-import type {
-  Actor,
-  Audit,
-  Booking,
-  Listing,
-  Locale,
-  Message,
-  Role,
-  SafetyEvent,
-  Store,
-} from '@hogulink/contracts';
+import type { Actor, Booking, Listing, Locale, Message, Role } from '@hogulink/contracts';
 import { api, ClientError, type Catalog } from '@/lib/api';
 import { t, errorText, dateTime, money, statusText, areaName, type TextKey } from '@/lib/i18n';
 import { useSession } from './booking-form';
@@ -54,16 +44,16 @@ import { WorkdayTools } from './workday-tools';
 import { PartnerOrderFlow, OrderQueueDisclosure } from './partner-order-flow';
 import { pf } from '@/lib/partner-flow-i18n';
 import { br } from '@/lib/booking-rules-i18n';
-import { policyText } from '@/lib/visit-i18n';
+import { policyText, vt } from '@/lib/visit-i18n';
+import { visitTimeRange } from '@/lib/booking-presentation';
+import { CustomerOrderProgress } from './customer-order-progress';
 import { MapPin, MessageCircle, LifeBuoy } from 'lucide-react';
-type Dashboard = {
-  stores: Store[];
-  listings: Listing[];
-  safety: SafetyEvent[];
-  audit: Audit[];
-  feeEntries: { id: string; storeId: string; amount: number; bookingId: string; type: string }[];
-  outboxPending: number;
-};
+import { ca } from '@/lib/customer-auth-i18n';
+import { loadCustomerBookings } from '@/lib/customer-booking-data';
+import {
+  loadPartnerBookings,
+  type PartnerDashboard as Dashboard,
+} from '@/lib/partner-booking-data';
 const roles: Record<Role, TextKey> = {
   CUSTOMER: 'customer',
   MERCHANT: 'merchant',
@@ -101,6 +91,9 @@ export function Operations({
   const [account, setAccount] = useState(role === 'STAFF' ? 'staff-aoi' : 'store-nagi');
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [messageStates, setMessageStates] = useState<Record<string, 'loading' | 'ready' | 'error'>>(
+    {},
+  );
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [candidateState, setCandidateState] = useState<{ key: string; items: Listing[] }>({
     key: '',
@@ -111,41 +104,57 @@ export function Operations({
     operation: 'refunds' | 'cancel' | 'reject';
   } | null>(null);
   const loadVersion = useRef(0);
+  const messageVersion = useRef(0);
   const refresh = useCallback(async () => {
     const generation = ++loadVersion.current;
-    const c = await api<Catalog>('public/staff-listings');
-    if (generation !== loadVersion.current) return;
-    setCatalog(c);
-    if (actor?.role === role) {
-      const [nextBookings, nextDashboard] = await Promise.all([
-        bookingId
-          ? api<Booking>(`bookings/${bookingId}`).then((b) => [b])
-          : api<Booking[]>('bookings'),
-        role === 'MERCHANT' || role === 'ADMIN'
-          ? api<Dashboard>('dashboard')
-          : Promise.resolve(undefined),
-      ]);
+    if (role === 'CUSTOMER' && actor?.role === 'CUSTOMER') {
+      const next = await loadCustomerBookings(bookingId);
       if (generation !== loadVersion.current) return;
-      setBookings(nextBookings);
-      setDashboard(nextDashboard);
+      void next.catalog.then((value) => {
+        if (generation === loadVersion.current) setCatalog(value);
+      });
+      setBookings(next.bookings);
       setOrdersLoaded(true);
+      return;
+    }
+    if (actor?.role === role) {
+      const next = await loadPartnerBookings(role, bookingId);
+      if (generation !== loadVersion.current) return;
+      setBookings(next.bookings);
+      setOrdersLoaded(true);
+      void next.catalog.then((value) => {
+        if (generation === loadVersion.current) setCatalog(value);
+      });
+      void next.dashboard.then((value) => {
+        if (generation === loadVersion.current) setDashboard(value);
+      });
+    } else {
+      const c = await api<Catalog>('public/staff-listings');
+      if (generation === loadVersion.current) setCatalog(c);
     }
   }, [actor, role, bookingId]);
   useEffect(() => {
+    let current = true;
+    messageVersion.current++;
     setOrdersLoaded(false);
     setBookings([]);
+    setCatalog(undefined);
     setDashboard(undefined);
     setMessages({});
+    setMessageStates({});
     setDrafts({});
     setConfirmAction(null);
     setError('');
-    void refresh().catch((e) =>
-      setError(errorText(l, e instanceof ClientError ? e.code : undefined)),
-    );
+    if (!loading)
+      void refresh().catch((e) => {
+        if (current) setError(errorText(l, e instanceof ClientError ? e.code : undefined));
+      });
     return () => {
+      current = false;
       loadVersion.current++;
+      messageVersion.current++;
     };
-  }, [refresh, l]);
+  }, [refresh, l, loading]);
   async function task(fn: () => Promise<unknown>, success?: string) {
     setBusy(true);
     setError('');
@@ -208,11 +217,36 @@ export function Operations({
           : 'staff/tasks';
     return () => api(`${group}/${b.id}/${operation}`, { version: b.version, ...extra });
   }
+  const stores = dashboard?.stores ?? catalog?.stores ?? [];
+  const listings = dashboard?.listings ?? catalog?.listings ?? [];
   function listingName(id: string | null) {
     return (
-      catalog?.listings.find((x) => x.id === id)?.name[l] ??
-      (id ? id.replace('listing-', '') : t(l, 'unassigned'))
+      listings.find((x) => x.id === id)?.name[l] ??
+      (id
+        ? role === 'CUSTOMER'
+          ? vt(l, 'therapistUnavailable')
+          : id.replace('listing-', '')
+        : t(l, 'unassigned'))
     );
+  }
+  async function loadMessages(id: string) {
+    const generation = messageVersion.current;
+    const group =
+      role === 'CUSTOMER'
+        ? 'customer/bookings'
+        : role === 'MERCHANT'
+          ? 'merchant/bookings'
+          : 'staff/tasks';
+    setMessageStates((previous) => ({ ...previous, [id]: 'loading' }));
+    try {
+      const next = await api<Message[]>(`${group}/${id}/messages`);
+      if (generation !== messageVersion.current) return;
+      setMessages((previous) => ({ ...previous, [id]: next }));
+      setMessageStates((previous) => ({ ...previous, [id]: 'ready' }));
+    } catch {
+      if (generation === messageVersion.current)
+        setMessageStates((previous) => ({ ...previous, [id]: 'error' }));
+    }
   }
   const hasRole = actor?.role === role;
   const visibleBookings = filterBookings(bookings, {
@@ -221,7 +255,7 @@ export function Operations({
     search: queueSearch,
     period: queuePeriod,
     describe: (b) =>
-      `${catalog?.stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot} ${listingName(b.assignedListingId)} ${listingName(b.selectedStaffListingId)}`,
+      `${stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot} ${listingName(b.assignedListingId)} ${listingName(b.selectedStaffListingId)}`,
   });
   const missingInitial =
     ordersLoaded &&
@@ -296,9 +330,19 @@ export function Operations({
       <div className="workspace-content">
         <div className="workspace-title">
           <div>
-            <span className="eyebrow small">HOGULINK / {role}</span>
+            {role === 'CUSTOMER' && bookingId && (
+              <Link className="back-link" href={`/${l}/account/bookings`}>
+                {vt(l, 'backBookings')}
+              </Link>
+            )}
+            {role !== 'CUSTOMER' && <span className="eyebrow small">HOGULINK / {role}</span>}
             <h1>
-              {roleIcon} {role === 'CUSTOMER' ? t(l, 'orders') : t(l, roles[role])}
+              {roleIcon}{' '}
+              {role === 'CUSTOMER'
+                ? bookingId
+                  ? vt(l, 'orderDetails')
+                  : t(l, 'orders')
+                : t(l, roles[role])}
             </h1>
             <p>
               {role === 'CUSTOMER'
@@ -319,7 +363,7 @@ export function Operations({
             </button>
           )}
         </div>
-        {role === 'CUSTOMER' && hasRole && !customerDecision && customerTools}
+        {role === 'CUSTOMER' && hasRole && !bookingId && !customerDecision && customerTools}
         {(role !== 'CUSTOMER' || !hasRole) && (
           <div className="account-panel">
             {role === 'CUSTOMER' && (
@@ -331,8 +375,8 @@ export function Operations({
             <div>
               <strong>
                 {hasRole
-                  ? (catalog?.stores.find((s) => s.id === actor.storeId)?.name[l] ??
-                    catalog?.listings.find((x) => x.staffId === actor.staffId)?.name[l] ??
+                  ? (stores.find((s) => s.id === actor.storeId)?.name[l] ??
+                    listings.find((x) => x.staffId === actor.staffId)?.name[l] ??
                     t(l, roles[role]))
                   : t(l, 'loginRequired')}
               </strong>
@@ -344,7 +388,7 @@ export function Operations({
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
               >
-                {(catalog?.stores ?? []).map((s) => (
+                {stores.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name[l]}
                   </option>
@@ -357,7 +401,7 @@ export function Operations({
                 value={account}
                 onChange={(e) => setAccount(e.target.value)}
               >
-                {(catalog?.listings ?? []).map((s) => (
+                {listings.map((s) => (
                   <option key={s.staffId} value={s.staffId}>
                     {s.name[l]}
                   </option>
@@ -365,7 +409,7 @@ export function Operations({
               </select>
             )}
             <button className="button small" disabled={busy || loading} onClick={login}>
-              {role === 'CUSTOMER' ? t(l, 'signIn') : t(l, 'enter')}
+              {role === 'CUSTOMER' ? ca(l, 'login') : t(l, 'enter')}
               <ArrowRight size={14} />
             </button>
           </div>
@@ -383,7 +427,7 @@ export function Operations({
         )}
         {hasRole && (
           <>
-            {(role !== 'CUSTOMER' || !bookingId) && (
+            {ordersLoaded && (role !== 'CUSTOMER' || !bookingId) && (
               <div className="workspace-stats">
                 <div>
                   <span>{t(l, 'orders')}</span>
@@ -453,7 +497,7 @@ export function Operations({
                 </button>
               </div>
             )}
-            {!bookingId && (
+            {!bookingId && ordersLoaded && (
               <>
                 {embedded && role === 'MERCHANT' && initialSelected && (
                   <Link className="workday-task-back" href={`/${l}/merchant?tab=bookings`}>
@@ -467,8 +511,8 @@ export function Operations({
                     role={role}
                     bookings={visibleBookings}
                     allBookings={bookings}
-                    catalog={catalog}
-                    selectedId={selectedId}
+                    catalog={{ stores, listings }}
+                    selectedId={role === 'CUSTOMER' ? undefined : selectedId}
                     onSelect={setSelectedBooking}
                     search={queueSearch}
                     onSearch={setQueueSearch}
@@ -497,7 +541,7 @@ export function Operations({
                   <h3>{dt(l, 'noMatches')}</h3>
                 </div>
               )}
-              {ordersLoaded && !bookings.length && (
+              {ordersLoaded && !bookings.length && (role !== 'CUSTOMER' || !!bookingId) && (
                 <div className="empty-state">
                   <CalendarDays size={35} />
                   <h3>{t(l, 'empty')}</h3>
@@ -508,597 +552,653 @@ export function Operations({
                   )}
                 </div>
               )}
-              {(missingInitial ? [] : visibleBookings).map((b) => {
-                const active = !['COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED'].includes(
-                  b.status,
-                );
-                const candidates =
-                  role === 'MERCHANT'
-                    ? candidateState.key === candidateKey
-                      ? candidateState.items
-                      : []
-                    : (dashboard?.listings ?? catalog?.listings ?? []).filter(
-                        (x) =>
-                          x.storeId === b.storeId &&
-                          x.staffId !== b.assignedStaffId &&
-                          x.publicationStatus === 'PUBLISHED_INDEXABLE',
-                      );
-                const assignmentId = candidates.some((x) => x.id === assignments[b.id])
-                  ? assignments[b.id]
-                  : candidates[0]?.id;
-                return (
-                  <article
-                    className={`booking-card ${role === 'CUSTOMER' && bookingId ? 'customer-order-detail' : role === 'MERCHANT' ? 'merchant-order-detail' : ''}`}
-                    key={b.id}
-                    data-selected={bookingId || b.id === selectedId ? 'true' : 'false'}
-                  >
-                    <div className="booking-card-heading">
-                      <div>
-                        <span className={`status-badge status-${b.status.toLowerCase()}`}>
-                          {(role === 'CUSTOMER' || role === 'MERCHANT') &&
-                          b.replacementConsent === 'PENDING' &&
-                          b.proposedListingId
-                            ? wt(l, 'consentPending')
-                            : statusText(l, b.status)}
-                        </span>
-                        <span className="booking-ref">
-                          {b.id.slice(-8).toUpperCase()}
-                          {role !== 'CUSTOMER' && ` · v${b.version}`}
-                        </span>
-                      </div>
-                      <strong>
-                        {dateTime(l, b.quote.startAt)} <small>JST</small>
-                      </strong>
-                    </div>
-                    {role === 'CUSTOMER' &&
-                      bookingId &&
-                      !(b.replacementConsent === 'PENDING' && b.proposedListingId) && (
-                        <div className="workday-order-next">
-                          <span>{wt(l, 'currentVisit')}</span>
-                          <strong>{ot(l, nextWork(b))}</strong>
-                          {active &&
-                            !['visit', 'closed', 'completionPending', 'completionReview'].includes(
-                              nextWork(b),
-                            ) && (
-                              <small>
-                                {wt(l, 'responseBy')} ·{' '}
-                                {dateTime(
-                                  l,
-                                  b.replacementConsent === 'PENDING'
-                                    ? (b.replacementDeadline ?? b.deadline)
-                                    : b.deadline,
-                                )}{' '}
-                                JST
-                              </small>
-                            )}
-                          {b.refundedAmount > 0 && (
-                            <small>
-                              {t(l, 'refunded')} {money(l, b.refundedAmount)} ·{' '}
-                              {dt(l, 'netCaptured')} {money(l, b.capturedAmount - b.refundedAmount)}
-                            </small>
-                          )}
+              {(missingInitial || (role === 'CUSTOMER' && !bookingId) ? [] : visibleBookings).map(
+                (b) => {
+                  const active = !['COMPLETED', 'REJECTED', 'CANCELLED', 'EXPIRED'].includes(
+                    b.status,
+                  );
+                  const candidates =
+                    role === 'MERCHANT'
+                      ? candidateState.key === candidateKey
+                        ? candidateState.items
+                        : []
+                      : (dashboard?.listings ?? catalog?.listings ?? []).filter(
+                          (x) =>
+                            x.storeId === b.storeId &&
+                            x.staffId !== b.assignedStaffId &&
+                            x.publicationStatus === 'PUBLISHED_INDEXABLE',
+                        );
+                  const assignmentId = candidates.some((x) => x.id === assignments[b.id])
+                    ? assignments[b.id]
+                    : candidates[0]?.id;
+                  return (
+                    <article
+                      className={`booking-card ${role === 'CUSTOMER' && bookingId ? 'customer-order-detail' : role === 'MERCHANT' ? 'merchant-order-detail' : ''}`}
+                      key={b.id}
+                      data-selected={bookingId || b.id === selectedId ? 'true' : 'false'}
+                    >
+                      <div className="booking-card-heading">
+                        <div>
+                          <span className={`status-badge status-${b.status.toLowerCase()}`}>
+                            {(role === 'CUSTOMER' || role === 'MERCHANT') &&
+                            b.replacementConsent === 'PENDING' &&
+                            b.proposedListingId
+                              ? wt(l, 'consentPending')
+                              : statusText(l, b.status)}
+                          </span>
+                          <span className="booking-ref">
+                            {b.id.slice(-8).toUpperCase()}
+                            {role !== 'CUSTOMER' && ` · v${b.version}`}
+                          </span>
                         </div>
-                      )}
-                    {role === 'CUSTOMER' && b.replacementConsent === 'PENDING' && (
-                      <div className="replacement-panel">
-                        <h3>{t(l, 'replacement')}</h3>
-                        <p>
-                          {b.proposedListingId ? (
-                            <>
-                              {t(l, 'replacementText')} ·{' '}
-                              <strong>{listingName(b.proposedListingId)}</strong>
-                            </>
+                        <strong>
+                          {role === 'CUSTOMER' ? (
+                            visitTimeRange(l, b.quote.startAt, b.quote.endAt)
                           ) : (
-                            xt(l, 'waitingShop')
-                          )}
-                        </p>
-                        <small className="workday-response">
-                          {wt(l, 'responseBy')} · {dateTime(l, b.replacementDeadline ?? b.deadline)}{' '}
-                          JST
-                        </small>
-                        <div className="button-row">
-                          {b.proposedListingId && (
-                            <button
-                              className="button small"
-                              disabled={busy}
-                              onClick={() =>
-                                task(action(b, 'replacement-consent', { approved: true }))
-                              }
-                            >
-                              {t(l, 'approve')}
-                            </button>
-                          )}
-                          <button
-                            className="button secondary small"
-                            disabled={busy}
-                            onClick={() =>
-                              task(action(b, 'replacement-consent', { approved: false }))
-                            }
-                          >
-                            {b.proposedListingId ? t(l, 'decline') : xt(l, 'freeCancel')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {role === 'MERCHANT' && (
-                      <PartnerOrderFlow locale={l} booking={b} role="MERCHANT" />
-                    )}
-                    {role === 'MERCHANT' && (
-                      <section
-                        className="merchant-dispatch-panel"
-                        id={`dispatch-${b.id}`}
-                        aria-label={pf(l, 'dispatch')}
-                      >
-                        <div className="partner-section-heading">
-                          <span>01</span>
-                          <h3>{pf(l, 'dispatch')}</h3>
-                        </div>
-                        <p className="flow-muted">
-                          {b.status === 'REQUESTED'
-                            ? ot(l, 'accept')
-                            : pf(
-                                l,
-                                b.replacementConsent === 'PENDING' && b.proposedListingId
-                                  ? 'pending'
-                                  : ['ACCEPTED', 'CONFIRMED', 'REQUESTED'].includes(b.status)
-                                    ? b.quote.nominationType === 'FREE'
-                                      ? 'freeHelp'
-                                      : 'nominatedHelp'
-                                    : 'noDispatch',
-                              )}
-                        </p>
-                        <div className="merchant-dispatch-controls">
-                          {b.status === 'REQUESTED' && (
                             <>
-                              <button
-                                className="button small"
-                                disabled={busy}
-                                onClick={() => task(action(b, 'accept'))}
-                              >
-                                {t(l, 'accept')}
-                              </button>
-                              <button
-                                className="text-button danger"
-                                disabled={busy}
-                                onClick={() => {
-                                  setError('');
-                                  setConfirmAction({ booking: b, operation: 'reject' });
-                                }}
-                              >
-                                {t(l, 'reject')}
-                              </button>
+                              {dateTime(l, b.quote.startAt)} <small>JST</small>
                             </>
                           )}
-                          {['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
-                            (b.replacementConsent !== 'PENDING' || !b.proposedListingId) &&
-                            candidates.length > 0 && (
-                              <>
-                                <label className="merchant-candidate-field">
-                                  <span>{pf(l, 'candidate')}</span>
-                                  <select
-                                    aria-label={`${t(l, 'chooseStaff')} ${b.id.slice(-8)}`}
-                                    value={assignmentId ?? ''}
-                                    onChange={(e) =>
-                                      setAssignments((previous) => ({
-                                        ...previous,
-                                        [b.id]: e.target.value,
-                                      }))
-                                    }
-                                  >
-                                    {candidates.map((x) => (
-                                      <option key={x.id} value={x.id}>
-                                        {x.name[l]}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <button
-                                  className="button secondary small"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    task(
-                                      action(
-                                        b,
-                                        b.quote.nominationType === 'FREE'
-                                          ? 'assignments'
-                                          : 'replacement-proposals',
-                                        { listingId: assignmentId },
-                                      ),
-                                    )
-                                  }
-                                >
-                                  {t(l, b.quote.nominationType === 'FREE' ? 'assign' : 'propose')}
-                                </button>
-                              </>
-                            )}
-                          {['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
-                            (b.replacementConsent !== 'PENDING' || !b.proposedListingId) &&
-                            candidates.length === 0 && (
-                              <p className="merchant-candidate-note">
-                                {st(
-                                  l,
-                                  candidateState.key === candidateKey
-                                    ? 'noCandidates'
-                                    : 'assignments',
-                                )}
-                              </p>
-                            )}
-                        </div>
-                      </section>
-                    )}
-                    {customerDecision && customerTools}
-                    <CompletionPanel
-                      locale={l}
-                      booking={b}
-                      role={role}
-                      onUpdated={() => void task(refresh)}
-                    />
-                    {role === 'CUSTOMER' && bookingId && (
-                      <nav className="order-detail-nav" aria-label={af(l, 'orderOverview')}>
-                        <a href={`#order-overview-${b.id}`}>{af(l, 'orderOverview')}</a>
-                        <a href={`#aftercare-${b.id}`}>{af(l, 'aftercare')}</a>
-                        <Link href={`/${l}/account/support?booking=${b.id}`}>
-                          {ct(l, 'center')}
-                          <ArrowRight size={15} />
-                        </Link>
-                      </nav>
-                    )}
-                    <div className="booking-card-main" id={`order-overview-${b.id}`}>
-                      <div className="booking-facts">
-                        <h3>
-                          {catalog?.stores.find((s) => s.id === b.storeId)?.name[l] ??
-                            b.legalNameSnapshot}
-                        </h3>
-                        <p className="muted legal-name">{b.legalNameSnapshot}</p>
-                        <dl>
-                          <div>
-                            <dt>{af(l, 'serviceItem')}</dt>
-                            <dd>
-                              {b.quote.serviceName?.[l] ?? t(l, 'services')} ·{' '}
-                              {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{t(l, 'original')}</dt>
-                            <dd>
-                              {b.selectedStaffListingId
-                                ? listingName(b.selectedStaffListingId)
-                                : t(l, 'free')}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{t(l, 'assigned')}</dt>
-                            <dd>
-                              {listingName(b.assignedListingId)} ·{' '}
-                              {statusText(l, b.staffTaskStatus)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{t(l, 'area')}</dt>
-                            <dd>{areaName(l, b.quote.area)}</dd>
-                          </div>
-                          <div>
-                            <dt>{t(l, 'paymentStatus')}</dt>
-                            <dd>{statusText(l, b.paymentStatus)}</dd>
-                          </div>
-                          {b.capturedAmount > 0 && (
-                            <div>
-                              <dt>{t(l, 'captured')}</dt>
-                              <dd>
-                                {money(l, b.capturedAmount)} · {t(l, 'refunded')}{' '}
-                                {money(l, b.refundedAmount)}
-                              </dd>
-                            </div>
-                          )}
-                        </dl>
-                        {b.address ? (
-                          <p className="address-display">
-                            {b.address.name} · {b.address.detail}
-                            {b.address.type === 'HOTEL' &&
-                              ` · ${b.address.hotelName} / ${b.address.room}`}
-                          </p>
-                        ) : (
-                          role === 'STAFF' && <p className="muted">{t(l, 'noAddress')}</p>
-                        )}
-                        <p className="muted">
-                          {active &&
-                            !['visit', 'closed', 'completionPending', 'completionReview'].includes(
-                              nextWork(b),
-                            ) &&
-                            `${dateTime(l, b.replacementConsent === 'PENDING' ? (b.replacementDeadline ?? b.deadline) : b.deadline)} · `}
-                          {active
-                            ? ot(l, nextWork(b))
-                            : b.cancelReason === 'CUSTOMER_NO_SHOW'
-                              ? xt(l, 'closed')
-                              : b.cancelReason === 'MERCHANT_UNABLE' ||
-                                  b.cancelReason === 'PROVIDER_ARRIVAL_DELAY' ||
-                                  b.cancelReason === 'CUSTOMER_REQUEST' ||
-                                  b.cancelReason === 'SAFETY_TERMINATION'
-                                ? qt(l, b.cancelReason)
-                                : b.cancelReason
-                                  ? statusText(l, b.status)
-                                  : null}
-                        </p>
+                        </strong>
                       </div>
-                      <div className="booking-price">
-                        <PriceLines locale={l} quote={b.quote} />
-                      </div>
-                    </div>
-                    {role === 'CUSTOMER' && (
-                      <>
-                        <details className="order-policy-snapshot">
-                          <summary>{br(l, 'frozen')}</summary>
-                          <p>{policyText(l, b.quote.cancellationPolicy, b.quote.bookingMode)}</p>
-                          <small>{b.quote.cancellationPolicy.version}</small>
-                        </details>
-                        <ArrivalPanel locale={l} booking={b} onUpdated={() => void task(refresh)} />
-                        <CustomerExperiencePanel locale={l} booking={b} />
-                        {bookingId && (
-                          <OrderCarePanel
-                            locale={l}
-                            booking={b}
-                            onUpdated={() => void task(refresh)}
-                          />
-                        )}
-                      </>
-                    )}
-                    <NoShowPanel
-                      locale={l}
-                      booking={b}
-                      role={role}
-                      onUpdated={() => task(refresh)}
-                    />
-                    <div className="booking-actions">
-                      {role === 'CUSTOMER' && !bookingId && (
-                        <Link className="text-button" href={`/${l}/account/bookings/${b.id}`}>
-                          {af(l, 'aftercare')} ↗
-                        </Link>
-                      )}
-                      {(role === 'CUSTOMER' || role === 'STAFF') && (
-                        <Link
-                          className="text-button"
-                          href={`/${l}/${role === 'CUSTOMER' ? 'account' : 'staff'}/support?booking=${b.id}`}
-                        >
-                          {ct(l, role === 'STAFF' ? 'privateFeedback' : 'create')}
-                        </Link>
-                      )}
-                      {role === 'CUSTOMER' && active && (
-                        <CancellationAction
-                          locale={l}
-                          booking={b}
-                          onUpdated={() => void task(refresh)}
-                        />
-                      )}
-                      {role === 'STAFF' && active && (
+                      {role === 'CUSTOMER' && bookingId && (
                         <>
-                          {b.staffTaskStatus === 'OFFERED' && (
-                            <button
-                              className="button small"
-                              disabled={busy}
-                              onClick={() => task(action(b, 'ack', { arrivalMinutes: 45 }))}
+                          <CustomerOrderProgress locale={l} booking={b} />
+                          <nav className="order-detail-nav" aria-label={vt(l, 'orderDetails')}>
+                            <a href={`#order-overview-${b.id}`}>{af(l, 'orderOverview')}</a>
+                            <a href={`#order-price-${b.id}`}>{vt(l, 'included')}</a>
+                            <a
+                              href={`#order-policy-${b.id}`}
+                              onClick={() => {
+                                const panel = document.getElementById(`order-policy-${b.id}`);
+                                if (panel instanceof HTMLDetailsElement) panel.open = true;
+                              }}
                             >
-                              {t(l, 'ack')} {b.quote.bookingMode === 'INSTANT' ? '· 45 min' : ''}
-                            </button>
-                          )}
-                          {['OFFERED', 'ACKNOWLEDGED'].includes(b.staffTaskStatus) &&
-                            ['ACCEPTED', 'CONFIRMED'].includes(b.status) && (
-                              <button
-                                className="text-button"
-                                disabled={busy}
-                                onClick={() =>
-                                  task(
-                                    action(b, 'decline', {
-                                      reason: 'Unable to serve / デモ / 演示',
-                                    }),
-                                  )
-                                }
-                              >
-                                {t(l, 'unavailable')}
-                              </button>
-                            )}
-                          {b.staffTaskStatus === 'ACKNOWLEDGED' &&
-                            b.replacementConsent !== 'PENDING' &&
-                            (['CONFIRMED', 'EN_ROUTE'] as const).includes(
-                              b.status as 'CONFIRMED',
-                            ) && (
-                              <button
-                                className="button small"
-                                disabled={busy}
-                                onClick={() =>
-                                  task(
-                                    action(b, 'events', {
-                                      event: (
-                                        {
-                                          CONFIRMED: 'EN_ROUTE',
-                                          EN_ROUTE: 'ARRIVED',
-                                          ARRIVED: 'START',
-                                          IN_SERVICE: 'COMPLETE',
-                                        } as Record<string, string>
-                                      )[b.status],
-                                    }),
-                                  )
-                                }
-                              >
-                                {t(
-                                  l,
-                                  (
-                                    {
-                                      CONFIRMED: 'enRoute',
-                                      EN_ROUTE: 'arrived',
-                                      ARRIVED: 'startService',
-                                      IN_SERVICE: 'complete',
-                                    } as Record<string, TextKey>
-                                  )[b.status],
-                                )}
-                              </button>
-                            )}
-                          <button
-                            className="button danger-button small"
-                            disabled={busy}
-                            onClick={() =>
-                              task(
-                                () =>
-                                  api('staff/safety-alerts', {
-                                    bookingId: b.id,
-                                    version: b.version,
-                                    type: 'SOS',
-                                  }),
-                                t(l, 'sosNote'),
-                              )
-                            }
-                          >
-                            <ShieldAlert size={15} />
-                            {t(l, 'sos')}
-                          </button>
-                          <button
-                            className="text-button danger"
-                            disabled={busy}
-                            onClick={() =>
-                              task(
-                                () =>
-                                  api('staff/safety-alerts', {
-                                    bookingId: b.id,
-                                    version: b.version,
-                                    type: 'SAFETY_TERMINATION',
-                                  }),
-                                t(l, 'sosNote'),
-                              )
-                            }
-                          >
-                            {t(l, 'terminate')}
-                          </button>
+                              {t(l, 'policy')}
+                            </a>
+                            <a
+                              href={`#order-messages-${b.id}`}
+                              onClick={() => {
+                                const panel = document.getElementById(`order-messages-${b.id}`);
+                                if (panel instanceof HTMLDetailsElement) panel.open = true;
+                              }}
+                            >
+                              {t(l, 'messages')}
+                            </a>
+                            <a href={`#aftercare-${b.id}`}>{af(l, 'aftercare')}</a>
+                          </nav>
                         </>
                       )}
-                      {role === 'CUSTOMER' && !bookingId && (
-                        <Link href={`/${l}/account/bookings/${b.id}`} className="text-button">
-                          {t(l, 'details')} <ArrowRight size={14} />
-                        </Link>
-                      )}
-                    </div>
-                    {role === 'MERCHANT' &&
-                      ((active && !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status)) ||
-                        b.capturedAmount > b.refundedAmount) && (
-                        <details className="partner-exceptions">
-                          <summary>{pf(l, 'exceptions')}</summary>
-                          <p>{pf(l, 'exceptionHelp')}</p>
-                          <div className="booking-actions">
+                      {role === 'CUSTOMER' &&
+                        bookingId &&
+                        !(b.replacementConsent === 'PENDING' && b.proposedListingId) && (
+                          <div className="workday-order-next">
+                            <span>{wt(l, 'currentVisit')}</span>
+                            <strong>{ot(l, nextWork(b))}</strong>
                             {active &&
-                              !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) && (
+                              ![
+                                'visit',
+                                'closed',
+                                'completionPending',
+                                'completionReview',
+                              ].includes(nextWork(b)) && (
+                                <small>
+                                  {wt(l, 'responseBy')} ·{' '}
+                                  {dateTime(
+                                    l,
+                                    b.replacementConsent === 'PENDING'
+                                      ? (b.replacementDeadline ?? b.deadline)
+                                      : b.deadline,
+                                  )}{' '}
+                                  JST
+                                </small>
+                              )}
+                            {b.refundedAmount > 0 && (
+                              <small>
+                                {t(l, 'refunded')} {money(l, b.refundedAmount)} ·{' '}
+                                {dt(l, 'netCaptured')}{' '}
+                                {money(l, b.capturedAmount - b.refundedAmount)}
+                              </small>
+                            )}
+                          </div>
+                        )}
+                      {role === 'CUSTOMER' && b.replacementConsent === 'PENDING' && (
+                        <div className="replacement-panel">
+                          <h3>{t(l, 'replacement')}</h3>
+                          <p>
+                            {b.proposedListingId ? (
+                              <>
+                                {t(l, 'replacementText')} ·{' '}
+                                <strong>{listingName(b.proposedListingId)}</strong>
+                              </>
+                            ) : (
+                              xt(l, 'waitingShop')
+                            )}
+                          </p>
+                          <small className="workday-response">
+                            {wt(l, 'responseBy')} ·{' '}
+                            {dateTime(l, b.replacementDeadline ?? b.deadline)} JST
+                          </small>
+                          <div className="button-row">
+                            {b.proposedListingId && (
+                              <button
+                                className="button small"
+                                disabled={busy}
+                                onClick={() =>
+                                  task(action(b, 'replacement-consent', { approved: true }))
+                                }
+                              >
+                                {t(l, 'approve')}
+                              </button>
+                            )}
+                            <button
+                              className="button secondary small"
+                              disabled={busy}
+                              onClick={() =>
+                                task(action(b, 'replacement-consent', { approved: false }))
+                              }
+                            >
+                              {b.proposedListingId ? t(l, 'decline') : xt(l, 'freeCancel')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {role === 'MERCHANT' && (
+                        <PartnerOrderFlow locale={l} booking={b} role="MERCHANT" />
+                      )}
+                      {role === 'MERCHANT' && (
+                        <section
+                          className="merchant-dispatch-panel"
+                          id={`dispatch-${b.id}`}
+                          aria-label={pf(l, 'dispatch')}
+                        >
+                          <div className="partner-section-heading">
+                            <span>01</span>
+                            <h3>{pf(l, 'dispatch')}</h3>
+                          </div>
+                          <p className="flow-muted">
+                            {b.status === 'REQUESTED'
+                              ? ot(l, 'accept')
+                              : pf(
+                                  l,
+                                  b.replacementConsent === 'PENDING' && b.proposedListingId
+                                    ? 'pending'
+                                    : ['ACCEPTED', 'CONFIRMED', 'REQUESTED'].includes(b.status)
+                                      ? b.quote.nominationType === 'FREE'
+                                        ? 'freeHelp'
+                                        : 'nominatedHelp'
+                                      : 'noDispatch',
+                                )}
+                          </p>
+                          <div className="merchant-dispatch-controls">
+                            {b.status === 'REQUESTED' && (
+                              <>
+                                <button
+                                  className="button small"
+                                  disabled={busy}
+                                  onClick={() => task(action(b, 'accept'))}
+                                >
+                                  {t(l, 'accept')}
+                                </button>
                                 <button
                                   className="text-button danger"
                                   disabled={busy}
                                   onClick={() => {
                                     setError('');
-                                    setConfirmAction({ booking: b, operation: 'cancel' });
+                                    setConfirmAction({ booking: b, operation: 'reject' });
                                   }}
                                 >
-                                  {t(l, 'cancel')}
+                                  {t(l, 'reject')}
                                 </button>
+                              </>
+                            )}
+                            {['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+                              (b.replacementConsent !== 'PENDING' || !b.proposedListingId) &&
+                              candidates.length > 0 && (
+                                <>
+                                  <label className="merchant-candidate-field">
+                                    <span>{pf(l, 'candidate')}</span>
+                                    <select
+                                      aria-label={`${t(l, 'chooseStaff')} ${b.id.slice(-8)}`}
+                                      value={assignmentId ?? ''}
+                                      onChange={(e) =>
+                                        setAssignments((previous) => ({
+                                          ...previous,
+                                          [b.id]: e.target.value,
+                                        }))
+                                      }
+                                    >
+                                      {candidates.map((x) => (
+                                        <option key={x.id} value={x.id}>
+                                          {x.name[l]}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <button
+                                    className="button secondary small"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      task(
+                                        action(
+                                          b,
+                                          b.quote.nominationType === 'FREE'
+                                            ? 'assignments'
+                                            : 'replacement-proposals',
+                                          { listingId: assignmentId },
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    {t(l, b.quote.nominationType === 'FREE' ? 'assign' : 'propose')}
+                                  </button>
+                                </>
                               )}
-                            {b.capturedAmount > b.refundedAmount && (
+                            {['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+                              (b.replacementConsent !== 'PENDING' || !b.proposedListingId) &&
+                              candidates.length === 0 && (
+                                <p className="merchant-candidate-note">
+                                  {st(
+                                    l,
+                                    candidateState.key === candidateKey
+                                      ? 'noCandidates'
+                                      : 'assignments',
+                                  )}
+                                </p>
+                              )}
+                          </div>
+                        </section>
+                      )}
+                      {customerDecision && !bookingId && customerTools}
+                      <CompletionPanel
+                        locale={l}
+                        booking={b}
+                        role={role}
+                        onUpdated={() => void task(refresh)}
+                      />
+                      <div className="booking-card-main" id={`order-overview-${b.id}`}>
+                        <div className="booking-facts">
+                          <h3>
+                            {stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot}
+                          </h3>
+                          <p className="muted legal-name">{b.legalNameSnapshot}</p>
+                          <dl>
+                            <div>
+                              <dt>{af(l, 'serviceItem')}</dt>
+                              <dd>
+                                {b.quote.serviceName?.[l] ?? t(l, 'services')} ·{' '}
+                                {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{t(l, 'original')}</dt>
+                              <dd>
+                                {b.selectedStaffListingId
+                                  ? listingName(b.selectedStaffListingId)
+                                  : t(l, 'free')}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{t(l, 'assigned')}</dt>
+                              <dd>
+                                {listingName(b.assignedListingId)} ·{' '}
+                                {statusText(l, b.staffTaskStatus)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{t(l, 'area')}</dt>
+                              <dd>{areaName(l, b.quote.area)}</dd>
+                            </div>
+                            <div>
+                              <dt>{t(l, 'paymentStatus')}</dt>
+                              <dd>{statusText(l, b.paymentStatus)}</dd>
+                            </div>
+                            {b.capturedAmount > 0 && (
+                              <div>
+                                <dt>{t(l, 'captured')}</dt>
+                                <dd>
+                                  {money(l, b.capturedAmount)} · {t(l, 'refunded')}{' '}
+                                  {money(l, b.refundedAmount)}
+                                </dd>
+                              </div>
+                            )}
+                          </dl>
+                          {b.address ? (
+                            <p className="address-display">
+                              {b.address.name} · {b.address.detail}
+                              {b.address.type === 'HOTEL' &&
+                                ` · ${b.address.hotelName} / ${b.address.room}`}
+                            </p>
+                          ) : (
+                            role === 'STAFF' && <p className="muted">{t(l, 'noAddress')}</p>
+                          )}
+                          <p className="muted">
+                            {active &&
+                              ![
+                                'visit',
+                                'closed',
+                                'completionPending',
+                                'completionReview',
+                              ].includes(nextWork(b)) &&
+                              `${dateTime(l, b.replacementConsent === 'PENDING' ? (b.replacementDeadline ?? b.deadline) : b.deadline)} · `}
+                            {active
+                              ? ot(l, nextWork(b))
+                              : b.cancelReason === 'CUSTOMER_NO_SHOW'
+                                ? xt(l, 'closed')
+                                : b.cancelReason === 'MERCHANT_UNABLE' ||
+                                    b.cancelReason === 'PROVIDER_ARRIVAL_DELAY' ||
+                                    b.cancelReason === 'CUSTOMER_REQUEST' ||
+                                    b.cancelReason === 'SAFETY_TERMINATION'
+                                  ? qt(l, b.cancelReason)
+                                  : b.cancelReason
+                                    ? statusText(l, b.status)
+                                    : null}
+                          </p>
+                        </div>
+                        <div className="booking-price" id={`order-price-${b.id}`}>
+                          <PriceLines locale={l} quote={b.quote} />
+                        </div>
+                      </div>
+                      {role === 'CUSTOMER' && (
+                        <>
+                          <details className="order-policy-snapshot" id={`order-policy-${b.id}`}>
+                            <summary>{br(l, 'frozen')}</summary>
+                            <p>{policyText(l, b.quote.cancellationPolicy, b.quote.bookingMode)}</p>
+                            <small>{b.quote.cancellationPolicy.version}</small>
+                          </details>
+                          <ArrivalPanel
+                            locale={l}
+                            booking={b}
+                            onUpdated={() => void task(refresh)}
+                          />
+                          <CustomerExperiencePanel locale={l} booking={b} />
+                          {bookingId && (
+                            <OrderCarePanel
+                              locale={l}
+                              booking={b}
+                              showProgress={false}
+                              onUpdated={() => void task(refresh)}
+                            />
+                          )}
+                        </>
+                      )}
+                      <NoShowPanel
+                        locale={l}
+                        booking={b}
+                        role={role}
+                        onUpdated={() => task(refresh)}
+                      />
+                      <div className="booking-actions">
+                        {role === 'CUSTOMER' && !bookingId && (
+                          <Link className="text-button" href={`/${l}/account/bookings/${b.id}`}>
+                            {af(l, 'aftercare')} ↗
+                          </Link>
+                        )}
+                        {(role === 'CUSTOMER' || role === 'STAFF') && (
+                          <Link
+                            className="text-button"
+                            href={`/${l}/${role === 'CUSTOMER' ? 'account' : 'staff'}/support?booking=${b.id}`}
+                          >
+                            {ct(l, role === 'STAFF' ? 'privateFeedback' : 'create')}
+                          </Link>
+                        )}
+                        {role === 'CUSTOMER' && active && (
+                          <CancellationAction
+                            locale={l}
+                            booking={b}
+                            onUpdated={() => void task(refresh)}
+                          />
+                        )}
+                        {role === 'STAFF' && active && (
+                          <>
+                            {b.staffTaskStatus === 'OFFERED' && (
                               <button
-                                className="button secondary small"
+                                className="button small"
                                 disabled={busy}
-                                onClick={() => {
-                                  setError('');
-                                  setConfirmAction({ booking: b, operation: 'refunds' });
-                                }}
+                                onClick={() => task(action(b, 'ack', { arrivalMinutes: 45 }))}
                               >
-                                {st(l, 'refund')}
+                                {t(l, 'ack')} {b.quote.bookingMode === 'INSTANT' ? '· 45 min' : ''}
                               </button>
                             )}
-                          </div>
-                        </details>
-                      )}
-                    {actor &&
-                      ((role === 'CUSTOMER' && bookingId) ||
-                        (role === 'MERCHANT' && b.id === selectedId)) && (
-                        <OrderCoordination
-                          key={`${actor.id}:${b.id}`}
-                          locale={l}
-                          booking={b}
-                          actor={actor}
-                          showNext={role === 'CUSTOMER'}
-                          onUpdated={() => void task(refresh)}
-                        />
-                      )}
-                    {((role === 'CUSTOMER' && (bookingId || active)) ||
-                      role === 'MERCHANT' ||
-                      (role === 'STAFF' &&
-                        b.staffTaskStatus === 'ACKNOWLEDGED' &&
-                        b.replacementConsent !== 'PENDING' &&
-                        active)) && (
-                      <details
-                        className="message-panel"
-                        onToggle={(e) => {
-                          if (e.currentTarget.open && !messages[b.id]) {
-                            const group =
-                              role === 'CUSTOMER'
-                                ? 'customer/bookings'
-                                : role === 'MERCHANT'
-                                  ? 'merchant/bookings'
-                                  : 'staff/tasks';
-                            void api<Message[]>(`${group}/${b.id}/messages`)
-                              .then((x) => setMessages((previous) => ({ ...previous, [b.id]: x })))
-                              .catch(() => {});
-                          }
-                        }}
-                      >
-                        <summary>
-                          <MessagesSquare size={16} />
-                          {role === 'MERCHANT' ? ot(l, 'customerMessages') : t(l, 'messages')}
-                        </summary>
-                        <p className="muted">{t(l, 'contactHidden')}</p>
-                        <div className="message-list">
-                          {(messages[b.id] ?? []).map((m) => (
-                            <div key={m.id}>
-                              <small>
-                                {t(l, roles[m.role])} · {dateTime(l, m.createdAt)}
-                              </small>
-                              <p>{m.text}</p>
+                            {['OFFERED', 'ACKNOWLEDGED'].includes(b.staffTaskStatus) &&
+                              ['ACCEPTED', 'CONFIRMED'].includes(b.status) && (
+                                <button
+                                  className="text-button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    task(
+                                      action(b, 'decline', {
+                                        reason: 'Unable to serve / デモ / 演示',
+                                      }),
+                                    )
+                                  }
+                                >
+                                  {t(l, 'unavailable')}
+                                </button>
+                              )}
+                            {b.staffTaskStatus === 'ACKNOWLEDGED' &&
+                              b.replacementConsent !== 'PENDING' &&
+                              (['CONFIRMED', 'EN_ROUTE'] as const).includes(
+                                b.status as 'CONFIRMED',
+                              ) && (
+                                <button
+                                  className="button small"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    task(
+                                      action(b, 'events', {
+                                        event: (
+                                          {
+                                            CONFIRMED: 'EN_ROUTE',
+                                            EN_ROUTE: 'ARRIVED',
+                                            ARRIVED: 'START',
+                                            IN_SERVICE: 'COMPLETE',
+                                          } as Record<string, string>
+                                        )[b.status],
+                                      }),
+                                    )
+                                  }
+                                >
+                                  {t(
+                                    l,
+                                    (
+                                      {
+                                        CONFIRMED: 'enRoute',
+                                        EN_ROUTE: 'arrived',
+                                        ARRIVED: 'startService',
+                                        IN_SERVICE: 'complete',
+                                      } as Record<string, TextKey>
+                                    )[b.status],
+                                  )}
+                                </button>
+                              )}
+                            <button
+                              className="button danger-button small"
+                              disabled={busy}
+                              onClick={() =>
+                                task(
+                                  () =>
+                                    api('staff/safety-alerts', {
+                                      bookingId: b.id,
+                                      version: b.version,
+                                      type: 'SOS',
+                                    }),
+                                  t(l, 'sosNote'),
+                                )
+                              }
+                            >
+                              <ShieldAlert size={15} />
+                              {t(l, 'sos')}
+                            </button>
+                            <button
+                              className="text-button danger"
+                              disabled={busy}
+                              onClick={() =>
+                                task(
+                                  () =>
+                                    api('staff/safety-alerts', {
+                                      bookingId: b.id,
+                                      version: b.version,
+                                      type: 'SAFETY_TERMINATION',
+                                    }),
+                                  t(l, 'sosNote'),
+                                )
+                              }
+                            >
+                              {t(l, 'terminate')}
+                            </button>
+                          </>
+                        )}
+                        {role === 'CUSTOMER' && !bookingId && (
+                          <Link href={`/${l}/account/bookings/${b.id}`} className="text-button">
+                            {t(l, 'details')} <ArrowRight size={14} />
+                          </Link>
+                        )}
+                      </div>
+                      {role === 'MERCHANT' &&
+                        ((active && !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status)) ||
+                          b.capturedAmount > b.refundedAmount) && (
+                          <details className="partner-exceptions">
+                            <summary>{pf(l, 'exceptions')}</summary>
+                            <p>{pf(l, 'exceptionHelp')}</p>
+                            <div className="booking-actions">
+                              {active &&
+                                !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) && (
+                                  <button
+                                    className="text-button danger"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      setError('');
+                                      setConfirmAction({ booking: b, operation: 'cancel' });
+                                    }}
+                                  >
+                                    {t(l, 'cancel')}
+                                  </button>
+                                )}
+                              {b.capturedAmount > b.refundedAmount && (
+                                <button
+                                  className="button secondary small"
+                                  disabled={busy}
+                                  onClick={() => {
+                                    setError('');
+                                    setConfirmAction({ booking: b, operation: 'refunds' });
+                                  }}
+                                >
+                                  {st(l, 'refund')}
+                                </button>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const group =
-                              role === 'CUSTOMER'
-                                ? 'customer/bookings'
-                                : role === 'MERCHANT'
-                                  ? 'merchant/bookings'
-                                  : 'staff/tasks';
-                            void task(async () => {
-                              const x = await api<Message[]>(`${group}/${b.id}/messages`, {
-                                text: drafts[b.id] ?? '',
-                              });
-                              setMessages((previous) => ({ ...previous, [b.id]: x }));
-                              setDrafts((previous) => ({ ...previous, [b.id]: '' }));
-                            });
+                          </details>
+                        )}
+                      {actor &&
+                        ((role === 'CUSTOMER' && bookingId) ||
+                          (role === 'MERCHANT' && b.id === selectedId)) && (
+                          <OrderCoordination
+                            key={`${actor.id}:${b.id}`}
+                            locale={l}
+                            booking={b}
+                            actor={actor}
+                            showNext={false}
+                            onUpdated={() => void task(refresh)}
+                          />
+                        )}
+                      {((role === 'CUSTOMER' && (bookingId || active)) ||
+                        role === 'MERCHANT' ||
+                        (role === 'STAFF' &&
+                          b.staffTaskStatus === 'ACKNOWLEDGED' &&
+                          b.replacementConsent !== 'PENDING' &&
+                          active)) && (
+                        <details
+                          className="message-panel"
+                          id={`order-messages-${b.id}`}
+                          onToggle={(e) => {
+                            if (
+                              e.currentTarget.open &&
+                              !messages[b.id] &&
+                              messageStates[b.id] !== 'loading'
+                            )
+                              void loadMessages(b.id);
                           }}
                         >
-                          <label className="sr-only" htmlFor={`message-${b.id}`}>
-                            {t(l, 'messages')}
-                          </label>
-                          <input
-                            id={`message-${b.id}`}
-                            required
-                            maxLength={1000}
-                            value={drafts[b.id] ?? ''}
-                            onChange={(e) =>
-                              setDrafts((previous) => ({ ...previous, [b.id]: e.target.value }))
-                            }
-                            placeholder={t(l, 'messagePlaceholder')}
-                          />
-                          <button className="button small" disabled={busy}>
-                            {t(l, 'send')}
-                          </button>
-                        </form>
-                      </details>
-                    )}
-                  </article>
-                );
-              })}
+                          <summary>
+                            <MessagesSquare size={16} />
+                            {role === 'MERCHANT' ? ot(l, 'customerMessages') : t(l, 'messages')}
+                          </summary>
+                          <p className="muted">{t(l, 'contactHidden')}</p>
+                          {messageStates[b.id] === 'loading' && (
+                            <p role="status">{t(l, 'waiting')}</p>
+                          )}
+                          {messageStates[b.id] === 'error' && (
+                            <div role="alert">
+                              <p className="error-message">{t(l, 'error')}</p>
+                              <button
+                                type="button"
+                                className="button secondary small"
+                                onClick={() => void loadMessages(b.id)}
+                              >
+                                {t(l, 'refresh')}
+                              </button>
+                            </div>
+                          )}
+                          {messageStates[b.id] === 'ready' && !messages[b.id]?.length && (
+                            <p className="muted">{vt(l, 'noOrderMessages')}</p>
+                          )}
+                          <div className="message-list">
+                            {(messages[b.id] ?? []).map((m) => (
+                              <div key={m.id}>
+                                <small>
+                                  {t(l, roles[m.role])} · {dateTime(l, m.createdAt)}
+                                </small>
+                                <p>{m.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              if (busy || messageStates[b.id] !== 'ready') return;
+                              const group =
+                                role === 'CUSTOMER'
+                                  ? 'customer/bookings'
+                                  : role === 'MERCHANT'
+                                    ? 'merchant/bookings'
+                                    : 'staff/tasks';
+                              void task(async () => {
+                                const x = await api<Message[]>(`${group}/${b.id}/messages`, {
+                                  text: drafts[b.id] ?? '',
+                                });
+                                setMessages((previous) => ({ ...previous, [b.id]: x }));
+                                setMessageStates((previous) => ({ ...previous, [b.id]: 'ready' }));
+                                setDrafts((previous) => ({ ...previous, [b.id]: '' }));
+                              });
+                            }}
+                          >
+                            <label className="sr-only" htmlFor={`message-${b.id}`}>
+                              {t(l, 'messages')}
+                            </label>
+                            <input
+                              id={`message-${b.id}`}
+                              required
+                              maxLength={1000}
+                              value={drafts[b.id] ?? ''}
+                              onChange={(e) =>
+                                setDrafts((previous) => ({ ...previous, [b.id]: e.target.value }))
+                              }
+                              placeholder={t(l, 'messagePlaceholder')}
+                            />
+                            <button
+                              className="button small"
+                              disabled={busy || messageStates[b.id] !== 'ready'}
+                            >
+                              {t(l, 'send')}
+                            </button>
+                          </form>
+                        </details>
+                      )}
+                    </article>
+                  );
+                },
+              )}
             </div>
             {role === 'MERCHANT' && dashboard && (
               <section className="form-card top-space" id="billing">

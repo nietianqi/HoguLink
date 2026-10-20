@@ -8,7 +8,14 @@ import type {
   BookingStatus,
 } from './index.js';
 export type CustomerOverview = {
-  counts: { checkout: number; active: number; review: number; support: number; favorites: number };
+  counts: {
+    checkout: number;
+    active: number;
+    review: number;
+    support: number;
+    favorites: number;
+    closed: number;
+  };
   resumeCheckout?: { holdId: string; expiresAt: number; total: number };
   reviewBookingId?: string;
   focus?: CustomerOverview['recent'][number] & { requiresConsent: boolean };

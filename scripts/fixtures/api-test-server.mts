@@ -38,6 +38,8 @@ app.useBodyParser('json', { limit: '512kb' });
 const failures = new Set<string>();
 const supportedFailures = [
   'catalog',
+  'listing-stats',
+  'store-stats',
   'completion',
   'messages',
   'care',
@@ -64,6 +66,8 @@ app.use('/v1', (req: any, res: any, next: () => void) => {
   if (req.method !== 'GET') return next();
   const failed =
     (failures.has('catalog') && req.path === '/public/staff-listings') ||
+    (failures.has('listing-stats') && req.path === '/public/listing-stats') ||
+    (failures.has('store-stats') && req.path === '/public/store-stats') ||
     (failures.has('completion') && /^\/bookings\/[^/]+\/completion$/.test(req.path)) ||
     (failures.has('messages') &&
       /^\/(?:customer\/bookings|merchant\/bookings|staff\/tasks)\/[^/]+\/messages$/.test(

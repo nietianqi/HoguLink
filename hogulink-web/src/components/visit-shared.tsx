@@ -4,6 +4,7 @@ import type { Locale } from '@hogulink/contracts';
 import type { PublicStore, BookingRules } from '@/lib/api';
 import { t, areaName } from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
+import { visitPreferences } from '@/lib/visit-model';
 export function VisitSteps({ locale: l, step }: { locale: Locale; step: 1 | 2 | 3 }) {
   return (
     <ol className="visit-steps" aria-label={t(l, 'timeline')}>
@@ -24,24 +25,31 @@ export function DetailBreadcrumb({
   locale: l,
   name,
   store,
+  preferences = {},
 }: {
   locale: Locale;
   name: string;
   store?: PublicStore;
+  preferences?: Record<string, string>;
 }) {
+  const browse = new URLSearchParams(visitPreferences(preferences)).toString();
+  const shop = new URLSearchParams({
+    ...visitPreferences(preferences),
+    ...(preferences.offering ? { offering: preferences.offering } : {}),
+  }).toString();
   return (
     <nav
       className="detail-breadcrumb"
       aria-label={l === 'en' ? 'Breadcrumb' : l === 'ja' ? 'パンくず' : '面包屑导航'}
     >
-      <Link href={`/${l}#discover`}>
+      <Link href={`/${l}${browse ? `?${browse}` : ''}#discover`}>
         <ArrowLeft size={14} />
         {t(l, 'explore')}
       </Link>
       <span>/</span>
       {store && (
         <>
-          <Link href={`/${l}/shops/${store.slug}`}>{store.name[l]}</Link>
+          <Link href={`/${l}/shops/${store.slug}${shop ? `?${shop}` : ''}`}>{store.name[l]}</Link>
           <span>/</span>
         </>
       )}

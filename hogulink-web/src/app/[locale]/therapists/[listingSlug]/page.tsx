@@ -10,11 +10,12 @@ import {
   ShieldCheck,
   ArrowRight,
 } from 'lucide-react';
-import type { ListingStats } from '@hogulink/contracts';
+import { loadListingStats, type ListingStatsMap } from '@/lib/shop-stats';
+import { ShopStatsNotice } from '@/components/shop-stats-notice';
 import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale, t, areaName, languageNames, money } from '@/lib/i18n';
 import { vt, acceptanceLabel } from '@/lib/visit-i18n';
-import { visitTotal, visitServices } from '@/lib/visit-model';
+import { visitTotal, visitServices, visitPreferences } from '@/lib/visit-model';
 import { seo } from '@/lib/seo';
 import { BookingPreview } from '@/components/booking-form';
 import { DetailBreadcrumb, VisitNotes } from '@/components/visit-shared';
@@ -51,11 +52,7 @@ export default async function Page({
     l = asLocale(p.locale),
     { catalog, listing, store } = await listingData(p.listingSlug);
   const raw = await searchParams;
-  const carry = Object.fromEntries(
-    ['area', 'language', 'mode'].flatMap((key) =>
-      typeof raw[key] === 'string' ? [[key, raw[key]!]] : [],
-    ),
-  );
+  const carry = visitPreferences(raw);
   const team = catalog.listings.filter((x) => x.storeId === store.id);
   const offerings = visitServices(catalog.offerings, listing, team, 'NOMINATED');
   const nominationFee =
@@ -66,13 +63,15 @@ export default async function Page({
     return { total, compareTotal, promotionEndsAt };
   };
   // Aggregated only from approved reviews, completed visits and active favorites.
-  const stats: ListingStats = await serverApi<Record<string, ListingStats>>(
-    `public/listing-stats?ids=${encodeURIComponent(listing.id)}`,
-  )
-    .then((all) => all[listing.id])
-    .catch(() => undefined)
-    .then((x) => x ?? { rating: null, reviewCount: 0, completed90d: 0, favorites: 0 });
+  const stats = (await loadListingStats([listing.id], (path) => serverApi<ListingStatsMap>(path)))[
+    listing.id
+  ];
   const selectedOffering = offerings.find((o) => o.id === raw.offering) ?? offerings[0];
+  const shopPreferences = {
+    ...carry,
+    ...(selectedOffering ? { offering: selectedOffering.id } : {}),
+  };
+  const shopHref = `/${l}/shops/${store.slug}?${new URLSearchParams(shopPreferences)}`;
   const instantNow =
     !!selectedOffering && listing.onDuty && store.acceptanceMode !== 'MANUAL'
       ? await serverApi<{ slots: number[] }>(
@@ -93,7 +92,12 @@ export default async function Page({
   return (
     <main id="main" className="wrap page-section detail-page therapist-detail-page">
       <RememberProfile id={listing.id} />
-      <DetailBreadcrumb locale={l} name={listing.name[l]} store={store} />
+      <DetailBreadcrumb
+        locale={l}
+        name={listing.name[l]}
+        store={store}
+        preferences={shopPreferences}
+      />
       <div className="detail-columns">
         <div className="detail-main">
           <section className="therapist-intro detail-panel" id="about">
@@ -132,21 +136,22 @@ export default async function Page({
               <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
                 <div>
                   <dt>{ht(l, 'statRating')}</dt>
-                  <dd>{stats.rating === null ? '—' : stats.rating.toFixed(1)}</dd>
+                  <dd>{stats?.rating == null ? '—' : stats.rating.toFixed(1)}</dd>
                 </div>
                 <div>
                   <dt>{ht(l, 'statReviews')}</dt>
-                  <dd>{stats.reviewCount}</dd>
+                  <dd>{stats?.reviewCount ?? '—'}</dd>
                 </div>
                 <div>
                   <dt>{ht(l, 'statCompleted')}</dt>
-                  <dd>{stats.completed90d}</dd>
+                  <dd>{stats?.completed90d ?? '—'}</dd>
                 </div>
                 <div>
                   <dt>{ht(l, 'statFavorites')}</dt>
-                  <dd>{stats.favorites}</dd>
+                  <dd>{stats?.favorites ?? '—'}</dd>
                 </div>
               </dl>
+              {!stats && <ShopStatsNotice locale={l} message={ht(l, 'statsUnavailable')} />}
               <p className="profile-description">{listing.description[l]}</p>
               <dl className="detail-facts">
                 <div>
@@ -182,7 +187,7 @@ export default async function Page({
               <ArrowUpRight size={14} />
             </a>
           </nav>
-          <Link className="affiliated-shop detail-panel" href={`/${l}/shops/${store.slug}`}>
+          <Link className="affiliated-shop detail-panel" href={shopHref}>
             <span className="affiliated-monogram">{store.name.en.slice(0, 1)}</span>
             <div>
               <small>{vt(l, 'business')}</small>
@@ -240,7 +245,7 @@ export default async function Page({
               rules={catalog.bookingRules}
             />
           </Suspense>
-          <Link className="sidebar-shop-link" href={`/${l}/shops/${store.slug}`}>
+          <Link className="sidebar-shop-link" href={shopHref}>
             {store.name[l]}
             <span>{acceptanceLabel(l, store.acceptanceMode)}</span>
             <ArrowUpRight size={15} />
@@ -254,7 +259,7 @@ export default async function Page({
               <span className="eyebrow small">FROM THE SAME SHOP</span>
               <h2>{vt(l, 'team')}</h2>
             </div>
-            <Link href={`/${l}/shops/${store.slug}`}>
+            <Link href={shopHref}>
               {store.name[l]}
               <ArrowUpRight size={16} />
             </Link>
@@ -270,6 +275,9 @@ export default async function Page({
                   store={store}
                   offerings={catalog.offerings}
                   locale={l}
+                  area={carry.area}
+                  language={carry.language}
+                  mode={carry.mode}
                   nominationFee={catalog.bookingRules?.nominationFee}
                 />
               ))}

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { BookingForm } from '@/components/booking-form';
+import { BookingForm, VisitBackLink } from '@/components/booking-form';
 import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale, t } from '@/lib/i18n';
 import { vt } from '@/lib/visit-i18n';
@@ -26,10 +26,16 @@ export default async function Page({
   const store = catalog.stores.find((x) => x.id === listing.storeId)!;
   return (
     <main id="main" className="wrap page-section visit-page">
-      <Link className="back-link" href={`/${l}/therapists/${listing.slug}`}>
-        <ArrowLeft size={15} />
-        {listing.name[l]}
-      </Link>
+      <Suspense
+        fallback={
+          <Link className="back-link" href={`/${l}/therapists/${listing.slug}`}>
+            <ArrowLeft size={15} />
+            {listing.name[l]}
+          </Link>
+        }
+      >
+        <VisitBackLink locale={l} listing={listing} />
+      </Suspense>
       <VisitSteps locale={l} step={1} />
       <div className="visit-page-heading">
         <span className="eyebrow small">{vt(l, 'step1')}</span>

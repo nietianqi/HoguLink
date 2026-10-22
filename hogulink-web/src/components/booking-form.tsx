@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowRight,
+  ArrowLeft,
   Clock3,
   CalendarDays,
   ShieldCheck,
@@ -20,7 +21,7 @@ import type { PublicStore, BookingRules } from '@/lib/api';
 import { api, ClientError } from '@/lib/api';
 import { t, areaName, money, dateTime, errorText, languageNames } from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
-import { visitServices, visitTeam, visitTotal } from '@/lib/visit-model';
+import { visitServices, visitTeam, visitTotal, visitSelection } from '@/lib/visit-model';
 import { japanDay } from '@/lib/desktop-model';
 import { PriceLines } from './catalog';
 import { MobilePriceDock } from './mobile-ui';
@@ -73,6 +74,24 @@ export type PlannerProps = {
   rules?: BookingRules;
   defaultNomination?: 'NOMINATED' | 'FREE';
 };
+export function VisitBackLink({
+  locale,
+  listing,
+}: {
+  locale: Locale;
+  listing: Pick<Listing, 'slug' | 'name'>;
+}) {
+  const query = useSearchParams();
+  return (
+    <Link
+      className="back-link"
+      href={`/${locale}/therapists/${listing.slug}?${new URLSearchParams(visitSelection(Object.fromEntries(query)))}`}
+    >
+      <ArrowLeft size={15} />
+      {listing.name[locale]}
+    </Link>
+  );
+}
 function useVisit(props: PlannerProps) {
   const { locale: l, listing, store, offerings } = props;
   const team = props.team ?? [listing];

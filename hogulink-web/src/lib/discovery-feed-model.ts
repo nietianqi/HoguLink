@@ -1,11 +1,13 @@
 import type { DiscoveryPost, DiscoveryTab, Locale } from '@hogulink/contracts';
 import { discoveryTabs } from '@hogulink/contracts/discovery';
 import { h5Portrait } from './h5-media';
+import { visitPreferences } from './visit-model';
 export type DiscoveryQuery = {
   tab: DiscoveryTab;
   area?: string;
   language?: string;
   search?: string;
+  mode?: 'INSTANT' | 'SCHEDULED';
 };
 export function discoveryQuery(raw: Record<string, unknown>): DiscoveryQuery {
   return {
@@ -19,6 +21,7 @@ export function discoveryQuery(raw: Record<string, unknown>): DiscoveryQuery {
     ...(typeof raw.language === 'string' && ['ja', 'en', 'zh'].includes(raw.language)
       ? { language: raw.language }
       : {}),
+    ...(raw.mode === 'INSTANT' || raw.mode === 'SCHEDULED' ? { mode: raw.mode } : {}),
     ...(typeof raw.search === 'string' && raw.search.trim()
       ? { search: raw.search.normalize('NFKC').trim().slice(0, 80) }
       : {}),
@@ -28,9 +31,7 @@ export function discoveryParams(q: DiscoveryQuery) {
   return new URLSearchParams(Object.entries(q).filter(([, v]) => !!v));
 }
 export function discoveryCarry(q: DiscoveryQuery) {
-  return new URLSearchParams(
-    Object.entries(q).filter(([k, v]) => ['area', 'language'].includes(k) && !!v),
-  );
+  return new URLSearchParams(visitPreferences(q));
 }
 export function postImage(post: DiscoveryPost, index = 0) {
   const photo = post.images[index] ?? post.images[0];

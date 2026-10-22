@@ -143,7 +143,7 @@ export function H5Home({
     `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
   const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 3);
   const shopCarry = Object.fromEntries(
-    ['area', 'language'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
+    ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
   );
   return (
     <section className="h5-home h5-surface" aria-label={ht(l, 'projects')}>
@@ -180,7 +180,10 @@ export function H5Home({
               [History, 'history', 'account/history'],
             ] as const
           ).map(([Icon, key, href]) => (
-            <Link key={key} href={`/${l}/${href}`}>
+            <Link
+              key={key}
+              href={key === 'card' ? path('services', { promo: '1' }) : `/${l}/${href}`}
+            >
               <Icon size={22} strokeWidth={1.7} aria-hidden="true" />
               <span>{ht(l, key)}</span>
             </Link>

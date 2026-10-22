@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { ArrowUpRight, BookOpen, MapPin, Store, UsersRound } from 'lucide-react';
 import type { Locale } from '@hogulink/contracts';
 import type { DiscoveryFeed } from '@hogulink/contracts';
-import { discoveryQuery } from '@/lib/discovery-feed-model';
+import { discoveryCarry, discoveryParams, discoveryQuery } from '@/lib/discovery-feed-model';
 import type { Catalog } from '@/lib/api';
 import { areaName, areas, languageNames, money } from '@/lib/i18n';
 import { xt } from '@/lib/discovery-i18n';
@@ -34,8 +34,7 @@ export function DiscoveryHub({
   const page = shopPage(shopCards(catalog, { ...q, locale: l }, shopStats), q.shopPage);
   const pageHref = (number: number) =>
     `/${l}/discover?${new URLSearchParams({ ...q, tab: 'shops', shopPage: String(number) })}`;
-  const shopHref = (slug: string) =>
-    `/${l}/shops/${slug}?${new URLSearchParams(Object.fromEntries(['area', 'language'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`;
+  const shopHref = (slug: string) => `/${l}/shops/${slug}?${discoveryCarry(discoveryQuery(q))}`;
   const articles = discoveryArticles.filter((a) => tab !== 'safety' || a.category === 'safety');
   const storiesContent = tab !== 'shops' && (
     <section className="discovery-stories">
@@ -49,7 +48,7 @@ export function DiscoveryHub({
         {articles.map((a, i) => (
           <Link
             className={`discovery-story story-${i}`}
-            href={`/${l}/discover/guide-${a.slug}?${new URLSearchParams(Object.fromEntries(['area', 'language', 'tab'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`}
+            href={`/${l}/discover/guide-${a.slug}?${new URLSearchParams(Object.fromEntries(['area', 'language', 'mode', 'tab'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`}
             key={a.slug}
           >
             <div className="discovery-story-art">
@@ -133,7 +132,9 @@ export function DiscoveryHub({
             </h2>
             <small>Tokyo · {shops.length}</small>
             {tab === 'recommended' && (
-              <Link href={`/${l}/discover?tab=shops`}>
+              <Link
+                href={`/${l}/discover?${discoveryParams({ ...discoveryQuery(q), tab: 'shops' })}`}
+              >
                 {xt(l, 'searchAction')}
                 <ArrowUpRight size={15} />
               </Link>
@@ -142,6 +143,9 @@ export function DiscoveryHub({
           {tab === 'shops' && (
             <form className="discovery-search" action={`/${l}/discover`}>
               <input type="hidden" name="tab" value={tab} />
+              {discoveryQuery(q).mode && (
+                <input type="hidden" name="mode" value={discoveryQuery(q).mode} />
+              )}
               <label>
                 <span>{xt(l, 'search')}</span>
                 <input

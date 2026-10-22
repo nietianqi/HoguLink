@@ -1,13 +1,15 @@
 import type { ListingStats } from '@hogulink/contracts';
 
-/** A missing key means unknown, never an empty shop history. */
-export type ShopStatsMap = Partial<Record<string, ListingStats>>;
+/** A missing key means unknown, never an empty history. */
+export type ListingStatsMap = Partial<Record<string, ListingStats>>;
+export type ShopStatsMap = ListingStatsMap;
 
 /** Respect the public endpoint's 50-ID limit and keep partial successes on failure. */
-export async function loadShopStats(
+async function loadPublicStats(
+  kind: 'store' | 'listing',
   ids: string[],
-  read: (path: string) => Promise<ShopStatsMap>,
-): Promise<ShopStatsMap> {
+  read: (path: string) => Promise<ListingStatsMap>,
+): Promise<ListingStatsMap> {
   const unique = [...new Set(ids)];
   const batches: string[][] = [];
   for (let i = 0; i < unique.length; i += 50) batches.push(unique.slice(i, i + 50));
@@ -19,7 +21,9 @@ export async function loadShopStats(
       while (next < batches.length) {
         const batch = batches[next++];
         try {
-          const data = await read(`public/store-stats?ids=${encodeURIComponent(batch.join(','))}`);
+          const data = await read(
+            `public/${kind}-stats?ids=${encodeURIComponent(batch.join(','))}`,
+          );
           for (const id of batch) if (data[id]) result[id] = data[id];
         } catch {
           // Other batches remain usable. The UI exposes an explicit retry for unknown facts.
@@ -28,4 +32,12 @@ export async function loadShopStats(
     }),
   );
   return result;
+}
+
+export function loadShopStats(ids: string[], read: (path: string) => Promise<ShopStatsMap>) {
+  return loadPublicStats('store', ids, read);
+}
+
+export function loadListingStats(ids: string[], read: (path: string) => Promise<ListingStatsMap>) {
+  return loadPublicStats('listing', ids, read);
 }

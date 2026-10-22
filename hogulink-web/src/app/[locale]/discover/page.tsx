@@ -21,12 +21,18 @@ export default async function Page({
   const l = asLocale((await params).locale),
     raw = await searchParams;
   const q = Object.fromEntries(
-    ['tab', 'search', 'area', 'language', 'shopPage'].flatMap((k) =>
+    ['tab', 'search', 'area', 'language', 'mode', 'shopPage'].flatMap((k) =>
       typeof raw[k] === 'string' ? [[k, raw[k].slice(0, 100)]] : [],
     ),
   );
   const [catalog, feed] = await Promise.all([
-    serverApi<Catalog>('public/staff-listings'),
+    serverApi<Catalog>(
+      `public/staff-listings?${new URLSearchParams({
+        ...(q.area ? { area: q.area } : {}),
+        ...(q.language ? { language: q.language } : {}),
+        ...(q.mode === 'INSTANT' ? { mode: 'INSTANT' } : {}),
+      })}`,
+    ),
     serverApi<DiscoveryFeed>(`public/discovery?${discoveryParams(discoveryQuery(q))}`).catch(
       () => null,
     ),

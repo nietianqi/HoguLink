@@ -223,6 +223,11 @@ const copy = {
   statReviews: ['评价', '口コミ', 'Reviews'],
   statCompleted: ['近90天完成', '90日の訪問', 'Visits (90 days)'],
   statFavorites: ['收藏', 'お気に入り', 'Saved'],
+  statsUnavailable: [
+    '技师统计暂不可用',
+    'スタッフの実績を読み込めません',
+    'Therapist statistics are unavailable',
+  ],
   shopsTitle: ['同城店铺', '東京の店舗', 'Shops in Tokyo'],
   shopsSub: [
     '平台审核的本地店铺 · 价格含交通费',

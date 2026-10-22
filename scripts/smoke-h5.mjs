@@ -221,6 +221,114 @@ for (const locale of ['zh-cn', 'ja', 'en'])
       `${locale}${path}: no server error fallback`,
     );
   }
+// Follow the actual SSR navigation contract. Provider changes keep browsing
+// choices, while old holds, payment IDs and another provider's time stay behind.
+function pageLinks(html) {
+  return [...html.matchAll(/<a\b([^>]*?)href="([^"]+)"([^>]*)>/g)].map((match) => ({
+    attributes: match[1] + match[3],
+    url: new URL(match[2].replaceAll('&amp;', '&'), origin),
+  }));
+}
+for (const locale of ['zh-cn', 'ja', 'en']) {
+  const preferences = { area: 'shinjuku', language: 'ja', mode: 'INSTANT' };
+  const profile = await fetch(
+    `${origin}/${locale}/therapists/aoi-tokyo?${new URLSearchParams({
+      ...preferences,
+      offering: 'store-nagi-90',
+      hold: 'old-hold',
+      payment: 'old-payment',
+      start: 'old-time',
+    })}`,
+    { signal: AbortSignal.timeout(15000) },
+  );
+  check(profile.ok, `${locale}: profile navigation is readable`);
+  const profileLinks = pageLinks(await profile.text());
+  for (const className of ['affiliated-shop', 'sidebar-shop-link']) {
+    const link = profileLinks.find((item) => item.attributes.includes(className));
+    check(
+      link && link.url.pathname === `/${locale}/shops/nagi-tokyo`,
+      `${locale}: ${className} opens the same shop`,
+    );
+    check(
+      link &&
+        Object.entries({ ...preferences, offering: 'store-nagi-90' }).every(
+          ([key, value]) => link.url.searchParams.get(key) === value,
+        ),
+      `${locale}: ${className} preserves booking preferences and menu`,
+    );
+    check(
+      link && ['hold', 'payment', 'start'].every((key) => !link.url.searchParams.has(key)),
+      `${locale}: ${className} drops transaction state`,
+    );
+  }
+  const shop = await fetch(
+    `${origin}/${locale}/shops/nagi-tokyo?${new URLSearchParams({
+      ...preferences,
+      mode: 'SCHEDULED',
+      offering: 'store-nagi-90',
+      hold: 'old-hold',
+      start: 'old-time',
+    })}`,
+    { signal: AbortSignal.timeout(15000) },
+  );
+  check(shop.ok, `${locale}: shop navigation is readable`);
+  const shopLinks = pageLinks(await shop.text());
+  const menu = shopLinks.find(
+    (item) =>
+      item.url.pathname.startsWith(`/${locale}/book/`) &&
+      item.url.searchParams.get('nomination') === 'FREE' &&
+      item.url.searchParams.get('offering') === 'store-nagi-90',
+  );
+  check(
+    menu &&
+      Object.entries({ ...preferences, mode: 'SCHEDULED' }).every(
+        ([key, value]) => menu.url.searchParams.get(key) === value,
+      ),
+    `${locale}: shop-arranged checkout preserves preferences`,
+  );
+  check(
+    menu && ['hold', 'start'].every((key) => !menu.url.searchParams.has(key)),
+    `${locale}: checkout does not reuse stale transaction state`,
+  );
+  const back = shopLinks.find((item) => item.attributes.includes('mobile-back'));
+  check(
+    back &&
+      Object.entries({ ...preferences, mode: 'SCHEDULED', tab: 'shops' }).every(
+        ([key, value]) => back.url.searchParams.get(key) === value,
+      ),
+    `${locale}: H5 back navigation preserves booking mode`,
+  );
+  const booking = await fetch(
+    `${origin}/${locale}/book/aoi-tokyo?${new URLSearchParams({
+      ...preferences,
+      mode: 'SCHEDULED',
+      offering: 'store-nagi-90',
+      nomination: 'FREE',
+      start: '1792486800000',
+      hold: 'old-hold',
+      payment: 'old-payment',
+    })}`,
+    { signal: AbortSignal.timeout(15000) },
+  );
+  check(booking.ok, `${locale}: planner return navigation is readable`);
+  const bookingLinks = pageLinks(await booking.text());
+  const returnLink = bookingLinks.find((item) => item.attributes.includes('class="back-link"'));
+  check(
+    returnLink &&
+      Object.entries({
+        ...preferences,
+        mode: 'SCHEDULED',
+        offering: 'store-nagi-90',
+        nomination: 'FREE',
+        start: '1792486800000',
+      }).every(([key, value]) => returnLink.url.searchParams.get(key) === value),
+    `${locale}: planner back keeps the same selection`,
+  );
+  check(
+    returnLink && ['hold', 'payment'].every((key) => !returnLink.url.searchParams.has(key)),
+    `${locale}: planner back drops transaction credentials`,
+  );
+}
 console.log(
   `H5 contracts and three-language SSR: ${checks} checks passed. Write checks used the disposable API.`,
 );

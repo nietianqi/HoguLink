@@ -1,5 +1,31 @@
 import { effectiveServicePrice } from '@hogulink/contracts';
 import type { Address, Listing, Offering } from '@hogulink/contracts';
+
+/** Carry browsing preferences between providers, never a hold, payment or old timeslot. */
+export function visitPreferences(raw: Record<string, unknown>): Record<string, string> {
+  return {
+    ...(typeof raw.area === 'string' && raw.area ? { area: raw.area } : {}),
+    ...(typeof raw.language === 'string' && raw.language ? { language: raw.language } : {}),
+    ...(raw.mode === 'INSTANT' || raw.mode === 'SCHEDULED' ? { mode: raw.mode } : {}),
+  };
+}
+
+/** Returning to the same provider may keep a selection, never checkout credentials. */
+export function visitSelection(raw: Record<string, unknown>): Record<string, string> {
+  return {
+    ...visitPreferences(raw),
+    ...(typeof raw.offering === 'string' && raw.offering.length > 0 && raw.offering.length <= 120
+      ? { offering: raw.offering }
+      : {}),
+    ...(raw.nomination === 'FREE' || raw.nomination === 'NOMINATED'
+      ? { nomination: raw.nomination }
+      : {}),
+    ...(typeof raw.start === 'string' && /^\d{1,15}$/.test(raw.start) && Number(raw.start) > 0
+      ? { start: raw.start }
+      : {}),
+  };
+}
+
 export function visitServices(
   offerings: Offering[],
   listing: Listing,

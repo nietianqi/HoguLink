@@ -34,6 +34,7 @@ const words = {
   ],
   viewRefundCase: ['查看退款工单', '返金の相談を開く', 'Open refund case'],
   serviceItem: ['服务项目', 'サービス', 'Service'],
+  bookedService: ['预约服务', 'ご予約のサービス', 'Booked service'],
   therapistChoice: ['技师安排', 'スタッフの手配', 'Therapist assignment'],
   requestStep: ['提交申请', '申込み', 'Request'],
   confirmationStep: ['预约确认', '予約確定', 'Confirmation'],

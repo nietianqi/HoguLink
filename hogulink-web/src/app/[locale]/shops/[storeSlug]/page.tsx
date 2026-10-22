@@ -47,7 +47,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string; storeSlug: string }>;
-  searchParams: Promise<{ area?: string; language?: string }>;
+  searchParams: Promise<{ area?: string; language?: string; mode?: string }>;
 }) {
   const p = await params,
     l = asLocale(p.locale),
@@ -57,6 +57,7 @@ export default async function Page({
   const context = shopVisitContext(catalog, s.id, {
     area: typeof q.area === 'string' ? q.area : undefined,
     language: typeof q.language === 'string' ? q.language : undefined,
+    mode: q.mode === 'INSTANT' || q.mode === 'SCHEDULED' ? q.mode : undefined,
   });
   const offerings = context.services.map((s) => s.offering);
   // Shop-level facts from approved reviews, completed visits and shop saves only.
@@ -67,7 +68,7 @@ export default async function Page({
   const priced = offerings.map((o) => ({ o, ...visitTotal(o, 'FREE', 0) }));
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page">
-      <DetailBreadcrumb locale={l} name={s.name[l]} />
+      <DetailBreadcrumb locale={l} name={s.name[l]} preferences={context.carry} />
       <section className="shop-detail-hero">
         <H5ShopCover store={s} className="shop-hero-cover" />
         <div className="shop-hero-copy">
@@ -160,7 +161,7 @@ export default async function Page({
             <div className="detail-service-menu">
               {!offerings.length && (
                 <p className="notice">
-                  {vt(l, 'noTeam')} ·{' '}
+                  {vt(l, 'noService')} ·{' '}
                   <Link href={`/${l}/shops/${s.slug}`}>
                     {l === 'zh-cn' ? '清除筛选' : l === 'ja' ? '条件を解除' : 'Clear filters'}
                   </Link>
@@ -209,6 +210,7 @@ export default async function Page({
               nominationFee={catalog.bookingRules?.nominationFee}
               initialLanguage={context.carry.language}
               area={context.carry.area}
+              mode={context.carry.mode}
             />
           </section>
           <PublicReviews locale={l} storeId={s.id} />

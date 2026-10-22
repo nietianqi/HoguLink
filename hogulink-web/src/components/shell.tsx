@@ -22,9 +22,15 @@ import { localeMap, locales, t } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { ht } from '@/lib/h5-i18n';
+import { visitPreferences, visitSelection } from '@/lib/visit-model';
 export function Header({ locale }: { locale: Locale }) {
   const path = usePathname();
   const query = useSearchParams();
+  const preferences = visitPreferences({
+    area: query.get('area'),
+    language: query.get('language'),
+    mode: query.get('mode'),
+  });
   const workspace = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   const base = path.split('/').slice(0, 3).join('/');
   const h5Tab = ['', '/discover', '/therapists', '/account', '/account/messages'].some(
@@ -61,10 +67,10 @@ export function Header({ locale }: { locale: Locale }) {
             className="mobile-back"
             href={
               path.includes('/book/')
-                ? `${path.replace('/book/', '/therapists/')}?${query}`
+                ? `${path.replace('/book/', '/therapists/')}?${new URLSearchParams(visitSelection(Object.fromEntries(query)))}`
                 : path.includes('/shops/')
-                  ? `/${locale}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))) })}`
-                  : `/${locale}?${new URLSearchParams(Object.fromEntries(['mode', 'area', 'language'].flatMap((key) => (query.get(key) ? [[key, query.get(key)!]] : []))))}#discover`
+                  ? `/${locale}/discover?${new URLSearchParams({ tab: 'shops', ...preferences })}`
+                  : `/${locale}?${new URLSearchParams(preferences)}#discover`
             }
             aria-label={mt(locale, 'back')}
           >

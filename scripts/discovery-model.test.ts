@@ -8,7 +8,12 @@ import {
   shopPage,
   shopCardHref,
 } from '../hogulink-web/src/lib/shop-model';
-import { loadShopStats, type ShopStatsMap } from '../hogulink-web/src/lib/shop-stats';
+import {
+  loadShopStats,
+  loadListingStats,
+  type ShopStatsMap,
+} from '../hogulink-web/src/lib/shop-stats';
+import { visitPreferences, visitSelection } from '../hogulink-web/src/lib/visit-model';
 import { discoveryArticles } from '../hogulink-web/src/lib/discovery-content';
 import {
   discoveryQuery,
@@ -68,6 +73,116 @@ test('a no-longer-supported language or area has no booking representative inste
     0,
   );
   assert.equal(shopVisitContext(catalog(), 'store-nagi', { area: 'unknown' }).services.length, 0);
+});
+
+test('instant shop navigation retains browsing preferences and filters scheduled-only providers', () => {
+  const c = catalog();
+  const preferences = {
+    area: 'shinjuku',
+    language: 'ja',
+    mode: 'INSTANT',
+    hold: 'old-private-hold',
+    start: 'old-timeslot',
+    payment: 'old-payment',
+    nomination: 'NOMINATED',
+  };
+  const card = shopCards(c, preferences).find((item) => item.store.id === 'store-nagi')!;
+  assert(card);
+  for (const locale of ['zh-cn', 'ja', 'en'] as const) {
+    const url = new URL(shopCardHref(locale, card, preferences), 'http://localhost:3000');
+    const carry = Object.fromEntries(url.searchParams);
+    assert.deepEqual(carry, {
+      area: 'shinjuku',
+      language: 'ja',
+      mode: 'INSTANT',
+      offering: card.fromOfferingId,
+      nomination: 'FREE',
+    });
+    const context = shopVisitContext(c, card.store.id, carry);
+    assert.deepEqual(context.carry, { area: 'shinjuku', language: 'ja', mode: 'INSTANT' });
+    assert(context.members.length);
+    assert(context.members.every((member) => member.onDuty && member.languages.includes('ja')));
+    for (const service of context.services)
+      assert(service.members.every((member) => member.onDuty));
+  }
+  const manual = c.stores.find((store) => store.acceptanceMode === 'MANUAL')!;
+  assert.equal(shopVisitContext(c, manual.id, { mode: 'INSTANT' }).services.length, 0);
+  for (const member of c.listings) member.onDuty = false;
+  assert.equal(shopVisitContext(c, card.store.id, preferences).members.length, 0);
+  assert(shopVisitContext(c, card.store.id, { ...preferences, mode: 'SCHEDULED' }).members.length);
+});
+
+test('provider navigation strips transaction state and ignores invalid or repeated mode values', () => {
+  assert.deepEqual(
+    visitPreferences({
+      area: 'taito',
+      language: 'zh',
+      mode: 'SCHEDULED',
+      start: 'old',
+      hold: 'private',
+      payment: 'private',
+      quoteId: 'private',
+      offering: 'other-shop-menu',
+      nomination: 'NOMINATED',
+    }),
+    { area: 'taito', language: 'zh', mode: 'SCHEDULED' },
+  );
+  assert.deepEqual(visitPreferences({ area: ['taito'], language: ['zh'], mode: ['INSTANT'] }), {});
+  assert.deepEqual(visitPreferences({ mode: 'OTHER', area: '', language: '' }), {});
+});
+
+test('returning from the planner keeps the current service, nomination and valid time without checkout state', () => {
+  const selection = {
+    area: 'taito',
+    language: 'zh',
+    mode: 'SCHEDULED',
+    offering: 'menu-90',
+    nomination: 'FREE',
+    start: '1792486800000',
+    hold: 'private',
+    paymentId: 'private',
+    quoteId: 'private',
+  };
+  const returned = visitSelection(selection);
+  assert.deepEqual(returned, {
+    area: 'taito',
+    language: 'zh',
+    mode: 'SCHEDULED',
+    offering: 'menu-90',
+    nomination: 'FREE',
+    start: '1792486800000',
+  });
+  assert.equal(visitSelection({ ...selection, offering: 'menu-120' }).offering, 'menu-120');
+  assert.deepEqual(visitSelection({ nomination: 'OTHER', offering: [], start: 'not-a-time' }), {});
+  for (const start of ['-1', '0', 'Infinity', '1792486800000x', '9999999999999999999'])
+    assert.equal(visitSelection({ start }).start, undefined);
+});
+
+test('discovery articles and author links preserve the booking mode without retaining checkout state', () => {
+  const q = discoveryQuery({
+    tab: 'shops',
+    mode: 'INSTANT',
+    area: 'taito',
+    language: 'zh',
+    hold: 'private',
+    start: 'old',
+    payment: 'private',
+  });
+  for (const locale of ['zh-cn', 'ja', 'en'] as const) {
+    for (const kind of ['therapist', 'shop'] as const) {
+      const post = { id: 'post', author: { kind, slug: 'provider' } } as DiscoveryPost;
+      const next = new URL(postBookingHref(locale, post, q), 'http://localhost');
+      assert.deepEqual(Object.fromEntries(next.searchParams), {
+        area: 'taito',
+        language: 'zh',
+        mode: 'INSTANT',
+      });
+      const article = new URL(postHref(locale, post, q), 'http://localhost');
+      assert.equal(article.searchParams.get('mode'), 'INSTANT');
+      assert.equal(article.searchParams.has('hold'), false);
+    }
+  }
+  assert.equal(discoveryQuery({ mode: 'unsupported' }).mode, undefined);
 });
 test('editorial guides have unique stable routes and complete three-language content', () => {
   assert.equal(new Set(discoveryArticles.map((a) => a.slug)).size, discoveryArticles.length);
@@ -225,6 +340,29 @@ test('unknown shop statistics stay unknown while a real zero history remains ava
   assert.equal(shopCards(c, {}, failed).find((x) => x.store.id === 'store-nagi')!.stats, undefined);
   const read: ShopStatsMap = { 'store-nagi': zero };
   assert.deepEqual(shopCards(c, {}, read).find((x) => x.store.id === 'store-nagi')!.stats, zero);
+});
+
+test('listing statistic outages and missing results stay unknown, while confirmed zero counts stay zero', async () => {
+  const zero = { rating: null, reviewCount: 0, completed90d: 0, favorites: 0 };
+  const calls: string[] = [];
+  const found = await loadListingStats(['listing-aoi', 'listing-aoi', 'missing'], async (path) => {
+    calls.push(path);
+    return { 'listing-aoi': zero };
+  });
+  assert.deepEqual(found['listing-aoi'], zero);
+  assert.equal(found.missing, undefined);
+  assert.equal(calls.length, 1);
+  assert(calls[0].startsWith('public/listing-stats?'));
+  assert.deepEqual(new URLSearchParams(calls[0].split('?')[1]).get('ids')?.split(','), [
+    'listing-aoi',
+    'missing',
+  ]);
+  const failed = await loadListingStats(['listing-aoi'], async () => {
+    throw new Error('offline');
+  });
+  assert.equal(failed['listing-aoi'], undefined);
+  const recovered = await loadListingStats(['listing-aoi'], async () => ({ 'listing-aoi': zero }));
+  assert.deepEqual(recovered['listing-aoi'], zero);
 });
 
 test('a cheaper long menu keeps its actual duration, menu and localized service alongside the from-price', () => {

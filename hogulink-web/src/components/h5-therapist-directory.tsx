@@ -34,6 +34,7 @@ import { H5AreaPicker, H5PortraitPreview } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
 import { H5Badges, H5Distance, H5Price, H5Stats, useDeviceLocation } from './h5-business';
 import { PriceLines } from './catalog';
+import { visitPreferences } from '@/lib/visit-model';
 
 export function H5TherapistDirectory({
   locale: l,
@@ -324,7 +325,7 @@ export function H5TherapistDirectory({
                 <H5Stats locale={l} stats={stats} compact />
                 <Link
                   className="h5-shop-name"
-                  href={`/${l}/shops/${store.slug}?${new URLSearchParams(Object.fromEntries(Object.entries(q).filter(([k]) => ['area', 'language'].includes(k))))}`}
+                  href={`/${l}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences(q), offering: offering.id })}`}
                 >
                   <Store size={11} aria-hidden="true" />
                   <span>{store.name[l]}</span>

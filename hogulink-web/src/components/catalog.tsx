@@ -12,6 +12,7 @@ import { dt } from '@/lib/desktop-i18n';
 import { nominatedTotal } from '@/lib/desktop-model';
 import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
+import { visitPreferences } from '@/lib/visit-model';
 export function TherapistCard({
   listing,
   store,
@@ -81,7 +82,10 @@ export function TherapistCard({
               {t(locale, 'verified')}
             </span>
           </div>
-          <Link className="shop-link" href={`/${locale}/shops/${store.slug}`}>
+          <Link
+            className="shop-link"
+            href={`/${locale}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences({ area, language, mode }), offering: selected.id })}`}
+          >
             {store.name[locale]}
             <ArrowUpRight size={12} />
           </Link>

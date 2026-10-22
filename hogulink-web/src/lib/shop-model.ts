@@ -2,6 +2,7 @@ import type { Listing, ListingStats, Locale, PublicStore } from '@hogulink/contr
 import type { Catalog } from './api';
 import { serviceChoices } from './consumer-model';
 import type { ShopStatsMap } from './shop-stats';
+import { visitPreferences } from './visit-model';
 
 export type ShopCard = {
   store: PublicStore;
@@ -94,11 +95,10 @@ export function shopPage(cards: ShopCard[], rawPage?: string) {
 export function shopCardHref(
   locale: Locale,
   card: ShopCard,
-  preferences: { area?: string; language?: string } = {},
+  preferences: { area?: string; language?: string; mode?: string } = {},
 ) {
   return `/${locale}/shops/${card.store.slug}?${new URLSearchParams({
-    ...(preferences.area ? { area: preferences.area } : {}),
-    ...(preferences.language ? { language: preferences.language } : {}),
+    ...visitPreferences(preferences),
     offering: card.fromOfferingId,
     nomination: 'FREE',
   })}`;

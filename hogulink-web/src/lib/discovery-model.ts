@@ -1,10 +1,11 @@
 import type { Catalog } from './api';
 import { serviceChoices } from './consumer-model';
+import { visitPreferences } from './visit-model';
 
 export function shopVisitContext(
   catalog: Catalog,
   storeId: string,
-  filters: { area?: string; language?: string } = {},
+  filters: { area?: string; language?: string; mode?: string } = {},
 ) {
   const services = serviceChoices(catalog, filters).filter((s) => s.store.id === storeId);
   const members = [
@@ -13,17 +14,13 @@ export function shopVisitContext(
   return {
     services,
     members,
-    carry: Object.fromEntries(
-      ['area', 'language'].flatMap((k) =>
-        filters[k as keyof typeof filters] ? [[k, filters[k as keyof typeof filters]!]] : [],
-      ),
-    ),
+    carry: visitPreferences(filters),
   };
 }
 
 export function shopChoices(
   catalog: Catalog,
-  filters: { area?: string; search?: string; language?: string } = {},
+  filters: { area?: string; search?: string; language?: string; mode?: string } = {},
 ) {
   const choices = serviceChoices(catalog, filters);
   return catalog.stores

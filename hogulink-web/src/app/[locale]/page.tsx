@@ -210,7 +210,7 @@ export default async function Home({
         id="desktop-shops-title"
         className="desktop-home-shops wrap"
         href={(_, card) => shopCardHref(l, card, q)}
-        allHref={`/${l}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language'].flatMap((key) => (q[key] ? [[key, q[key]]] : []))) })}`}
+        allHref={`/${l}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language', 'mode'].flatMap((key) => (q[key] ? [[key, q[key]]] : []))) })}`}
       />
       <DesktopHomeServices locale={l} catalog={catalog} q={q} />
       <section className="wrap discovery" id="discover">

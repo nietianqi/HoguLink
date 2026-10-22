@@ -826,7 +826,7 @@ export function Operations({
                             <div>
                               <dt>{af(l, 'serviceItem')}</dt>
                               <dd>
-                                {b.quote.serviceName?.[l] ?? t(l, 'services')} ·{' '}
+                                {b.quote.serviceName?.[l] ?? af(l, 'bookedService')} ·{' '}
                                 {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
                               </dd>
                             </div>

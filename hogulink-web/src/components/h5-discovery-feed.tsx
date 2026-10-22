@@ -224,6 +224,7 @@ export function H5DiscoveryFeed({
         action={`/${l}/discover`}
       >
         <input type="hidden" name="tab" value={q.tab} />
+        {q.mode && <input type="hidden" name="mode" value={q.mode} />}
         <label>
           <span>{pt(l, 'search')}</span>
           <input name="search" defaultValue={q.search ?? ''} maxLength={80} />

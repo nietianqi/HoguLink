@@ -39,10 +39,11 @@ import { ut } from '@/lib/consumer-i18n';
 import { h5Portrait, h5ServiceImage } from '@/lib/h5-media';
 import { H5EmptyArt, H5PageHeading, H5PortraitThumbnail } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
-import { H5Price } from './h5-business';
-import { H5ShopCover, H5ShopLogo, shopAreaText } from './h5-shops';
+import { H5Price, useDeviceLocation } from './h5-business';
+import { H5ShopCard, H5ShopCover, H5ShopLogo, shopAreaText } from './h5-shops';
 import { shopCards, shopCardHref } from '@/lib/shop-model';
-import type { ShopStatsMap } from '@/lib/shop-stats';
+import type { ShopStatsMap, ListingStatsMap } from '@/lib/shop-stats';
+import { DesktopTherapistPick } from './desktop-therapist-pick';
 
 export function H5Language({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const path = usePathname(),
@@ -109,46 +110,20 @@ export function H5Language({ locale, compact = false }: { locale: Locale; compac
   );
 }
 
-export function H5Home({
-  locale: l,
-  catalog,
-  q,
-  shopStats = {},
-}: {
+type HomeProps = {
   locale: Locale;
   catalog: Catalog;
   q: Record<string, string>;
-  /** Missing entries remain unknown and expose retry, distinct from real zero counts. */
   shopStats?: ShopStatsMap;
-}) {
-  const [dimension, setDimension] = useState<'services' | 'therapists' | 'shops'>('services');
-  const browseId = useId();
+  listingStats?: ListingStatsMap;
+  desktop?: boolean;
+};
+
+export function H5Home({ locale: l, catalog, q, shopStats }: HomeProps) {
   const carry = Object.fromEntries(
     ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
   );
-  const choices = serviceChoices(catalog, carry);
-  // Shop-run limited prices that are live right now; hidden entirely when none run.
-  const offers = serviceChoices(catalog, { ...carry, promotions: true })
-    .sort((a, b) => (a.promotionEndsAt ?? 0) - (b.promotionEndsAt ?? 0))
-    .slice(0, 6);
-  const featured = featuredServices(choices);
-  const path = (base: string, changes: Record<string, string> = {}) =>
-    `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
-  const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 4);
-  const therapists = featuredTherapists(choices);
-  const shopListHref = path('discover', { tab: 'shops' });
-  const offer = offers[0];
-  const emptyState = (
-    <div className="h5-home-empty" role="status">
-      <CalendarDays size={27} aria-hidden="true" />
-      <h3>{ht(l, 'homeNoRecommendations')}</h3>
-      <p>{ht(l, 'homeNoMatchesHelp')}</p>
-      <div>
-        <Link href={path('services', { mode: 'SCHEDULED' })}>{ht(l, 'scheduled')}</Link>
-        <Link href={`/${l}/therapists`}>{ht(l, 'allTherapists')}</Link>
-      </div>
-    </div>
-  );
+  const path = (base: string) => `/${l}/${base}?${new URLSearchParams(carry)}`;
   return (
     <section className="h5-home h5-surface" aria-label={ht(l, 'home')}>
       <div className="h5-home-header">
@@ -178,108 +153,176 @@ export function H5Home({
           </div>
         </section>
       </div>
-      <div className="h5-home-sections">
-        {offer && (
-          <section className="h5-home-offer" aria-labelledby="h5-offers-title">
-            <div className="h5-home-offer-intro">
-              <h2 id="h5-offers-title">
-                <TicketPercent size={17} aria-hidden="true" />
-                {ht(l, 'card')}
-              </h2>
-              <Link href={path('services', { promo: '1' })}>
-                {ht(l, 'allPromotions')}
-                <ChevronRight size={12} />
-              </Link>
-              <p>{ht(l, 'homeOffersHelp')}</p>
-            </div>
-            <Link
-              className="h5-home-offer-detail"
-              href={path('services', {
-                duration: String(offer.offering.durationMinutes),
-                offering: offer.offering.id,
-              })}
-            >
-              <span className="h5-home-offer-menu">
-                <span className="h5-offer-meta">
-                  {offer.offering.durationMinutes} {t(l, 'minutes')}
-                </span>
-                <strong>{offer.offering.name[l]}</strong>
-              </span>
-              <H5Price
-                locale={l}
-                total={offer.total}
-                compareTotal={offer.compareTotal}
-                promotionEndsAt={offer.promotionEndsAt}
-              />
-              <small className="h5-home-fee">{ht(l, 'total')}</small>
-              <span className="h5-home-offer-cta">
-                {ht(l, 'homeViewOffer')}
-                <ChevronRight size={13} />
-              </span>
+      <HomeRecommendations locale={l} catalog={catalog} q={q} shopStats={shopStats} />
+    </section>
+  );
+}
+
+export function HomeRecommendations({
+  locale: l,
+  catalog,
+  q,
+  shopStats = {},
+  listingStats = {},
+  desktop = false,
+}: HomeProps) {
+  const [dimension, setDimension] = useState<'services' | 'therapists' | 'shops'>('services');
+  const browseId = useId();
+  const carry = Object.fromEntries(
+    ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
+  );
+  const choices = serviceChoices(catalog, carry);
+  // Shop-run limited prices that are live right now; hidden entirely when none run.
+  const offers = serviceChoices(catalog, { ...carry, promotions: true })
+    .sort((a, b) => (a.promotionEndsAt ?? 0) - (b.promotionEndsAt ?? 0))
+    .slice(0, 6);
+  const featured = featuredServices(choices);
+  const path = (base: string, changes: Record<string, string> = {}) =>
+    `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
+  const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 4);
+  const therapists = featuredTherapists(choices);
+  const shopListHref = path('discover', { tab: 'shops' });
+  const offer = offers[0];
+  const emptyState = (
+    <div className="h5-home-empty" role="status">
+      <CalendarDays size={27} aria-hidden="true" />
+      <h3>{ht(l, 'homeNoRecommendations')}</h3>
+      <p>{ht(l, 'homeNoMatchesHelp')}</p>
+      <div>
+        <Link href={path('services', { mode: 'SCHEDULED' })}>{ht(l, 'scheduled')}</Link>
+        <Link href={`/${l}/therapists`}>{ht(l, 'allTherapists')}</Link>
+      </div>
+    </div>
+  );
+  const titlePrefix = desktop ? 'desktop-home' : 'h5-home';
+  const offerTitleId = desktop ? 'desktop-home-offers-title' : 'h5-offers-title';
+  const location = useDeviceLocation();
+  const [locationNote, setLocationNote] = useState('');
+  async function locateDistance() {
+    const point = await location.request();
+    setLocationNote(point ? '' : ht(l, 'locationDenied'));
+  }
+  return (
+    <div className={`h5-home-sections${desktop ? ' customer-home-browse' : ''}`}>
+      {offer && (
+        <section className="h5-home-offer" aria-labelledby={offerTitleId}>
+          <div className="h5-home-offer-intro">
+            <h2 id={offerTitleId}>
+              <TicketPercent size={17} aria-hidden="true" />
+              {ht(l, 'card')}
+            </h2>
+            <Link href={path('services', { promo: '1' })}>
+              {ht(l, 'allPromotions')}
+              <ChevronRight size={12} />
             </Link>
-          </section>
-        )}
-        <div className="h5-home-entrances" role="tablist" aria-label={ht(l, 'homeBrowse')}>
-          {(
-            [
-              ['services', Leaf, 'homePickService'],
-              ['therapists', UserRound, 'homePickTherapist'],
-              ['shops', Store, 'homePickShop'],
-            ] as const
-          ).map(([value, Icon, key], index, tabs) => (
-            <button
-              type="button"
-              role="tab"
-              key={value}
-              id={`${browseId}-${value}-tab`}
-              aria-selected={dimension === value}
-              aria-controls={`${browseId}-panel`}
-              tabIndex={dimension === value ? 0 : -1}
-              onClick={() => setDimension(value)}
-              onKeyDown={(event) => {
-                const next =
-                  event.key === 'ArrowRight'
-                    ? (index + 1) % tabs.length
-                    : event.key === 'ArrowLeft'
-                      ? (index + tabs.length - 1) % tabs.length
-                      : event.key === 'Home'
-                        ? 0
-                        : event.key === 'End'
-                          ? tabs.length - 1
-                          : -1;
-                if (next < 0) return;
-                event.preventDefault();
-                setDimension(tabs[next][0]);
-                const buttons =
-                  event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-                    '[role="tab"]',
-                  );
-                buttons?.[next].focus();
-              }}
-            >
-              <Icon size={27} strokeWidth={1.7} aria-hidden="true" />
-              <strong>{ht(l, key)}</strong>
-            </button>
-          ))}
-        </div>
-        <div
-          id={`${browseId}-panel`}
-          role="tabpanel"
-          aria-labelledby={`${browseId}-${dimension}-tab`}
-          tabIndex={0}
-        >
-          {dimension === 'shops' && (
-            <section className="h5-home-block h5-home-shops" aria-labelledby="h5-home-shops-title">
-              <div className="h5-home-section-heading">
-                <h2 id="h5-home-shops-title">{ht(l, 'homeShopsTitle')}</h2>
-                <Link href={shopListHref}>
-                  {ht(l, 'allShops')}
-                  <ChevronRight size={13} />
-                </Link>
-                <p>{ht(l, 'homeShopsHelp')}</p>
-              </div>
-              <div className="h5-home-shop-rail">
-                {shops.map((card) => (
+            <p>{ht(l, 'homeOffersHelp')}</p>
+          </div>
+          <Link
+            className="h5-home-offer-detail"
+            href={path('services', {
+              duration: String(offer.offering.durationMinutes),
+              offering: offer.offering.id,
+            })}
+          >
+            <span className="h5-home-offer-menu">
+              <span className="h5-offer-meta">
+                {offer.offering.durationMinutes} {t(l, 'minutes')}
+              </span>
+              <strong>{offer.offering.name[l]}</strong>
+            </span>
+            <H5Price
+              locale={l}
+              total={offer.total}
+              compareTotal={offer.compareTotal}
+              promotionEndsAt={offer.promotionEndsAt}
+            />
+            <small className="h5-home-fee">{ht(l, 'total')}</small>
+            <span className="h5-home-offer-cta">
+              {ht(l, 'homeViewOffer')}
+              <ChevronRight size={13} />
+            </span>
+          </Link>
+        </section>
+      )}
+      <div className="h5-home-entrances" role="tablist" aria-label={ht(l, 'homeBrowse')}>
+        {(
+          [
+            ['services', Leaf, 'homePickService'],
+            ['therapists', UserRound, 'homePickTherapist'],
+            ['shops', Store, 'homePickShop'],
+          ] as const
+        ).map(([value, Icon, key], index, tabs) => (
+          <button
+            type="button"
+            role="tab"
+            key={value}
+            id={`${browseId}-${value}-tab`}
+            aria-selected={dimension === value}
+            aria-controls={`${browseId}-panel`}
+            tabIndex={dimension === value ? 0 : -1}
+            onClick={() => setDimension(value)}
+            onKeyDown={(event) => {
+              const next =
+                event.key === 'ArrowRight'
+                  ? (index + 1) % tabs.length
+                  : event.key === 'ArrowLeft'
+                    ? (index + tabs.length - 1) % tabs.length
+                    : event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? tabs.length - 1
+                        : -1;
+              if (next < 0) return;
+              event.preventDefault();
+              setDimension(tabs[next][0]);
+              const buttons =
+                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+                  '[role="tab"]',
+                );
+              buttons?.[next].focus();
+            }}
+          >
+            <Icon size={27} strokeWidth={1.7} aria-hidden="true" />
+            <strong>{ht(l, key)}</strong>
+          </button>
+        ))}
+      </div>
+      {desktop && locationNote && (
+        <p className="h5-location-note" role="status">
+          {locationNote}
+        </p>
+      )}
+      <div
+        id={`${browseId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${browseId}-${dimension}-tab`}
+        tabIndex={0}
+      >
+        {dimension === 'shops' && (
+          <section
+            className="h5-home-block h5-home-shops"
+            aria-labelledby={`${titlePrefix}-shops-title`}
+          >
+            <div className="h5-home-section-heading">
+              <h2 id={`${titlePrefix}-shops-title`}>{ht(l, 'homeShopsTitle')}</h2>
+              <Link href={shopListHref}>
+                {ht(l, 'allShops')}
+                <ChevronRight size={13} />
+              </Link>
+              <p>{ht(l, 'homeShopsHelp')}</p>
+            </div>
+            <div className="h5-home-shop-rail">
+              {shops.map((card) =>
+                desktop ? (
+                  <H5ShopCard
+                    key={card.store.id}
+                    locale={l}
+                    card={card}
+                    demo={catalog.demo}
+                    href={shopCardHref(l, card, carry)}
+                    layout="list"
+                  />
+                ) : (
                   <article className="h5-home-shop-card" key={card.store.id}>
                     <H5ShopCover store={card.store} />
                     <div className="h5-home-shop-body">
@@ -309,93 +352,111 @@ export function H5Home({
                       </div>
                     </div>
                   </article>
-                ))}
-              </div>
-              {!shops.length && emptyState}
-            </section>
-          )}
-          {dimension === 'services' && (
-            <section className="h5-home-block" aria-labelledby="h5-home-services-title">
-              <div className="h5-home-section-heading">
-                <h2 id="h5-home-services-title">{ht(l, 'homeServicesTitle')}</h2>
-                <Link href={path('services')}>
-                  {ht(l, 'homeAllServices')}
-                  <ChevronRight size={13} />
-                </Link>
-                <p>{ht(l, 'total')}</p>
-              </div>
-              <div className="h5-home-service-list">
-                {featured.map(
-                  ({ offering, store, members, total, compareTotal, promotionEndsAt }, index) => (
-                    <Link
-                      className="h5-home-service-card"
-                      key={offering.id}
-                      href={path('services', {
-                        duration: String(offering.durationMinutes),
-                        offering: offering.id,
-                      })}
-                    >
-                      <span className="h5-home-service-image">
-                        <Image
-                          src={h5ServiceImage(offering, catalog.demo)}
-                          alt=""
-                          fill
-                          sizes="(max-width:359px) 82px, (max-width:760px) 100px, 100px"
-                          loading={index < 2 ? 'eager' : 'lazy'}
-                        />
-                        <small>{ht(l, 'serviceIllustration')}</small>
-                      </span>
-                      <div className="h5-home-service-copy">
-                        <div className="h5-home-service-heading">
-                          <div className="h5-home-service-title">
-                            <h3>{offering.name[l]}</h3>
-                            <span className="h5-home-service-category">
-                              {ht(l, 'homeServiceCategory')}
-                            </span>
-                          </div>
-                          <small className="h5-home-service-count">
-                            {ht(
-                              l,
-                              members.length === 1 ? 'homeServiceMember' : 'homeServiceMembers',
-                            ).replace('{count}', String(members.length))}
-                          </small>
+                ),
+              )}
+            </div>
+            {!shops.length && emptyState}
+          </section>
+        )}
+        {dimension === 'services' && (
+          <section className="h5-home-block" aria-labelledby={`${titlePrefix}-services-title`}>
+            <div className="h5-home-section-heading">
+              <h2 id={`${titlePrefix}-services-title`}>{ht(l, 'homeServicesTitle')}</h2>
+              <Link href={path('services')}>
+                {ht(l, 'homeAllServices')}
+                <ChevronRight size={13} />
+              </Link>
+              <p>{ht(l, 'total')}</p>
+            </div>
+            <div className="h5-home-service-list">
+              {featured.map(
+                ({ offering, store, members, total, compareTotal, promotionEndsAt }, index) => (
+                  <Link
+                    className="h5-home-service-card"
+                    key={offering.id}
+                    href={path('services', {
+                      duration: String(offering.durationMinutes),
+                      offering: offering.id,
+                    })}
+                  >
+                    <span className="h5-home-service-image">
+                      <Image
+                        src={h5ServiceImage(offering, catalog.demo)}
+                        alt=""
+                        fill
+                        sizes="(max-width:359px) 82px, (max-width:760px) 100px, 100px"
+                        loading={index < 2 ? 'eager' : 'lazy'}
+                      />
+                      <small>{ht(l, 'serviceIllustration')}</small>
+                    </span>
+                    <div className="h5-home-service-copy">
+                      <div className="h5-home-service-heading">
+                        <div className="h5-home-service-title">
+                          <h3>{offering.name[l]}</h3>
+                          <span className="h5-home-service-category">
+                            {ht(l, 'homeServiceCategory')}
+                          </span>
                         </div>
-                        <p className="h5-home-service-shop">
-                          <Store size={11} aria-hidden="true" />
-                          {store.name[l]}
-                        </p>
-                        <div className="h5-home-service-bottom">
-                          <div className="h5-home-service-price">
-                            <H5Price
-                              locale={l}
-                              total={total}
-                              compareTotal={compareTotal}
-                              promotionEndsAt={promotionEndsAt}
-                              durationMinutes={offering.durationMinutes}
-                            />
-                          </div>
-                          <span className="h5-home-service-cta">{ht(l, 'homeServiceBook')}</span>
-                        </div>
+                        <small className="h5-home-service-count">
+                          {ht(
+                            l,
+                            members.length === 1 ? 'homeServiceMember' : 'homeServiceMembers',
+                          ).replace('{count}', String(members.length))}
+                        </small>
                       </div>
-                    </Link>
-                  ),
-                )}
-              </div>
-              {!featured.length && emptyState}
-            </section>
-          )}
-          {dimension === 'therapists' && (
-            <section className="h5-home-block" aria-labelledby="h5-home-therapists-title">
-              <div className="h5-home-section-heading">
-                <h2 id="h5-home-therapists-title">{ht(l, 'homeTherapistsTitle')}</h2>
-                <Link href={path('therapists')}>
-                  {ht(l, 'homeAllTherapists')}
-                  <ChevronRight size={13} />
-                </Link>
-                <p>{ht(l, 'homeTherapistsHelp')}</p>
-              </div>
-              <div className="h5-home-therapist-grid">
-                {therapists.map(({ listing, choice }) => (
+                      <p className="h5-home-service-shop">
+                        <Store size={11} aria-hidden="true" />
+                        {store.name[l]}
+                      </p>
+                      <div className="h5-home-service-bottom">
+                        <div className="h5-home-service-price">
+                          <H5Price
+                            locale={l}
+                            total={total}
+                            compareTotal={compareTotal}
+                            promotionEndsAt={promotionEndsAt}
+                            durationMinutes={offering.durationMinutes}
+                          />
+                        </div>
+                        <span className="h5-home-service-cta">{ht(l, 'homeServiceBook')}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ),
+              )}
+            </div>
+            {!featured.length && emptyState}
+          </section>
+        )}
+        {dimension === 'therapists' && (
+          <section className="h5-home-block" aria-labelledby={`${titlePrefix}-therapists-title`}>
+            <div className="h5-home-section-heading">
+              <h2 id={`${titlePrefix}-therapists-title`}>{ht(l, 'homeTherapistsTitle')}</h2>
+              <Link href={path('therapists')}>
+                {ht(l, 'homeAllTherapists')}
+                <ChevronRight size={13} />
+              </Link>
+              <p>{ht(l, 'homeTherapistsHelp')}</p>
+            </div>
+            <div className="h5-home-therapist-grid">
+              {therapists.map(({ listing, choice }) =>
+                desktop ? (
+                  <DesktopTherapistPick
+                    key={listing.id}
+                    locale={l}
+                    listing={listing}
+                    choice={choice}
+                    demo={catalog.demo}
+                    stats={listingStats[listing.id]}
+                    href={path(`therapists/${listing.slug}`, {
+                      offering: choice.offering.id,
+                      nomination: 'NOMINATED',
+                    })}
+                    point={location.point}
+                    locating={location.state === 'locating'}
+                    onLocate={() => void locateDistance()}
+                  />
+                ) : (
                   <Link
                     className="h5-home-therapist"
                     key={listing.id}
@@ -435,56 +496,51 @@ export function H5Home({
                       </div>
                     </div>
                   </Link>
-                ))}
-              </div>
-              {!!therapists.length && (
-                <small className="h5-home-fee h5-home-section-fee">{ht(l, 'total')}</small>
+                ),
               )}
-              {!therapists.length && emptyState}
-            </section>
-          )}
-        </div>
-        <nav className="h5-home-assurance" aria-label={ht(l, 'bookingGuide')}>
-          {(
-            [
-              [
-                ReceiptText,
-                'homeClearFees',
-                'homeClearFeesHelp',
-                `/${l}/guides/booking-and-safety`,
-              ],
-              [ShieldCheck, 'homeShopCare', 'homeShopCareHelp', `/${l}/guides/booking-and-safety`],
-              [Headphones, 'orderSupport', 'homeSupportHelp', `/${l}/account/support`],
-            ] as const
-          ).map(([Icon, title, help, href]) => (
-            <Link key={title} href={href}>
-              <Icon size={22} aria-hidden="true" />
-              <span>
-                <strong>{ht(l, title)}</strong>
-                <small>{ht(l, help)}</small>
-              </span>
-            </Link>
-          ))}
-        </nav>
-        <Link className="h5-partner-banner" href={`/${l}/onboarding?role=MERCHANT`}>
-          <Store size={30} />
-          <div>
-            <strong>{ht(l, 'partner')}</strong>
-            <small>{ht(l, 'welcomeSub')}</small>
-          </div>
-          <ArrowRight size={20} />
-        </Link>
-        <Link className="h5-partner-banner" href={`/${l}/onboarding?role=STAFF`}>
-          <UserRound size={30} />
-          <div>
-            <strong>{ht(l, 'therapistJoin')}</strong>
-            <small>{ht(l, 'therapistJoinHelp')}</small>
-          </div>
-          <ArrowRight size={20} />
-        </Link>
-        {!catalog.demo && <p className="h5-footnote">{ht(l, 'regionsHelp')}</p>}
+            </div>
+            {!!therapists.length && (
+              <small className="h5-home-fee h5-home-section-fee">{ht(l, 'total')}</small>
+            )}
+            {!therapists.length && emptyState}
+          </section>
+        )}
       </div>
-    </section>
+      <nav className="h5-home-assurance" aria-label={ht(l, 'bookingGuide')}>
+        {(
+          [
+            [ReceiptText, 'homeClearFees', 'homeClearFeesHelp', `/${l}/guides/booking-and-safety`],
+            [ShieldCheck, 'homeShopCare', 'homeShopCareHelp', `/${l}/guides/booking-and-safety`],
+            [Headphones, 'orderSupport', 'homeSupportHelp', `/${l}/account/support`],
+          ] as const
+        ).map(([Icon, title, help, href]) => (
+          <Link key={title} href={href}>
+            <Icon size={22} aria-hidden="true" />
+            <span>
+              <strong>{ht(l, title)}</strong>
+              <small>{ht(l, help)}</small>
+            </span>
+          </Link>
+        ))}
+      </nav>
+      <Link className="h5-partner-banner" href={`/${l}/onboarding?role=MERCHANT`}>
+        <Store size={30} />
+        <div>
+          <strong>{ht(l, 'partner')}</strong>
+          <small>{ht(l, 'welcomeSub')}</small>
+        </div>
+        <ArrowRight size={20} />
+      </Link>
+      <Link className="h5-partner-banner" href={`/${l}/onboarding?role=STAFF`}>
+        <UserRound size={30} />
+        <div>
+          <strong>{ht(l, 'therapistJoin')}</strong>
+          <small>{ht(l, 'therapistJoinHelp')}</small>
+        </div>
+        <ArrowRight size={20} />
+      </Link>
+      {!catalog.demo && <p className="h5-footnote">{ht(l, 'regionsHelp')}</p>}
+    </div>
   );
 }
 

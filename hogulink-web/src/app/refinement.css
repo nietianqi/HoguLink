@@ -6415,6 +6415,295 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
   }
 }
 
+/* Shared H5 browsing on desktop, with room for comparison and optional detailed filters. */
+@media (min-width: 761px) {
+  .customer-home-services {
+    margin-top: 24px;
+  }
+  .customer-home-browse {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+    scroll-margin-top: 24px;
+  }
+  .customer-home-browse > :not(.h5-partner-banner) {
+    grid-column: 1 / -1;
+  }
+  .customer-home-browse .h5-home-offer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    padding: 20px 24px;
+  }
+  .customer-home-browse .h5-home-offer h2 {
+    font-size: 21px;
+  }
+  .customer-home-browse .h5-home-offer-intro p {
+    font-size: 13px;
+  }
+  .customer-home-browse .h5-home-offer-detail {
+    padding-left: 24px;
+    gap: 5px 16px;
+  }
+  .customer-home-browse .h5-home-offer-menu {
+    font-size: 14px;
+  }
+  .customer-home-browse .h5-home-offer .h5-price > strong {
+    font-size: 24px;
+  }
+  .customer-home-browse .h5-home-offer-cta {
+    min-height: 42px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  .customer-home-browse .h5-home-entrances {
+    margin: 0;
+    border: 1px solid var(--h5-line);
+    padding: 7px;
+    gap: 8px;
+  }
+  .customer-home-browse .h5-home-entrances > button {
+    min-height: 72px;
+    gap: 8px;
+    flex-direction: row;
+  }
+  .customer-home-browse .h5-home-entrances strong {
+    font-size: 17px;
+  }
+  .customer-home-browse .h5-home-entrances > button[aria-selected='true']::after {
+    width: 40%;
+  }
+  .customer-home-browse .h5-home-block {
+    margin: 0;
+  }
+  .customer-home-browse .h5-home-empty {
+    padding: 36px 24px;
+    border: 1px solid var(--h5-line);
+    border-radius: 14px;
+    background: #fff;
+    text-align: center;
+    color: var(--h5-muted);
+  }
+  .customer-home-browse .h5-home-empty > svg {
+    color: var(--h5-primary);
+  }
+  .customer-home-browse .h5-home-empty h3 {
+    margin: 12px 0 8px;
+    font-size: 21px;
+    color: var(--h5-ink);
+  }
+  .customer-home-browse .h5-home-empty p {
+    margin: 0;
+    font-size: 14px;
+  }
+  .customer-home-browse .h5-home-empty > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .customer-home-browse .h5-home-empty a {
+    padding: 12px 20px;
+    border-radius: 24px;
+    background: var(--h5-mint);
+    color: var(--h5-primary-ink);
+    font-size: 14px;
+  }
+  .customer-home-browse .h5-home-empty a:first-child {
+    background: var(--h5-primary);
+    color: #fff;
+  }
+  .customer-home-browse .h5-home-section-heading {
+    margin-bottom: 16px;
+  }
+  .customer-home-browse .h5-home-section-heading h2 {
+    font-size: 24px;
+  }
+  .customer-home-browse .h5-home-section-heading > a,
+  .customer-home-browse .h5-home-section-heading > p {
+    font-size: 13px;
+  }
+  .customer-home-browse .h5-home-service-list,
+  .customer-home-browse .h5-home-therapist-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .customer-home-browse .h5-home-service-card {
+    padding: 12px;
+    border: 1px solid var(--h5-line);
+    min-height: 142px;
+  }
+  .customer-home-browse .h5-home-service-copy h3 {
+    font-size: 16px;
+  }
+  .customer-home-browse .h5-home-service-price .h5-price > strong {
+    font-size: 18px;
+  }
+  .customer-home-browse .h5-home-service-count {
+    font-size: 11px;
+  }
+  .customer-home-browse .h5-home-service-cta {
+    min-height: 38px;
+  }
+  .customer-home-browse .h5-home-shop-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 0;
+  }
+  .customer-home-browse .h5-shop-card {
+    min-width: 0;
+    border: 1px solid var(--h5-line);
+  }
+  .customer-home-browse .h5-home-therapist {
+    flex-direction: row;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--h5-line);
+  }
+  .customer-home-browse .h5-home-therapist-image {
+    width: 34%;
+    max-width: 130px;
+    align-self: flex-start;
+  }
+  .customer-home-browse .h5-home-therapist-info {
+    padding: 0;
+  }
+  .customer-home-browse .h5-home-therapist h3 {
+    font-size: 19px;
+  }
+  .customer-home-browse .h5-home-therapist h3 a {
+    color: inherit;
+  }
+  .customer-home-browse .h5-home-languages {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .customer-home-browse .h5-home-therapist .h5-stats {
+    font-size: 11px;
+  }
+  .customer-home-browse .h5-home-therapist-bottom {
+    padding-top: 8px;
+  }
+  .customer-home-browse .h5-home-times {
+    min-height: 38px;
+  }
+  .customer-home-browse .h5-home-assurance {
+    margin-top: 0;
+    padding: 18px 8px;
+    border: 1px solid var(--h5-line);
+  }
+  .customer-home-browse .h5-home-assurance strong {
+    font-size: 14px;
+  }
+  .customer-home-browse .h5-home-assurance small {
+    font-size: 12px;
+  }
+  .customer-home-services .customer-home-browse .h5-partner-banner {
+    display: flex;
+    margin: 0;
+    min-height: 72px;
+    padding: 14px 18px;
+  }
+  .customer-home-browse .h5-partner-banner strong {
+    font-size: 16px;
+  }
+  .customer-home-browse .h5-partner-banner small {
+    font-size: 12px;
+  }
+  .customer-home-services .h5-partner-banner > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+  }
+  .customer-home-browse :is(a, button, [role='tabpanel']):focus-visible {
+    outline: 2px solid var(--h5-primary);
+    outline-offset: 3px;
+  }
+  .market-page .customer-home-advanced {
+    padding: 0;
+    margin-block: 28px 48px;
+    border: 1px solid var(--h5-line);
+    border-radius: 14px;
+    background: #fff;
+  }
+  .customer-home-advanced > summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    padding: 18px 24px;
+    color: var(--h5-primary-ink);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .customer-home-advanced > summary::-webkit-details-marker {
+    display: none;
+  }
+  .customer-home-advanced > summary > svg:last-child {
+    margin-left: auto;
+  }
+  .customer-home-advanced[open] > summary > svg:last-child {
+    transform: rotate(180deg);
+  }
+  .customer-home-advanced > section {
+    padding: 0 24px 24px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-card {
+    grid-template-columns: 88px minmax(0, 1fr) 116px;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid var(--h5-line);
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-avatar img {
+    width: 88px;
+    height: 108px;
+    border-radius: 12px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-avatar > span {
+    width: 88px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-heading h2 {
+    font-size: 21px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-copy > p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-action .h5-primary {
+    min-height: 42px;
+    min-width: 108px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-directory-price .h5-price > strong {
+    font-size: 19px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .h5-directory-price .h5-price > small,
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-action > small,
+  body:has(.customer-header) .h5-directory-v2 .h5-directory-facts {
+    font-size: 12px;
+  }
+}
+@media (min-width: 761px) and (max-width: 1199px) {
+  .customer-home-browse .h5-home-service-list,
+  .customer-home-browse .h5-home-therapist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .customer-home-browse .h5-home-shop-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 761px) and (max-width: 1000px) {
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* A single customer account rail for orders, messages, saved items and aftercare. */
 @media (min-width: 761px) {
   .customer-account-layout:has(.customer-account-nav) {

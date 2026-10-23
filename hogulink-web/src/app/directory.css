@@ -154,6 +154,49 @@
   text-align: center;
   margin: 16px 0 0;
 }
+.h5-directory-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  min-height: 28px;
+  margin-top: 2px;
+  color: var(--h5-muted, #536b63);
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.h5-directory-facts > span,
+.h5-directory-facts > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.h5-directory-facts svg {
+  flex-shrink: 0;
+}
+.h5-directory-distance {
+  white-space: nowrap;
+}
+.h5-directory-facts .h5-directory-locate {
+  min-height: 28px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--h5-primary-ink, #006b49);
+  font: inherit;
+  cursor: pointer;
+}
+.h5-directory-facts .h5-directory-locate:disabled {
+  cursor: wait;
+  color: var(--h5-muted, #536b63);
+}
+.h5-directory-facts .h5-directory-locate:focus-visible {
+  outline: 2px solid var(--h5-primary, #00865b);
+  outline-offset: 2px;
+}
 .h5-directory-progress {
   position: fixed;
   z-index: 30;

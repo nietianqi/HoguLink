@@ -5,6 +5,16 @@ export function asLocale(value: string): Locale {
   return locales.includes(value as Locale) ? (value as Locale) : 'ja';
 }
 const words = {
+  STAFF_VISIT_IN_PROGRESS: [
+    '別の訪問がまだ進行中です。先の訪問を終了するか、店舗に調整を依頼してから続けてください。',
+    'Another visit is still in progress. Finish that visit or ask your shop to arrange assistance before continuing.',
+    '另有一笔任务仍在履约中，请先结束原任务或联系店铺协调，再继续。',
+  ],
+  INVALID_ASSIGNMENT: [
+    '担当者の資格・対応条件が変わりました。最新情報を確認し、店舗で再調整するか無料でキャンセルしてください。',
+    'The therapist’s eligibility or visit conditions changed. Review the latest details and arrange another eligible therapist or cancel without a fee.',
+    '技师资格或接单条件已变更，请核对最新资料，由店铺重新安排或免费取消。',
+  ],
   INSTANT_UNAVAILABLE: [
     'この条件では即時予約を受け付けられません。通常の日時指定予約をお選びください。',
     'Instant booking is no longer available for these choices. Choose a scheduled visit.',

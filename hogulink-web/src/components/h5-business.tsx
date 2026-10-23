@@ -13,10 +13,12 @@ export function H5Stats({
   locale: l,
   stats,
   compact = false,
+  showReviews = true,
 }: {
   locale: Locale;
   stats?: ListingStats;
   compact?: boolean;
+  showReviews?: boolean;
 }) {
   if (!stats)
     return <p className="h5-stats h5-stats-unavailable">{ht(l, 'shopStatsUnavailable')}</p>;
@@ -28,7 +30,7 @@ export function H5Stats({
             <Star size={12} aria-hidden="true" />
             {fill(ht(l, 'rating'), { rating: stats.rating.toFixed(1) })}
           </span>
-          <span>{fill(ht(l, 'reviews'), { n: stats.reviewCount })}</span>
+          {showReviews && <span>{fill(ht(l, 'reviews'), { n: stats.reviewCount })}</span>}
         </>
       ) : (
         <span className="h5-stats-empty">{ht(l, 'noReviews')}</span>

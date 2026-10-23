@@ -1,12 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { MobileTherapist } from '@hogulink/contracts';
+import { areaCentroids, type MobileTherapist } from '@hogulink/contracts';
 import {
   directoryQuery,
   directoryHref,
   therapistSelection,
   directoryTime,
+  directoryDistance,
 } from '../hogulink-web/src/lib/therapist-directory-model';
+
+test('directory distance waits for a valid consented point and a known service area', () => {
+  assert.equal(directoryDistance(null, ['shinjuku']), null);
+  assert.equal(directoryDistance({ lat: NaN, lng: 139.7 }, ['shinjuku']), null);
+  assert.equal(directoryDistance({ lat: 35.7, lng: Infinity }, ['shinjuku']), null);
+  assert.equal(directoryDistance({ lat: 91, lng: 139.7 }, ['shinjuku']), null);
+  assert.equal(directoryDistance({ lat: 35.7, lng: -181 }, ['shinjuku']), null);
+  assert.equal(directoryDistance(areaCentroids.shinjuku, ['unknown']), null);
+  assert.equal(directoryDistance(areaCentroids.shinjuku, []), null);
+});
+
+test('directory distance uses the nearest service area and never rounds a short estimate to zero km', () => {
+  const close = directoryDistance(areaCentroids.shinjuku, ['chuo', 'shinjuku']);
+  assert.equal(close?.area, 'shinjuku');
+  assert.equal(close?.displayKm, '<0.1');
+  const nearby = directoryDistance(areaCentroids.chuo, ['shinjuku']);
+  assert(nearby && nearby.km > 0 && nearby.km < 10);
+  assert.match(nearby.displayKm, /^\d+\.\d$/);
+  const far = directoryDistance({ lat: 0, lng: 0 }, ['shinjuku']);
+  assert(far && far.km > 10);
+  assert.match(far.displayKm, /^\d+$/);
+});
 
 test('directory URLs normalize supported combinations and discard checkout state and stale cursor', () => {
   const q = directoryQuery({

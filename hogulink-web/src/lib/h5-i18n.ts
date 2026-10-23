@@ -15,6 +15,11 @@ const copy = {
   homeSubline: ['东京上门放松服务', '東京の訪問リラクゼーション', 'Relaxation visits in Tokyo'],
   homeAssurance: ['明码标价 · 店铺负责', '明確な料金・店舗が対応', 'Clear prices. Local shops.'],
   homeBrowse: ['选择预约方式', 'サービスの探し方', 'Ways to find your visit'],
+  homeAdvanced: [
+    '按时间和预算进一步筛选',
+    '日時・予算でさらに絞り込む',
+    'Refine by time and budget',
+  ],
   homePickService: ['选项目', 'メニュー', 'Services'],
   homePickServiceHelp: [
     '找到合适的放松服务',
@@ -255,6 +260,14 @@ const copy = {
     'You are outside the service areas; sorted by the closest one',
   ],
   distance: ['距{area}中心约 {km} km', '{area}中心から約 {km} km', '~{km} km from central {area}'],
+  distanceShort: ['约 {km} km', '約{km} km', '~{km} km'],
+  distanceUnavailable: ['距离未知', '距離未取得', 'Distance unavailable'],
+  locateDistance: ['定位看距离', '距離を表示', 'Locate'],
+  locateDistanceHelp: [
+    '允许定位以查看估算距离',
+    '位置情報を許可して目安の距離を表示',
+    'Allow location to see estimated distance',
+  ],
   sortRating: ['评分优先', '評価順', 'Top rated'],
   sortDistance: ['距离最近', '近い順', 'Nearest'],
   rating: ['{rating}分', '{rating}', '{rating}'],

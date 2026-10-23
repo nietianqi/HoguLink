@@ -1,5 +1,11 @@
 # API 开发基线
 
+## 四端业务一致性（2026-10-23）
+
+统一规则与状态见 [业务逻辑总览](BUSINESS_LOGIC.md)。技师履约事件中的出发、到达、开始在同一事务内按 `assignedStaffId` 检查其他 `EN_ROUTE` / `ARRIVED` / `IN_SERVICE` 订单，包含计划占用已经过期的订单；存在时返回 `409 STAFF_VISIT_IN_PROGRESS`，不修改任一订单或追加成功进程。不会返回其他订单的标识、地址或店铺信息。提交足时结束进入 `AWAITING_COMPLETION` 后不再阻断下一笔出发。
+
+SOLO 一键受理在写入确认前复用当前派单资格检查，包括有效绑定、身份/肖像、公开状态、本店项目、所需语言、酒店条件、即时有效待机与当前审核资格。条件变化返回 `409 INVALID_ASSIGNMENT`，保留原 `REQUESTED` 订单及版本，允许原店通过既有取消入口免费善后。H5/PC 共用中日英恢复提示。
+
 ## 店铺指名费与取消政策（2026-10-19）
 
 新增 `PUT /v1/merchant/booking-rules`，仅本店 MERCHANT：`version`（未配置为 0）、`nominationFee`（0–200000 整数）、`templateId=FLEXIBLE_2H|STANDARD_24H|CUSTOM`，CUSTOM 必须提供 `customPolicy`，其他模板禁止携带。自定义字段为 `freeBeforeMinutes`（30–10080）、`lateFeeBps`、`nearBeforeMinutes`（0 关闭第二档）、`nearFeeBps`、`noShowFeeBps`；费率 0–9900，第二档起点短于免费窗口、费率不降低，爽约不低于取消比例。即时取消及爽约证据保护字段由服务端固定。

@@ -1,4 +1,23 @@
-import type { Locale, MobileTherapist } from '@hogulink/contracts';
+import { nearestArea, type Locale, type MobileTherapist } from '@hogulink/contracts';
+
+/** Device-only estimate to a served area's centre, never a therapist's live position. */
+export function directoryDistance(point: { lat: number; lng: number } | null, areas: string[]) {
+  if (
+    !point ||
+    !Number.isFinite(point.lat) ||
+    !Number.isFinite(point.lng) ||
+    Math.abs(point.lat) > 90 ||
+    Math.abs(point.lng) > 180
+  )
+    return null;
+  const near = nearestArea(point, areas);
+  if (!near) return null;
+  return {
+    ...near,
+    displayKm:
+      near.km < 0.1 ? '<0.1' : near.km < 10 ? near.km.toFixed(1) : String(Math.round(near.km)),
+  };
+}
 
 // URLs are shareable filters, never checkout state or a partially loaded page.
 const wards = ['shinjuku', 'shibuya', 'minato', 'chuo', 'taito'];

@@ -25,9 +25,15 @@ export function needsAttention(b: Booking, role: Role): boolean {
       b.status === 'AWAITING_COMPLETION' ||
       (b.replacementConsent === 'PENDING' && !!b.proposedListingId)
     );
-  if (role === 'STAFF') return b.staffTaskStatus === 'OFFERED';
+  if (role === 'STAFF')
+    return (
+      ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
+      b.staffTaskStatus === 'OFFERED' &&
+      b.replacementConsent !== 'PENDING'
+    );
   return (
     b.status === 'REQUESTED' ||
+    (b.replacementConsent === 'PENDING' && !b.proposedListingId) ||
     (b.status === 'AWAITING_COMPLETION' && b.completion?.status !== 'PENDING') ||
     b.noShow?.status === 'REPORTED' ||
     (b.status === 'ACCEPTED' && !b.assignedStaffId) ||

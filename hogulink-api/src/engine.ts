@@ -1148,6 +1148,12 @@ export class Engine {
           'This shop no longer meets SOLO conditions.',
           409,
         );
+        ensure(
+          await this.assignmentEligible(tx, b, staff[0]),
+          'INVALID_ASSIGNMENT',
+          'The shop owner no longer meets this visit requirements. Review the task or cancel without a fee.',
+          409,
+        );
         b.assignedStaffId = staff[0].staffId;
         b.assignedListingId = staff[0].id;
         b.staffTaskStatus = 'ACKNOWLEDGED';
@@ -1506,6 +1512,18 @@ export class Engine {
         'Complete the previous step before continuing.',
         409,
       );
+      if (['EN_ROUTE', 'ARRIVED', 'START'].includes(event))
+        ensure(
+          !(
+            await tx.find<Booking>('bookings', {
+              assignedStaffId: b.assignedStaffId!,
+              status: ['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'],
+            })
+          ).some((other) => other.id !== b.id),
+          'STAFF_VISIT_IN_PROGRESS',
+          'Another visit is still in progress. Finish that visit or ask the shop to arrange assistance before continuing.',
+          409,
+        );
       if (event === 'START')
         ensure(
           this.now() >= b.quote.startAt && b.arrivedAt !== undefined && this.now() >= b.arrivedAt,

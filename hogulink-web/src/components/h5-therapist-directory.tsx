@@ -32,9 +32,10 @@ import {
 } from '@/lib/therapist-directory-model';
 import { H5AreaPicker, H5PortraitPreview } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
-import { H5Badges, H5Distance, H5Price, H5Stats, useDeviceLocation } from './h5-business';
+import { H5Badges, H5Price, H5Stats, useDeviceLocation } from './h5-business';
 import { PriceLines } from './catalog';
 import { visitPreferences } from '@/lib/visit-model';
+import { TherapistFacts } from './therapist-facts';
 
 export function H5TherapistDirectory({
   locale: l,
@@ -80,6 +81,11 @@ export function H5TherapistDirectory({
     if (!near) return setLocationNote(ht(l, 'locationDenied'));
     if (near.km > 15) setLocationNote(ht(l, 'locationFar'));
     navigate({ ...current, sort: 'distance', near: near.area });
+  }
+  async function locateDistance() {
+    setLocationNote('');
+    const point = await location.request();
+    if (!point) setLocationNote(ht(l, 'locationDenied'));
   }
   async function more() {
     if (!data.nextCursor || inFlight.current) return;
@@ -322,7 +328,7 @@ export function H5TherapistDirectory({
                     verified={bootstrap.demo ? ht(l, 'sample') : t(l, 'verified')}
                   />
                 </div>
-                <H5Stats locale={l} stats={stats} compact />
+                <H5Stats locale={l} stats={stats} compact showReviews={false} />
                 <Link
                   className="h5-shop-name"
                   href={`/${l}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences(q), offering: offering.id })}`}
@@ -331,10 +337,7 @@ export function H5TherapistDirectory({
                   <span>{store.name[l]}</span>
                   <ChevronRight size={11} aria-hidden="true" />
                 </Link>
-                <p>
-                  {listing.languages.map((lang) => languageNames[lang]).join(' · ')}
-                  <H5Distance locale={l} point={location.point} areas={store.areas} />
-                </p>
+                <p>{listing.languages.map((lang) => languageNames[lang]).join(' · ')}</p>
                 <H5Badges
                   locale={l}
                   promotion={!!item.promotionEndsAt}
@@ -355,6 +358,16 @@ export function H5TherapistDirectory({
                   />
                   <Info size={11} />
                 </button>
+                <TherapistFacts
+                  locale={l}
+                  name={listing.name[l]}
+                  stats={stats}
+                  point={location.point}
+                  areas={store.areas}
+                  locating={location.state === 'locating'}
+                  disabled={pending}
+                  onLocate={() => void locateDistance()}
+                />
               </div>
               <div className="h5-therapist-action">
                 <small>

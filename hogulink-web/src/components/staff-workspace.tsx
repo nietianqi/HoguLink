@@ -235,7 +235,12 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       fail(e);
       if (
         e instanceof ClientError &&
-        ['VERSION_CONFLICT', 'INVALID_STATE', 'INVALID_TRANSITION'].includes(e.code)
+        [
+          'VERSION_CONFLICT',
+          'INVALID_STATE',
+          'INVALID_TRANSITION',
+          'STAFF_VISIT_IN_PROGRESS',
+        ].includes(e.code)
       ) {
         setReview(null);
         await refresh();

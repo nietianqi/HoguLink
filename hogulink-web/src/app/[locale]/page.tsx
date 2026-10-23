@@ -7,16 +7,19 @@ import {
   MapPin,
   Languages,
   ArrowUpRight,
-  ShieldCheck,
-  ReceiptText,
-  Store as StoreIcon,
-  MoveRight,
+  SlidersHorizontal,
+  ChevronDown,
   LayoutGrid,
   List,
 } from 'lucide-react';
-import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
-import { shopCards, shopCardHref } from '@/lib/shop-model';
-import { H5ShopSection } from '@/components/h5-shops';
+import {
+  loadShopStats,
+  loadListingStats,
+  type ListingStatsMap,
+  type ShopStatsMap,
+} from '@/lib/shop-stats';
+import { shopCards } from '@/lib/shop-model';
+import { featuredTherapists, serviceChoices } from '@/lib/consumer-model';
 import { serverApi, nominationFeeFor, type Catalog } from '@/lib/api';
 import { asLocale, t, areas, areaName } from '@/lib/i18n';
 import { seo } from '@/lib/seo';
@@ -55,7 +58,11 @@ export default async function Home({
     `public/staff-listings?${new URLSearchParams({ ...(q.area ? { area: q.area } : {}), ...(q.language ? { language: q.language } : {}), mode })}`,
   );
   const shopFilters = { area: q.area, language: q.language, mode, locale: l };
-  const featuredShops = shopCards(catalog, shopFilters).slice(0, 3);
+  const featuredShops = shopCards(catalog, shopFilters).slice(0, 4);
+  const listingStatsPromise = loadListingStats(
+    featuredTherapists(serviceChoices(catalog, shopFilters)).map(({ listing }) => listing.id),
+    (path) => serverApi<ListingStatsMap>(path),
+  );
   const shopStatsPromise = loadShopStats(
     featuredShops.map((card) => card.store.id),
     (path) => serverApi<ShopStatsMap>(path),
@@ -93,7 +100,11 @@ export default async function Home({
       };
     }),
   );
-  const [available, shopStats] = await Promise.all([availablePromise, shopStatsPromise]);
+  const [available, shopStats, listingStats] = await Promise.all([
+    availablePromise,
+    shopStatsPromise,
+    listingStatsPromise,
+  ]);
   const cards = available.filter(
     (item) => mode === 'INSTANT' || !date || (item.slots?.length ?? 0) > 0,
   );
@@ -119,7 +130,7 @@ export default async function Home({
             <em>{ht(l, 'homeSubline')}</em>
           </h1>
           <p>{t(l, 'heroText')}</p>
-          <a className="hero-discover" href="#discover">
+          <a className="hero-discover" href="#desktop-home-browse">
             {dt(l, 'discovery')}
             <ArrowUpRight size={18} />
           </a>
@@ -143,7 +154,7 @@ export default async function Home({
         </div>
       </section>
       <div className="search-position wrap">
-        <form className="search-panel" action={`/${l}#discover`}>
+        <form className="search-panel" action={`/${l}#desktop-home-browse`}>
           <div className="mode-tabs">
             <button className={mode === 'SCHEDULED' ? 'active' : ''} name="mode" value="SCHEDULED">
               <CalendarDays size={16} />
@@ -203,153 +214,114 @@ export default async function Home({
         </form>
       </div>
       <MobileConsumerEntries locale={l} catalog={catalog} q={q} />
-      <H5ShopSection
+      <DesktopHomeServices
         locale={l}
-        cards={shopCards(catalog, shopFilters, shopStats).slice(0, 3)}
-        demo={catalog.demo}
-        id="desktop-shops-title"
-        className="desktop-home-shops wrap"
-        href={(_, card) => shopCardHref(l, card, q)}
-        allHref={`/${l}/discover?${new URLSearchParams({ tab: 'shops', ...Object.fromEntries(['area', 'language', 'mode'].flatMap((key) => (q[key] ? [[key, q[key]]] : []))) })}`}
+        catalog={catalog}
+        q={q}
+        shopStats={shopStats}
+        listingStats={listingStats}
       />
-      <DesktopHomeServices locale={l} catalog={catalog} q={q} />
-      <section className="wrap discovery" id="discover">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow small">{dt(l, 'collection')}</span>
-            <h2>{dt(l, 'curated')}</h2>
-            <p>{t(l, 'subtitle')}</p>
-          </div>
-          <span className="result-count">
-            {cards.length}
-            <span>{t(l, 'results')}</span>
-          </span>
-        </div>
-        <div className="discovery-layout">
-          <DiscoveryFilters locale={l} q={q} mode={mode} duration={duration} />
-          <div className="discovery-results">
-            {mode === 'SCHEDULED' && available.some((item) => item.slots === undefined) && (
-              <p className="notice" role="status">
-                {dt(l, 'unavailable')}
-              </p>
-            )}
-            <div className="filter-row">
-              <div className="filter-pills">
-                <Link className={!q.language ? 'selected' : ''} href={href({ language: '' })}>
-                  {t(l, 'all')}
-                </Link>
-                {[
-                  ['ja', '日本語'],
-                  ['en', 'English'],
-                  ['zh', '中文'],
-                ].map(([value, label]) => (
-                  <Link
-                    key={value}
-                    className={q.language === value ? 'selected' : ''}
-                    href={href({ language: value })}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-              <div className="view-toggle">
-                <Link
-                  href={href({ view: 'grid' })}
-                  aria-label={dt(l, 'grid')}
-                  aria-current={q.view !== 'list' ? 'true' : undefined}
-                >
-                  <LayoutGrid size={18} />
-                </Link>
-                <Link
-                  href={href({ view: 'list' })}
-                  aria-label={dt(l, 'list')}
-                  aria-current={q.view === 'list' ? 'true' : undefined}
-                >
-                  <List size={19} />
-                </Link>
-              </div>
-            </div>
-            <div className={`therapist-grid ${q.view === 'list' ? 'therapist-list' : ''}`}>
-              {cards.map(({ listing, store, offering, slots }) => (
-                <TherapistCard
-                  key={listing.id}
-                  demo={catalog.demo}
-                  listing={listing}
-                  store={store}
-                  offering={offering}
-                  slots={slots}
-                  area={q.area}
-                  language={q.language}
-                  offerings={catalog.offerings}
-                  locale={l}
-                  nominationFee={catalog.bookingRules?.nominationFee}
-                  mode={mode}
-                />
-              ))}
-            </div>
-            {!cards.length && (
-              <div className="empty-state">
-                <Search size={30} />
-                <p>{t(l, 'noResults')}</p>
-                <Link className="button secondary" href={`/${l}`}>
-                  {t(l, 'all')}
-                </Link>
-              </div>
-            )}
-            <p className="availability-footnote">
-              <Clock3 size={14} />
-              {dt(l, 'availabilityNote')}
-            </p>
-          </div>
-        </div>
-      </section>
-      <section className="wrap trust-section" id="safety">
-        {(
-          [
-            [ReceiptText, 'transparent', 'transparentText'],
-            [StoreIcon, 'trusted', 'trustedText'],
-            [ShieldCheck, 'safeTitle', 'safeText'],
-          ] as const
-        ).map(([Icon, title, text], i) => (
-          <div key={title}>
-            <span className="trust-icon">
-              <Icon size={23} />
-            </span>
-            <span className="tiny-number">0{i + 1}</span>
-            <h3>{t(l, title)}</h3>
-            <p>{t(l, text)}</p>
-          </div>
-        ))}
-      </section>
-      <section className="how-section" id="how">
-        <div className="wrap">
+      <details
+        className="wrap discovery customer-home-advanced"
+        id="discover"
+        open={Boolean(q.date || q.maxTotal || q.acceptance || q.sort || q.view || q.duration)}
+      >
+        <summary>
+          <SlidersHorizontal size={20} />
+          <span>{ht(l, 'homeAdvanced')}</span>
+          <ChevronDown size={18} />
+        </summary>
+        <section>
           <div className="section-heading">
             <div>
-              <span className="eyebrow small">HOW HOGULINK WORKS</span>
-              <h2>{t(l, 'howTitle')}</h2>
+              <span className="eyebrow small">{dt(l, 'collection')}</span>
+              <h2>{dt(l, 'curated')}</h2>
+              <p>{t(l, 'subtitle')}</p>
             </div>
-            <Link href={`/${l}/guides/booking-and-safety`}>
-              {t(l, 'how')} <ArrowUpRight size={16} />
-            </Link>
+            <span className="result-count">
+              {cards.length}
+              <span>{t(l, 'results')}</span>
+            </span>
           </div>
-          <div className="steps">
-            {(
-              [
-                ['step1', 'step1Text'],
-                ['step2', 'step2Text'],
-                ['step3', 'step3Text'],
-              ] as const
-            ).map(([title, text], i) => (
-              <div key={title}>
-                <span>0{i + 1}</span>
-                <h3>{t(l, title)}</h3>
-                <p>{t(l, text)}</p>
-                {i < 2 && <MoveRight size={28} />}
+          <div className="discovery-layout">
+            <DiscoveryFilters locale={l} q={q} mode={mode} duration={duration} />
+            <div className="discovery-results">
+              {mode === 'SCHEDULED' && available.some((item) => item.slots === undefined) && (
+                <p className="notice" role="status">
+                  {dt(l, 'unavailable')}
+                </p>
+              )}
+              <div className="filter-row">
+                <div className="filter-pills">
+                  <Link className={!q.language ? 'selected' : ''} href={href({ language: '' })}>
+                    {t(l, 'all')}
+                  </Link>
+                  {[
+                    ['ja', '日本語'],
+                    ['en', 'English'],
+                    ['zh', '中文'],
+                  ].map(([value, label]) => (
+                    <Link
+                      key={value}
+                      className={q.language === value ? 'selected' : ''}
+                      href={href({ language: value })}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+                <div className="view-toggle">
+                  <Link
+                    href={href({ view: 'grid' })}
+                    aria-label={dt(l, 'grid')}
+                    aria-current={q.view !== 'list' ? 'true' : undefined}
+                  >
+                    <LayoutGrid size={18} />
+                  </Link>
+                  <Link
+                    href={href({ view: 'list' })}
+                    aria-label={dt(l, 'list')}
+                    aria-current={q.view === 'list' ? 'true' : undefined}
+                  >
+                    <List size={19} />
+                  </Link>
+                </div>
               </div>
-            ))}
+              <div className={`therapist-grid ${q.view === 'list' ? 'therapist-list' : ''}`}>
+                {cards.map(({ listing, store, offering, slots }) => (
+                  <TherapistCard
+                    key={listing.id}
+                    demo={catalog.demo}
+                    listing={listing}
+                    store={store}
+                    offering={offering}
+                    slots={slots}
+                    area={q.area}
+                    language={q.language}
+                    offerings={catalog.offerings}
+                    locale={l}
+                    nominationFee={catalog.bookingRules?.nominationFee}
+                    mode={mode}
+                  />
+                ))}
+              </div>
+              {!cards.length && (
+                <div className="empty-state">
+                  <Search size={30} />
+                  <p>{t(l, 'noResults')}</p>
+                  <Link className="button secondary" href={`/${l}`}>
+                    {t(l, 'all')}
+                  </Link>
+                </div>
+              )}
+              <p className="availability-footnote">
+                <Clock3 size={14} />
+                {dt(l, 'availabilityNote')}
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </details>
     </main>
   );
 }

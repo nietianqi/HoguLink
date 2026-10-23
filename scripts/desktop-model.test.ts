@@ -486,6 +486,27 @@ test('replacement without a candidate does not ask the customer to approve an un
   assert.equal(needsAttention(waiting, 'CUSTOMER'), false);
   assert.equal(needsAttention({ ...waiting, proposedListingId: 'listing-ren' }, 'CUSTOMER'), true);
 });
+test('a withdrawn replacement returns to merchant work and never asks staff to respond before consent', () => {
+  const waiting = booking('withdrawn-candidate', {
+    replacementConsent: 'PENDING',
+    proposedListingId: undefined,
+    staffTaskStatus: 'ACKNOWLEDGED',
+  });
+  assert.equal(needsAttention(waiting, 'MERCHANT'), true);
+  assert.deepEqual(
+    merchantWorkday([waiting]).attention.map((b) => b.id),
+    [waiting.id],
+  );
+  const proposed = {
+    ...waiting,
+    proposedListingId: 'listing-ren',
+    staffTaskStatus: 'OFFERED' as const,
+  };
+  assert.equal(needsAttention(proposed, 'STAFF'), false);
+  assert.equal(canRespond(proposed), false);
+  assert.equal(merchantWorkday([proposed]).attention.length, 0);
+  assert.equal(merchantWorkday([proposed]).waitingCustomer.length, 1);
+});
 test('no-show reports require shop and platform attention while resolved cases do not', () => {
   const reported = booking('no-show', {
     status: 'ARRIVED',

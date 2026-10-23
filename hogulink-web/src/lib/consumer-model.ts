@@ -112,3 +112,54 @@ export function serviceChoices(
         a.offering.id.localeCompare(b.offering.id),
   );
 }
+
+/** Keep several visit lengths, then add distinct menus instead of repeating shops' copies. */
+export function featuredServices(choices: ReturnType<typeof serviceChoices>) {
+  const result: typeof choices = [];
+  const seen = new Set<string>();
+  const add = (choice: (typeof choices)[number]) => {
+    const key = JSON.stringify([
+      choice.offering.durationMinutes,
+      choice.offering.name.ja,
+      choice.offering.name.en,
+      choice.offering.name['zh-cn'],
+    ]);
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(choice);
+  };
+  for (const duration of [60, 90, 120]) {
+    const choice = choices.find((item) => item.offering.durationMinutes === duration);
+    if (choice) add(choice);
+  }
+  for (const choice of choices) {
+    if (result.length >= 9) break;
+    add(choice);
+  }
+  return result;
+}
+
+/** One eligible menu per person, with different shops represented before filling six places. */
+export function featuredTherapists(choices: ReturnType<typeof serviceChoices>) {
+  const people = new Map<
+    string,
+    { listing: Catalog['listings'][number]; choice: (typeof choices)[number] }
+  >();
+  for (const choice of choices)
+    for (const listing of choice.members)
+      if (!people.has(listing.id)) people.set(listing.id, { listing, choice });
+  const candidates = [...people.values()];
+  const result: typeof candidates = [];
+  const shops = new Set<string>();
+  for (const candidate of candidates) {
+    if (shops.has(candidate.choice.store.id)) continue;
+    result.push(candidate);
+    shops.add(candidate.choice.store.id);
+    if (result.length === 6) return result;
+  }
+  for (const candidate of candidates) {
+    if (result.length === 6) break;
+    if (!result.some((item) => item.listing.id === candidate.listing.id)) result.push(candidate);
+  }
+  return result;
+}

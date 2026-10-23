@@ -26,6 +26,7 @@ import './customer-auth.css';
 import './directory.css';
 import './business.css';
 import './shops.css';
+import './h5-home.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

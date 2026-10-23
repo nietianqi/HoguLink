@@ -84,6 +84,58 @@ export const offerings: Offering[] = stores.flatMap((store, index) =>
     regulatoryCategory: 'RELAXATION',
   })),
 );
+/** Additional fictional menus; kept separate so the original fixture remains stable. */
+export const featuredDemoOfferings: Offering[] = [
+  {
+    id: 'store-mori-shoulder-60',
+    storeId: 'store-mori',
+    name: local('首・肩のリラクゼーション', 'Neck & shoulder relaxation', '肩颈舒缓'),
+    durationMinutes: 60,
+    price: 7800,
+  },
+  {
+    id: 'store-mori-leg-60',
+    storeId: 'store-mori',
+    name: local('脚のリラクゼーション', 'Leg relaxation', '腿部舒缓'),
+    durationMinutes: 60,
+    price: 7600,
+  },
+  {
+    id: 'store-mori-fullbody-90',
+    storeId: 'store-mori',
+    name: local('全身リラクゼーション', 'Full-body relaxation', '全身放松'),
+    durationMinutes: 90,
+    price: 11600,
+  },
+  {
+    id: 'store-sora-light-60',
+    storeId: 'store-sora',
+    name: local('気軽なリラクゼーション', 'Everyday relaxation', '轻享放松'),
+    durationMinutes: 60,
+    price: 8200,
+  },
+  {
+    id: 'store-sora-back-90',
+    storeId: 'store-sora',
+    name: local('背中のリラクゼーション', 'Back relaxation', '背部放松'),
+    durationMinutes: 90,
+    price: 11800,
+  },
+  {
+    id: 'store-sora-deep-120',
+    storeId: 'store-sora',
+    name: local('ゆったりリラクゼーション', 'Unhurried relaxation', '深度舒缓'),
+    durationMinutes: 120,
+    price: 15800,
+  },
+].map((offering) => ({
+  ...offering,
+  transportFee: 1000,
+  version: 1,
+  approved: true,
+  active: true,
+  regulatoryCategory: 'RELAXATION',
+}));
 export const listings: Listing[] = [
   ['aoi', '葵', 'Aoi', '葵', 'store-nagi', ['ja', 'en', 'zh'], '#d8e9e1', false],
   ['ren', '蓮', 'Ren', '莲', 'store-nagi', ['ja', 'en'], '#e8e0d5', false],
@@ -142,6 +194,54 @@ export async function seed(repo: Repository) {
         await tx.put('offerings', { ...current, priceSince: since });
     }
     await tx.put('meta', { id: 'demo-price-since-v1', createdAt: Date.now() });
+  });
+}
+
+/** Add once to the local demo without replacing edited menus, memberships or orders. */
+export async function seedDemoServices(repo: Repository) {
+  if ((process.env.APP_MODE ?? 'demo') !== 'demo' || process.env.SEED_DEMO_DATA === '0') return;
+  await repo.transaction(async (tx) => {
+    if (!(await tx.get('meta', 'seed-v1')) || (await tx.get('meta', 'demo-featured-services-v1')))
+      return;
+    const created: string[] = [];
+    for (const sampleStore of stores) {
+      const menus = featuredDemoOfferings.filter((o) => o.storeId === sampleStore.id);
+      if (!menus.length) continue;
+      const store = await tx.get<Store>('stores', sampleStore.id);
+      if (!store || store.merchantId !== sampleStore.merchantId || store.slug !== sampleStore.slug)
+        continue;
+      const members: Listing[] = [];
+      for (const sample of listings.filter((l) => l.storeId === store.id)) {
+        const current = await tx.get<Listing>('listings', sample.id);
+        if (
+          current?.storeId === store.id &&
+          current.staffId === sample.staffId &&
+          current.membershipActive
+        )
+          members.push(current);
+      }
+      if (!members.length) continue;
+      const menuIds: string[] = [];
+      for (const sample of menus) {
+        const existing = await tx.get<Offering>('offerings', sample.id);
+        if (existing && existing.storeId !== store.id) continue;
+        if (!existing) {
+          await tx.put('offerings', { ...sample, priceSince: Date.now() });
+          created.push(sample.id);
+          menuIds.push(sample.id);
+        }
+      }
+      for (const member of members) {
+        const offeringIds = [...new Set([...member.offeringIds, ...menuIds])];
+        if (offeringIds.length !== member.offeringIds.length)
+          await tx.put('listings', { ...member, offeringIds });
+      }
+    }
+    await tx.put('meta', {
+      id: 'demo-featured-services-v1',
+      createdAt: Date.now(),
+      offeringIds: created,
+    });
   });
 }
 

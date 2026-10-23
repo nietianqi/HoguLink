@@ -30,6 +30,18 @@ export function discoveryQuery(raw: Record<string, unknown>): DiscoveryQuery {
 export function discoveryParams(q: DiscoveryQuery) {
   return new URLSearchParams(Object.entries(q).filter(([, v]) => !!v));
 }
+/** Booking mode stays in navigation URLs; editorial APIs accept content filters only. */
+export function discoveryApiParams(q: DiscoveryQuery, kind: 'feed' | 'detail' = 'feed') {
+  const filters =
+    kind === 'detail'
+      ? { area: q.area, language: q.language }
+      : { tab: q.tab, area: q.area, language: q.language, search: q.search };
+  return new URLSearchParams(
+    Object.entries(filters).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string' && !!entry[1],
+    ),
+  );
+}
 export function discoveryCarry(q: DiscoveryQuery) {
   return new URLSearchParams(visitPreferences(q));
 }

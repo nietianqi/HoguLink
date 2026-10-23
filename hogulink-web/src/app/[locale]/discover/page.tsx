@@ -6,7 +6,7 @@ import { seo } from '@/lib/seo';
 import type { DiscoveryFeed } from '@hogulink/contracts';
 import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
 import { shopCards, shopPage } from '@/lib/shop-model';
-import { discoveryParams, discoveryQuery } from '@/lib/discovery-feed-model';
+import { discoveryApiParams, discoveryQuery } from '@/lib/discovery-feed-model';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const l = asLocale((await params).locale);
   return seo(l, '/discover', xt(l, 'discover'), xt(l, 'intro'));
@@ -33,7 +33,7 @@ export default async function Page({
         ...(q.mode === 'INSTANT' ? { mode: 'INSTANT' } : {}),
       })}`,
     ),
-    serverApi<DiscoveryFeed>(`public/discovery?${discoveryParams(discoveryQuery(q))}`).catch(
+    serverApi<DiscoveryFeed>(`public/discovery?${discoveryApiParams(discoveryQuery(q))}`).catch(
       () => null,
     ),
   ]);

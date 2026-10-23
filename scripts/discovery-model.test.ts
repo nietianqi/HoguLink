@@ -18,6 +18,7 @@ import { discoveryArticles } from '../hogulink-web/src/lib/discovery-content';
 import {
   discoveryQuery,
   discoveryParams,
+  discoveryApiParams,
   postBookingHref,
   postHref,
 } from '../hogulink-web/src/lib/discovery-feed-model';
@@ -33,6 +34,22 @@ const catalog = (): Catalog =>
     demo: true,
     bookingRules: { nominationFee: 500 },
   } as Catalog);
+test('discovery requests omit booking mode while shop and post navigation retain it', () => {
+  for (const mode of ['SCHEDULED', 'INSTANT']) {
+    const q = discoveryQuery({ tab: 'shops', area: 'taito', language: 'en', mode, search: 'Mori' });
+    assert.deepEqual(Object.fromEntries(discoveryApiParams(q)), {
+      tab: 'shops',
+      area: 'taito',
+      language: 'en',
+      search: 'Mori',
+    });
+    assert.deepEqual(Object.fromEntries(discoveryApiParams(q, 'detail')), {
+      area: 'taito',
+      language: 'en',
+    });
+    assert.equal(discoveryParams(q).get('mode'), mode);
+  }
+});
 test('discovery shop prices include travel, exclude nomination and group unique staff across menus', () => {
   const c = catalog(),
     rows = shopChoices(c),

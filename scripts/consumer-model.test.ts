@@ -4,12 +4,15 @@ import {
   readVisitHistory,
   rememberVisit,
   serviceChoices,
+  featuredServices,
+  featuredTherapists,
 } from '../hogulink-web/src/lib/consumer-model';
-import { listings, offerings, stores } from '../hogulink-api/src/seed';
+import { featuredDemoOfferings, listings, offerings, stores } from '../hogulink-api/src/seed';
 import type { Catalog } from '../hogulink-web/src/lib/api';
 import { makeCancellationPolicy } from '@hogulink/contracts';
 import { nominationFeeFor } from '../hogulink-web/src/lib/api';
 import { policyText } from '../hogulink-web/src/lib/visit-i18n';
+import { h5ServiceImage } from '../hogulink-web/src/lib/h5-media';
 const catalog = (): Catalog =>
   structuredClone({
     listings,
@@ -18,6 +21,47 @@ const catalog = (): Catalog =>
     demo: true,
     bookingRules: { nominationFee: 500 },
   } as Catalog);
+
+test('home therapist recommendations select six unique eligible people across shops with their actual menu and total', () => {
+  const c = catalog();
+  c.listings.push({
+    ...structuredClone(c.listings[0]),
+    id: 'listing-extra',
+    staffId: 'staff-extra',
+    slug: 'extra-tokyo',
+  });
+  const choices = serviceChoices(c);
+  assert.equal(new Set(choices.flatMap((choice) => choice.members.map((m) => m.id))).size, 7);
+  const original = JSON.stringify(choices);
+  const featured = featuredTherapists(choices);
+  assert.equal(featured.length, 6);
+  assert.equal(new Set(featured.map((r) => r.listing.id)).size, 6);
+  assert.equal(new Set(featured.slice(0, 3).map((r) => r.choice.store.id)).size, 3);
+  for (const { listing, choice } of featured) {
+    assert.equal(listing.storeId, choice.store.id);
+    assert(listing.offeringIds.includes(choice.offering.id));
+    assert(choice.members.some((m) => m.id === listing.id));
+    assert.equal(choice.total, choice.offering.price + choice.offering.transportFee + 500);
+  }
+  assert.equal(JSON.stringify(choices), original);
+});
+
+test('home therapist recommendations preserve language and instant eligibility and never fill empty places with invalid people', () => {
+  const c = catalog();
+  for (const filter of [{ language: 'en', area: 'taito' }, { mode: 'INSTANT' }]) {
+    const featured = featuredTherapists(serviceChoices(c, filter));
+    for (const { listing, choice } of featured) {
+      if (filter.language) assert(listing.languages.includes(filter.language));
+      if (filter.area) assert(choice.store.areas.includes(filter.area));
+      if (filter.mode) {
+        assert(listing.onDuty);
+        assert.notEqual(choice.store.acceptanceMode, 'MANUAL');
+      }
+    }
+  }
+  assert.equal(featuredTherapists(serviceChoices(c, { language: 'en', area: 'taito' })).length, 3);
+  assert.deepEqual(featuredTherapists(serviceChoices(c, { area: 'outside' })), []);
+});
 
 test('mixed-shop cards and price sorting use each shop fee, including a zero-priced nomination', () => {
   const c = catalog();
@@ -45,6 +89,42 @@ test('mixed-shop cards and price sorting use each shop fee, including a zero-pri
       c.bookingRules,
     ),
     0,
+  );
+});
+test('featured menus keep three visit lengths and add six distinct authorized choices without repeating generic shop menus', () => {
+  const c = catalog();
+  c.offerings.push(...structuredClone(featuredDemoOfferings));
+  for (const member of c.listings)
+    member.offeringIds.push(
+      ...featuredDemoOfferings.filter((o) => o.storeId === member.storeId).map((o) => o.id),
+    );
+  const choices = serviceChoices(c);
+  const before = JSON.stringify(choices);
+  const featured = featuredServices(choices);
+  assert.equal(featured.length, 9);
+  assert.deepEqual(
+    featured.slice(0, 3).map((c) => c.offering.durationMinutes),
+    [60, 90, 120],
+  );
+  assert.equal(
+    new Set(featured.map((c) => `${c.offering.name.en}:${c.offering.durationMinutes}`)).size,
+    9,
+  );
+  for (const sample of featuredDemoOfferings)
+    assert(featured.some((c) => c.offering.id === sample.id));
+  assert.equal(JSON.stringify(choices), before);
+  assert.deepEqual(featuredServices(serviceChoices(c, { area: 'outside' })), []);
+  assert(
+    featuredServices(serviceChoices(c, { language: 'zh' })).every((c) =>
+      c.members.every((m) => m.languages.includes('zh')),
+    ),
+  );
+  assert.equal(
+    h5ServiceImage(
+      featuredDemoOfferings.find((o) => o.id === 'store-mori-leg-60')!,
+      true,
+    ),
+    '/images/h5-service-120.png',
   );
 });
 test('legacy display falls back to published defaults without applying another shop configuration', () => {

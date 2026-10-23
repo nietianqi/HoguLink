@@ -20,6 +20,7 @@ import { xt } from '@/lib/discovery-i18n';
 import { pt } from '@/lib/discovery-post-i18n';
 import {
   discoveryParams,
+  discoveryApiParams,
   postHref,
   postImage,
   type DiscoveryQuery,
@@ -160,7 +161,7 @@ export function H5DiscoveryFeed({
     setError(false);
     const gen = generation.current;
     try {
-      const params = discoveryParams(q);
+      const params = discoveryApiParams(q);
       if (more && data?.nextCursor) params.set('cursor', data.nextCursor);
       const next = await api<DiscoveryFeed>(`public/discovery?${params}`);
       if (gen === generation.current)

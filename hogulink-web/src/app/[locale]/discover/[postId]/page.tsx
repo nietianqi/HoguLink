@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { DiscoveryDetail } from '@hogulink/contracts';
 import { asLocale } from '@/lib/i18n';
 import { serverApi, ServerApiError } from '@/lib/api';
-import { discoveryCarry, discoveryQuery } from '@/lib/discovery-feed-model';
+import { discoveryApiParams, discoveryQuery } from '@/lib/discovery-feed-model';
 import { pt } from '@/lib/discovery-post-i18n';
 import { DiscoveryPostPage, DiscoveryUnavailable } from '@/components/discovery-post';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
@@ -22,7 +22,7 @@ export default async function Page({
   let detail: DiscoveryDetail;
   try {
     detail = await serverApi<DiscoveryDetail>(
-      `public/discovery/${encodeURIComponent(p.postId)}?${discoveryCarry(q)}`,
+      `public/discovery/${encodeURIComponent(p.postId)}?${discoveryApiParams(q, 'detail')}`,
     );
   } catch (e) {
     if (e instanceof ServerApiError && e.status === 404) notFound();

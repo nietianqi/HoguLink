@@ -18,6 +18,7 @@ import {
   type ExperienceSummary,
   type FavoriteItem,
   effectiveServicePrice,
+  travelFeeFor,
   type FavoriteRecord,
   type StoreFavoriteRecord,
   type Listing,
@@ -29,6 +30,7 @@ import {
 } from '@hogulink/contracts';
 import type { Records } from './repository.js';
 import { ensure } from './errors.js';
+import { effectiveBookingRules } from './booking-rules.js';
 import { toPublicStore, toPublicListing } from './public-catalog.js';
 import { currentAdmin, requireAdmin } from './admin-access.js';
 import { activeStaffMembership } from './staff-access.js';
@@ -473,17 +475,18 @@ export class ExperienceService {
         409,
       );
       const o = live.offerings.find((o) => o.id === b.quote.offeringId)!;
+      const area = live.store.areas.includes(b.quote.area) ? b.quote.area : live.store.areas[0];
       return {
         listingSlug: live.listing.slug,
         storeSlug: live.store.slug,
         offeringId: o.id,
         nominationType: b.quote.nominationType,
         bookingMode: 'SCHEDULED',
-        area: live.store.areas.includes(b.quote.area) ? b.quote.area : live.store.areas[0],
+        area,
         language: b.quote.requiredLanguage,
         priceChanged:
           effectiveServicePrice(o, this.now()).price !== b.quote.serviceFee ||
-          o.transportFee !== b.quote.transportFee ||
+          travelFeeFor(o, effectiveBookingRules(live.store), area) !== b.quote.transportFee ||
           o.version !== b.quote.offeringVersion,
       };
     });

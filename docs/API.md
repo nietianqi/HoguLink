@@ -6,6 +6,20 @@
 
 SOLO 一键受理在写入确认前复用当前派单资格检查，包括有效绑定、身份/肖像、公开状态、本店项目、所需语言、酒店条件、即时有效待机与当前审核资格。条件变化返回 `409 INVALID_ASSIGNMENT`，保留原 `REQUESTED` 订单及版本，允许原店通过既有取消入口免费善后。H5/PC 共用中日英恢复提示。
 
+## 地区交通费（2026-10-23）
+
+- `PUT /v1/merchant/booking-rules` 新增可选 `areaTransportFees`：`{ [area]: fee }`，金额 0–20000 整数，地区必须是本店服务地区（否则 `INVALID_AREA`）。省略保留现有表，`{}` 删除。与指名费、取消政策、时段附加费共用 `version`、历史和审计。
+- 公开店铺 `bookingRules.areaTransportFees` 仅在已配置时出现。
+- `POST /v1/quotes` 的 `transportFee` 改为按报价地区计算：表中地区用表中金额，其他地区用项目交通费；项目交通费为 0 时始终为 0。提交订单时按同一规则复核，旧报价在表变化后返回 `SHOP_RULES_CHANGED`。
+- `GET /v1/public/h5/therapists` 的行新增 `transportFee`（按 `area` 计算，未选地区时为项目交通费）；`travel=free` 与 `badges.freeTravel` 按该金额判断。
+
+## 时段附加费（2026-10-23）
+
+- `PUT /v1/merchant/booking-rules` 新增可选 `timeSurcharges`：`[{ startMinute, endMinute, amount }]`，最多 2 段；分钟为日本时间 0–1439 且为 15 的倍数，`endMinute < startMinute` 表示跨午夜，起止不能相同；`amount` 为 100–20000 的整数；各段不能重叠。省略该字段保留现有附加费，`[]` 删除。保存规则与指名费、取消政策共用 `version`、历史和审计。
+- `GET /v1/public/staff-listings`、`/v1/public/stores/{slug}` 返回的店铺 `bookingRules.timeSurcharges` 仅在已配置时出现。
+- `POST /v1/quotes` 的报价新增可选 `timeSurcharge`（按开始时间计算，已计入 `total`）。订单 `quote` 冻结该字段。
+- `GET /v1/public/h5/therapists` 的行新增可选 `timeSurcharge`：`earliestAt` 落在附加费时段时出现，并已计入 `total` / `compareTotal`；`sort=price` 按扣除附加费后的基础价排序。
+
 ## 店铺指名费与取消政策（2026-10-19）
 
 新增 `PUT /v1/merchant/booking-rules`，仅本店 MERCHANT：`version`（未配置为 0）、`nominationFee`（0–200000 整数）、`templateId=FLEXIBLE_2H|STANDARD_24H|CUSTOM`，CUSTOM 必须提供 `customPolicy`，其他模板禁止携带。自定义字段为 `freeBeforeMinutes`（30–10080）、`lateFeeBps`、`nearBeforeMinutes`（0 关闭第二档）、`nearFeeBps`、`noShowFeeBps`；费率 0–9900，第二档起点短于免费窗口、费率不降低，爽约不低于取消比例。即时取消及爽约证据保护字段由服务端固定。

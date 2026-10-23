@@ -159,7 +159,13 @@ export function PriceLines({
   quote,
 }: {
   locale: Locale;
-  quote: { serviceFee: number; nominationFee: number; transportFee: number; total: number };
+  quote: {
+    serviceFee: number;
+    nominationFee: number;
+    transportFee: number;
+    timeSurcharge?: number;
+    total: number;
+  };
 }) {
   return (
     <dl className="price-lines">
@@ -175,6 +181,12 @@ export function PriceLines({
         <dt>{t(locale, 'transportFee')}</dt>
         <dd>{money(locale, quote.transportFee)}</dd>
       </div>
+      {!!quote.timeSurcharge && (
+        <div>
+          <dt>{t(locale, 'timeSurcharge')}</dt>
+          <dd>{money(locale, quote.timeSurcharge)}</dd>
+        </div>
+      )}
       <div className="price-total">
         <dt>{t(locale, 'total')}</dt>
         <dd>{money(locale, quote.total)}</dd>

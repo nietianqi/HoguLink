@@ -16,10 +16,28 @@ import {
   RefreshCw,
   Store as StoreIcon,
 } from 'lucide-react';
-import type { Actor, Hold, Listing, Locale, Offering, Quote } from '@hogulink/contracts';
+import {
+  timeSurchargeAt,
+  travelFeeFor,
+  type Actor,
+  type Hold,
+  type Listing,
+  type Locale,
+  type Offering,
+  type Quote,
+} from '@hogulink/contracts';
 import type { PublicStore, BookingRules } from '@/lib/api';
 import { api, ClientError } from '@/lib/api';
-import { t, areaName, money, dateTime, errorText, languageNames } from '@/lib/i18n';
+import {
+  t,
+  areaName,
+  money,
+  dateTime,
+  errorText,
+  languageNames,
+  surchargeNote,
+  areaTravelNote,
+} from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
 import { visitServices, visitTeam, visitTotal, visitSelection } from '@/lib/visit-model';
 import { japanDay } from '@/lib/desktop-model';
@@ -247,6 +265,9 @@ function useVisit(props: PlannerProps) {
           offering,
           nomination,
           store.bookingRules?.nominationFee ?? props.rules?.nominationFee ?? 500,
+          Date.now(),
+          validStart ? timeSurchargeAt(store.bookingRules, Number(start)) : 0,
+          travelFeeFor(offering, store.bookingRules, area),
         )
       : undefined,
   };
@@ -283,6 +304,9 @@ function ServicePicker({ visit: v, compact = false }: { visit: Visit; compact?: 
                 o,
                 v.nomination,
                 v.store.bookingRules?.nominationFee ?? v.rules?.nominationFee ?? 500,
+                Date.now(),
+                0,
+                travelFeeFor(o, v.store.bookingRules, v.area),
               ).total,
             )}
           </strong>
@@ -746,6 +770,16 @@ export function BookingForm(props: PlannerProps) {
           </div>
         </dl>
         {v.estimated && <PriceLines locale={l} quote={v.estimated} />}
+        {v.store.bookingRules?.timeSurcharges?.length ? (
+          <p className="summary-estimate">
+            {surchargeNote(l, v.store.bookingRules.timeSurcharges)}
+          </p>
+        ) : null}
+        {v.store.bookingRules?.areaTransportFees ? (
+          <p className="summary-estimate">
+            {areaTravelNote(l, v.store.bookingRules.areaTransportFees, v.store.areas)}
+          </p>
+        ) : null}
         <p className="summary-estimate">{vt(l, 'estimate')}</p>
         <div className="booking-desktop-action">
           {!v.validStart ? (

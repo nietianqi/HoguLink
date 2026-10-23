@@ -948,6 +948,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                   <BookingRulesSettings
                     key={`${data.store.id}:prices:${data.bookingRules.version}`}
                     rules={data.bookingRules}
+                    areas={data.store.areas}
                     history={data.bookingRulesHistory ?? []}
                     locale={l}
                     busy={busy}

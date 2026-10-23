@@ -16,8 +16,12 @@ export function matchingOffering(listing: Listing, offerings: Offering[], durati
     )[0];
 }
 /** Nominated total at the price charged now (a live shop promotion is applied). */
-export const nominatedTotal = (offering: Offering, fee = 500, now = Date.now()) =>
-  effectiveServicePrice(offering, now).price + offering.transportFee + fee;
+export const nominatedTotal = (
+  offering: Offering,
+  fee = 500,
+  now = Date.now(),
+  transportFee = offering.transportFee,
+) => effectiveServicePrice(offering, now).price + transportFee + fee;
 export function needsAttention(b: Booking, role: Role): boolean {
   if (['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status)) return false;
   if (role === 'CUSTOMER')

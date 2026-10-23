@@ -1,3 +1,4 @@
+import { travelFeeFor } from '@hogulink/contracts';
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react';
 import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
 import { serverApi, type Catalog } from '@/lib/api';
-import { asLocale, t, areaName, money } from '@/lib/i18n';
+import { asLocale, t, areaName, money, surchargeNote, areaTravelNote } from '@/lib/i18n';
 import { vt, acceptanceLabel, acceptanceHelp } from '@/lib/visit-i18n';
 import { visitTotal } from '@/lib/visit-model';
 import { seo } from '@/lib/seo';
@@ -65,7 +66,12 @@ export default async function Page({
   const shop = shopCards(catalog, { ...context.carry, locale: l }).find(
     (card) => card.store.id === s.id,
   );
-  const priced = offerings.map((o) => ({ o, ...visitTotal(o, 'FREE', 0) }));
+  const travel = (o: (typeof offerings)[number]) =>
+    travelFeeFor(o, s.bookingRules, context.carry.area);
+  const priced = offerings.map((o) => ({
+    o,
+    ...visitTotal(o, 'FREE', 0, Date.now(), 0, travel(o)),
+  }));
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page">
       <DetailBreadcrumb locale={l} name={s.name[l]} preferences={context.carry} />
@@ -103,7 +109,7 @@ export default async function Page({
             locale={l}
             verified={ht(l, 'shopReviewed')}
             promotion={priced.some((x) => x.promotionEndsAt)}
-            freeTravel={offerings.some((o) => o.transportFee === 0)}
+            freeTravel={offerings.some((o) => travel(o) === 0)}
           />
           <ShopFacts locale={l} stats={stats} />
           {shop && (
@@ -158,6 +164,14 @@ export default async function Page({
             <span className="eyebrow small">THE SERVICE MENU</span>
             <h2>{vt(l, 'serviceMenu')}</h2>
             <p className="detail-muted">{vt(l, 'freeHelp')}</p>
+            {!!s.bookingRules?.timeSurcharges?.length && (
+              <p className="detail-muted">{surchargeNote(l, s.bookingRules.timeSurcharges)}</p>
+            )}
+            {!!s.bookingRules?.areaTransportFees && (
+              <p className="detail-muted">
+                {areaTravelNote(l, s.bookingRules.areaTransportFees, s.areas)}
+              </p>
+            )}
             <div className="detail-service-menu">
               {!offerings.length && (
                 <p className="notice">
@@ -182,7 +196,7 @@ export default async function Page({
                       <h3>{o.name[l]}</h3>
                       <p>
                         {t(l, 'serviceFee')} {money(l, visitTotal(o, 'FREE', 0).serviceFee)} ·{' '}
-                        {t(l, 'transportFee')} {money(l, o.transportFee)} · {t(l, 'nominationFee')}{' '}
+                        {t(l, 'transportFee')} {money(l, travel(o))} · {t(l, 'nominationFee')}{' '}
                         {money(l, 0)}
                       </p>
                     </div>

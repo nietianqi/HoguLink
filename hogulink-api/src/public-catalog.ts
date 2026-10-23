@@ -21,6 +21,10 @@ export function toPublicStore(
       nominationFee: rules.nominationFee,
       templateId: rules.templateId,
       cancellationPolicy: rules.cancellationPolicy,
+      ...(rules.timeSurcharges?.length ? { timeSurcharges: rules.timeSurcharges } : {}),
+      ...(rules.areaTransportFees && Object.keys(rules.areaTransportFees).length
+        ? { areaTransportFees: rules.areaTransportFees }
+        : {}),
     },
   };
 }

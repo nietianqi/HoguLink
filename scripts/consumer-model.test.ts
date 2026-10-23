@@ -273,3 +273,27 @@ test('limited prices: charged total uses the offer, regular total only when comp
     assert.equal(serviceChoices(c, { promotions: true }, now).length, 0);
   }
 });
+test('a chosen area uses the shop area travel fee; free-travel menus and unlisted areas keep their own', () => {
+  const c = catalog();
+  const nagi = c.stores.find((s) => s.id === 'store-nagi')!;
+  nagi.bookingRules = {
+    ...(nagi.bookingRules ?? {
+      version: 1,
+      nominationFee: 500,
+      templateId: 'FLEXIBLE_2H',
+      cancellationPolicy: makeCancellationPolicy('FLEXIBLE_2H', 'p1'),
+    }),
+    areaTransportFees: { minato: 1500, shinjuku: 0 },
+  };
+  const row = (area?: string) =>
+    serviceChoices(c, { duration: 60, area }).find((x) => x.store.id === 'store-nagi')!;
+  assert.equal(row('minato').transportFee, 1500);
+  assert.equal(row('minato').freeTotal, row('minato').offering.price + 1500);
+  assert.equal(row('shinjuku').transportFee, 0);
+  assert.equal(row('taito').transportFee, row('taito').offering.transportFee, 'unlisted area');
+  assert.equal(row().transportFee, row().offering.transportFee, 'no area chosen');
+  assert.equal(
+    row('minato').total - row('minato').freeTotal,
+    nominationFeeFor(nagi, c.bookingRules),
+  );
+});

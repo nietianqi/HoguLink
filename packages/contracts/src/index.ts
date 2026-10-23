@@ -198,7 +198,12 @@ export type PublicStore = Pick<
 > & {
   bookingRules?: Pick<
     StoreBookingRules,
-    'version' | 'nominationFee' | 'templateId' | 'cancellationPolicy'
+    | 'version'
+    | 'nominationFee'
+    | 'templateId'
+    | 'cancellationPolicy'
+    | 'timeSurcharges'
+    | 'areaTransportFees'
   >;
 };
 export type Listing = {
@@ -247,6 +252,8 @@ export type Quote = {
   regularServiceFee?: number;
   nominationFee: number;
   transportFee: number;
+  /** Shop time-band surcharge (e.g. late night) by the visit start in JST; absent means none. */
+  timeSurcharge?: number;
   total: number;
   cancellationPolicy: CancellationPolicy;
 };
@@ -594,12 +601,95 @@ export type CancellationPolicy = {
   instantTravelOnly?: boolean;
   noShow?: { feeBps: number; waitMinutes: number; minContacts: number; contactGapMinutes: number };
 };
+/**
+ * A shop's surcharge for visits that start inside a band of Japan time, e.g. 22:00-06:00.
+ * Minutes count from 00:00 JST; an end before the start crosses midnight. The start is
+ * inclusive and the end exclusive, and only the visit start decides it, so a visit is never
+ * charged twice for running past midnight.
+ */
+export type TimeSurcharge = { startMinute: number; endMinute: number; amount: number };
 export type StoreBookingRules = {
   version: number;
   nominationFee: number;
   templateId: 'LEGACY' | 'FLEXIBLE_2H' | 'STANDARD_24H' | 'CUSTOM';
   cancellationPolicy: CancellationPolicy;
+  timeSurcharges?: TimeSurcharge[];
+  /**
+   * Travel fee by service area (e.g. { shinjuku: 0, minato: 1500 }). A listed area replaces the
+   * menu's travel fee; other areas use the menu's own fee. Free-travel menus stay free.
+   */
+  areaTransportFees?: Record<string, number>;
 };
+export const AREA_TRAVEL_RULES = { maxFee: 20000 } as const;
+/** The travel fee a visit to `area` pays for this menu under the shop's current rules. */
+export function travelFeeFor(
+  offering: { transportFee: number },
+  rules: { areaTransportFees?: Record<string, number> } | undefined,
+  area?: string,
+) {
+  if (offering.transportFee === 0) return 0;
+  const byArea = area ? rules?.areaTransportFees?.[area] : undefined;
+  return byArea ?? offering.transportFee;
+}
+export const areaTransportFeesInput = z
+  .record(
+    z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
+    z.number().int().min(0).max(AREA_TRAVEL_RULES.maxFee),
+  )
+  .refine((fees) => Object.keys(fees).length <= 50);
+export const TIME_SURCHARGE_RULES = {
+  maxBands: 2,
+  stepMinutes: 15,
+  minAmount: 100,
+  maxAmount: 20000,
+} as const;
+const japanMinute = (at: number) =>
+  Math.floor(((((at + 9 * 3_600_000) % 86_400_000) + 86_400_000) % 86_400_000) / 60_000);
+const surchargeSegments = (band: Pick<TimeSurcharge, 'startMinute' | 'endMinute'>) =>
+  band.startMinute < band.endMinute
+    ? [[band.startMinute, band.endMinute]]
+    : [
+        [band.startMinute, 1440],
+        [0, band.endMinute],
+      ];
+export function surchargeBandsOverlap(a: TimeSurcharge, b: TimeSurcharge) {
+  return surchargeSegments(a).some(([as, ae]) =>
+    surchargeSegments(b).some(([bs, be]) => as < be && bs < ae),
+  );
+}
+/** The surcharge that applies to a visit starting at `startAt`; 0 when no band covers it. */
+export function timeSurchargeAt(
+  rules: { timeSurcharges?: TimeSurcharge[] } | undefined,
+  startAt: number,
+) {
+  const minute = japanMinute(startAt);
+  return (
+    rules?.timeSurcharges?.find((band) =>
+      surchargeSegments(band).some(([start, end]) => minute >= start && minute < end),
+    )?.amount ?? 0
+  );
+}
+const timeSurchargeInput = z
+  .object({
+    startMinute: z.number().int().min(0).max(1439).multipleOf(TIME_SURCHARGE_RULES.stepMinutes),
+    endMinute: z.number().int().min(0).max(1439).multipleOf(TIME_SURCHARGE_RULES.stepMinutes),
+    amount: z
+      .number()
+      .int()
+      .min(TIME_SURCHARGE_RULES.minAmount)
+      .max(TIME_SURCHARGE_RULES.maxAmount),
+  })
+  .strict()
+  .refine((band) => band.startMinute !== band.endMinute);
+export const timeSurchargesInput = z
+  .array(timeSurchargeInput)
+  .max(TIME_SURCHARGE_RULES.maxBands)
+  .refine((bands) =>
+    bands.every((band, i) =>
+      bands.slice(i + 1).every((other) => !surchargeBandsOverlap(band, other)),
+    ),
+  )
+  .transform((bands) => [...bands].sort((a, b) => a.startMinute - b.startMinute));
 export type BookingRulesHistory = StoreBookingRules & {
   id: string;
   storeId: string;
@@ -628,6 +718,10 @@ export const storeBookingRulesInput = z
     nominationFee: z.number().int().min(0).max(200000),
     templateId: z.enum(['FLEXIBLE_2H', 'STANDARD_24H', 'CUSTOM']),
     customPolicy: customCancellationInput.optional(),
+    /** Omitted keeps the current bands, so older clients cannot erase them by accident. */
+    timeSurcharges: timeSurchargesInput.optional(),
+    /** Omitted keeps the current table; {} removes it. Areas must be the shop's own. */
+    areaTransportFees: areaTransportFeesInput.optional(),
   })
   .strict()
   .refine((d) => (d.templateId === 'CUSTOM' ? !!d.customPolicy : d.customPolicy === undefined));

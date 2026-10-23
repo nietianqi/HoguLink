@@ -1,3 +1,4 @@
+import { travelFeeFor } from '@hogulink/contracts';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -73,7 +74,12 @@ export default async function Home({
     if (
       !offering ||
       (maxTotal &&
-        nominatedTotal(offering, nominationFeeFor(store, catalog.bookingRules)) > maxTotal)
+        nominatedTotal(
+          offering,
+          nominationFeeFor(store, catalog.bookingRules),
+          Date.now(),
+          travelFeeFor(offering, store.bookingRules, q.area),
+        ) > maxTotal)
     )
       return [];
     if (q.acceptance === 'manual' && store.acceptanceMode !== 'MANUAL') return [];
@@ -111,8 +117,18 @@ export default async function Home({
   if (q.sort === 'price')
     cards.sort(
       (a, b) =>
-        nominatedTotal(a.offering, nominationFeeFor(a.store, catalog.bookingRules)) -
-        nominatedTotal(b.offering, nominationFeeFor(b.store, catalog.bookingRules)),
+        nominatedTotal(
+          a.offering,
+          nominationFeeFor(a.store, catalog.bookingRules),
+          Date.now(),
+          travelFeeFor(a.offering, a.store.bookingRules, q.area),
+        ) -
+        nominatedTotal(
+          b.offering,
+          nominationFeeFor(b.store, catalog.bookingRules),
+          Date.now(),
+          travelFeeFor(b.offering, b.store.bookingRules, q.area),
+        ),
     );
   if (q.sort === 'earliest')
     cards.sort((a, b) => (a.slots?.[0] ?? Infinity) - (b.slots?.[0] ?? Infinity));

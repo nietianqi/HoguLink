@@ -112,7 +112,13 @@ export function MobilePriceDock({
   children,
 }: {
   locale: Locale;
-  quote: { serviceFee: number; nominationFee: number; transportFee: number; total: number };
+  quote: {
+    serviceFee: number;
+    nominationFee: number;
+    transportFee: number;
+    timeSurcharge?: number;
+    total: number;
+  };
   note?: string;
   error?: string;
   children: ReactNode;

@@ -192,6 +192,17 @@ const words = {
   serviceFee: ['サービス料（税込）', 'Service (tax included)', '服务费（含税）'],
   nominationFee: ['指名料', 'Nomination fee', '指名费'],
   transportFee: ['交通費', 'Travel fee', '交通费'],
+  timeSurcharge: ['時間帯加算', 'Time-band surcharge', '时段附加费'],
+  areaTravelNote: [
+    'エリア別交通費：{fees}（その他のエリアはメニューの交通費）',
+    'Travel fee by area: {fees} (other areas use the menu fee)',
+    '按地区交通费：{fees}（其他地区按项目交通费）',
+  ],
+  timeSurchargeNote: [
+    '時間帯加算：{bands}（開始時刻・日本時間）',
+    'Time-band surcharge: {bands} (by start time, JST)',
+    '时段附加费：{bands}（按开始时间，日本时间）',
+  ],
   total: ['合計（税込）', 'Total (tax included)', '合计（含税）'],
   payment: ['決済認証', 'Payment authentication', '支付认证'],
   paymentDemo: [
@@ -490,4 +501,39 @@ export function statusText(locale: Locale, status: string) {
 export function errorText(locale: Locale, code?: string) {
   if (code && isCareKey(code)) return ct(locale, code);
   return t(locale, code && code in words ? (code as TextKey) : 'error');
+}
+
+const clockText = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+/** "20:00–06:00 +JP¥1,500" for each shop band, in Japan time. */
+export function surchargeBands(
+  locale: Locale,
+  bands: { startMinute: number; endMinute: number; amount: number }[] = [],
+) {
+  return bands
+    .map((b) => `${clockText(b.startMinute)}–${clockText(b.endMinute)} +${money(locale, b.amount)}`)
+    .join(' / ');
+}
+export function surchargeNote(
+  locale: Locale,
+  bands: { startMinute: number; endMinute: number; amount: number }[] = [],
+) {
+  return bands.length
+    ? t(locale, 'timeSurchargeNote').replace('{bands}', surchargeBands(locale, bands))
+    : '';
+}
+/** "Shinjuku JP¥0 · Minato JP¥1,500" for a shop's area travel table. */
+export function areaTravelNote(
+  locale: Locale,
+  fees: Record<string, number> = {},
+  /** The shop's own area order, so the list reads the same everywhere. */
+  order: string[] = [],
+) {
+  const rank = (area: string) => (order.includes(area) ? order.indexOf(area) : order.length);
+  const rows = Object.entries(fees).sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
+  if (!rows.length) return '';
+  return t(locale, 'areaTravelNote').replace(
+    '{fees}',
+    rows.map(([area, fee]) => `${areaName(locale, area)} ${money(locale, fee)}`).join(' · '),
+  );
 }

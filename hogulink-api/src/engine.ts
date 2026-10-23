@@ -8,6 +8,8 @@ import {
   dailyAutomaticCount,
   scheduledCancellationBps,
   effectiveServicePrice,
+  timeSurchargeAt,
+  travelFeeFor,
   type Actor,
   type Audit,
   type Booking,
@@ -396,8 +398,13 @@ export class Engine {
                             endAt: firstInstant + o.durationMinutes * minute,
                             total:
                               effectiveServicePrice(o, this.now()).price +
-                              o.transportFee +
-                              effectiveBookingRules(s).nominationFee,
+                              travelFeeFor(
+                                o,
+                                effectiveBookingRules(s),
+                                filters.area || s.acceptanceRule?.areas[0],
+                              ) +
+                              effectiveBookingRules(s).nominationFee +
+                              timeSurchargeAt(effectiveBookingRules(s), firstInstant),
                           },
                           x.id,
                           catalogCounts.get(s.id) ?? 0,
@@ -523,8 +530,13 @@ export class Engine {
                   endAt: value + offering.durationMinutes * minute,
                   total:
                     effectiveServicePrice(offering, this.now()).price +
-                    offering.transportFee +
-                    (free ? 0 : effectiveBookingRules(store).nominationFee),
+                    travelFeeFor(
+                      offering,
+                      effectiveBookingRules(store),
+                      area || store.acceptanceRule?.areas[0],
+                    ) +
+                    (free ? 0 : effectiveBookingRules(store).nominationFee) +
+                    timeSurchargeAt(effectiveBookingRules(store), value),
                 },
                 candidate.id,
                 await this.dailyAutomaticCount(tx, store.id, value),
@@ -604,11 +616,14 @@ export class Engine {
         nominationFee:
           data.nominationType === 'NOMINATED' ? effectiveBookingRules(store).nominationFee : 0,
         bookingRulesVersion: effectiveBookingRules(store).version,
-        transportFee: offering.transportFee,
+        transportFee: travelFeeFor(offering, effectiveBookingRules(store), data.area),
+        ...(timeSurchargeAt(effectiveBookingRules(store), data.startAt)
+          ? { timeSurcharge: timeSurchargeAt(effectiveBookingRules(store), data.startAt) }
+          : {}),
         total: 0,
         cancellationPolicy: effectiveBookingRules(store).cancellationPolicy,
       };
-      q.total = q.serviceFee + q.nominationFee + q.transportFee;
+      q.total = q.serviceFee + q.nominationFee + q.transportFee + (q.timeSurcharge ?? 0);
       const availableStaff = await this.freeStaff(tx, q);
       ensure(
         availableStaff.length,
@@ -918,7 +933,7 @@ export class Engine {
               offering.promotion.price === q.serviceFee &&
               offering.price === q.regularServiceFee
             : offering.price === q.serviceFee) &&
-          offering.transportFee === q.transportFee,
+          travelFeeFor(offering, effectiveBookingRules(store), q.area) === q.transportFee,
         'PRICE_CHANGED',
         'The service or price changed. Request a new quote.',
         409,

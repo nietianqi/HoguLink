@@ -60,19 +60,29 @@ export function visitTeam(
       (mode !== 'INSTANT' || x.onDuty),
   );
 }
-export function visitTotal(offering: Offering, nomination: string, fee: number, now = Date.now()) {
+export function visitTotal(
+  offering: Offering,
+  nomination: string,
+  fee: number,
+  now = Date.now(),
+  /** Shop time-band surcharge for the chosen start; 0 until a time is chosen. */
+  timeSurcharge = 0,
+  /** Travel fee for the chosen area under the shop's area table; the menu fee otherwise. */
+  transportFee = offering.transportFee,
+) {
   const priced = effectiveServicePrice(offering, now);
   const nominationFee = nomination === 'FREE' ? 0 : fee;
   return {
     serviceFee: priced.price,
-    transportFee: offering.transportFee,
+    transportFee,
     nominationFee,
-    total: priced.price + offering.transportFee + nominationFee,
+    ...(timeSurcharge ? { timeSurcharge } : {}),
+    total: priced.price + transportFee + nominationFee + timeSurcharge,
     /** Regular total, only when a fair struck-through comparison is allowed. */
     compareTotal:
       priced.comparePrice === undefined
         ? undefined
-        : priced.comparePrice + offering.transportFee + nominationFee,
+        : priced.comparePrice + transportFee + nominationFee + timeSurcharge,
     promotionEndsAt: priced.promotion?.endsAt,
   };
 }

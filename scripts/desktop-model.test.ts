@@ -542,3 +542,66 @@ test('completion consent belongs to customer; exceptions belong to shop and plat
     assert.equal(merchantWorkday([issue]).waitingCustomer.length, 0);
   }
 });
+
+test('time-band surcharge: the estimate adds it only once a start is chosen and the text names every band in JST', async () => {
+  const { surchargeBands, surchargeNote } = await import('../hogulink-web/src/lib/i18n');
+  const { timeSurchargeAt } = await import('@hogulink/contracts');
+  const offering = {
+    id: 'o',
+    storeId: 's',
+    name: { ja: '', en: '', 'zh-cn': '' },
+    durationMinutes: 60,
+    price: 7200,
+    transportFee: 1000,
+    version: 1,
+    approved: true,
+    regulatoryCategory: 'RELAXATION',
+  } as Offering;
+  const before = visitTotal(offering, 'NOMINATED', 500, Date.UTC(2026, 9, 19));
+  assert.equal(before.total, 8700);
+  assert.equal('timeSurcharge' in before, false);
+  const rules = { timeSurcharges: [{ startMinute: 1320, endMinute: 360, amount: 1500 }] };
+  const night = Date.UTC(2026, 9, 19, 14); // 23:00 JST
+  const at = visitTotal(offering, 'FREE', 500, night, timeSurchargeAt(rules, night));
+  assert.equal(at.timeSurcharge, 1500);
+  assert.equal(at.nominationFee, 0);
+  assert.equal(at.total, 7200 + 1000 + 1500);
+  assert.equal(
+    at.serviceFee + at.nominationFee + at.transportFee + (at.timeSurcharge ?? 0),
+    at.total,
+    'the breakdown adds up to the total',
+  );
+  assert.equal(surchargeBands('en', rules.timeSurcharges), '22:00–06:00 +¥1,500');
+  assert.equal(
+    surchargeNote('zh-cn', rules.timeSurcharges),
+    '时段附加费：22:00–06:00 +JP¥1,500（按开始时间，日本时间）',
+  );
+  assert.match(surchargeNote('ja', rules.timeSurcharges), /日本時間/);
+  assert.match(surchargeNote('en', rules.timeSurcharges), /\(by start time, JST\)$/);
+  assert.equal(surchargeNote('en', []), '');
+});
+
+test('area travel: the estimate uses the given travel fee and the note lists the shop table', async () => {
+  const { areaTravelNote } = await import('../hogulink-web/src/lib/i18n');
+  const offering = {
+    id: 'o',
+    storeId: 's',
+    name: { ja: '', en: '', 'zh-cn': '' },
+    durationMinutes: 60,
+    price: 7200,
+    transportFee: 1000,
+    version: 1,
+    approved: true,
+    regulatoryCategory: 'RELAXATION',
+  } as Offering;
+  const minato = visitTotal(offering, 'FREE', 500, Date.UTC(2026, 9, 19), 0, 1500);
+  assert.equal(minato.transportFee, 1500);
+  assert.equal(minato.total, 7200 + 1500);
+  assert.equal(visitTotal(offering, 'FREE', 500, Date.UTC(2026, 9, 19)).transportFee, 1000);
+  assert.equal(
+    areaTravelNote('zh-cn', { minato: 1500, shinjuku: 0 }, ['shinjuku', 'shibuya', 'minato']),
+    '按地区交通费：新宿区 JP¥0 · 港区 JP¥1,500（其他地区按项目交通费）',
+  );
+  assert.match(areaTravelNote('zh-cn', { minato: 1500, shinjuku: 0 }), /^按地区交通费：港区/);
+  assert.equal(areaTravelNote('en', {}), '');
+});

@@ -77,7 +77,7 @@ export function shopCards(
               ? undefined
               : cheapest.compareTotal - (cheapest.total - cheapest.freeTotal),
           promotion: services.some((s) => s.promotionEndsAt !== undefined),
-          freeTravel: services.some((s) => s.offering.transportFee === 0),
+          freeTravel: services.some((s) => s.transportFee === 0),
           stats: stats[store.id],
         },
       ];

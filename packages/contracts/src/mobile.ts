@@ -19,12 +19,16 @@ export type MobileTherapist = {
   store: PublicStore;
   offering: Offering;
   nominationFee: number;
+  /** Travel fee for the chosen area (the shop's area table), else the menu's own fee. */
+  transportFee: number;
   /** What the customer pays now (promotion price applied when active). */
   total: number;
   /** Regular total, only present when a fair struck-through comparison is allowed. */
   compareTotal?: number;
   /** Ends at, when the shown service price is a shop promotion. */
   promotionEndsAt?: number;
+  /** Included in `total` when the shop's time-band surcharge applies at `earliestAt`. */
+  timeSurcharge?: number;
   earliestAt: number | null;
   stats: ListingStats;
   badges: { freeTravel: boolean; instantNow: boolean };

@@ -1,4 +1,4 @@
-import { effectiveServicePrice, type Locale } from '@hogulink/contracts';
+import { effectiveServicePrice, travelFeeFor, type Locale } from '@hogulink/contracts';
 import { nominationFeeFor, type Catalog } from './api';
 export const historyKey = 'hogulink-device-history-v1';
 export type VisitHistory = { id: string; at: number };
@@ -84,23 +84,22 @@ export function serviceChoices(
           .includes(query))
     )
       return [];
+    const transportFee = travelFeeFor(offering, store.bookingRules, filters.area);
+    const priced = effectiveServicePrice(offering, now);
+    const nomination = nominationFeeFor(store, catalog.bookingRules);
     return [
       {
         offering,
         store,
         members,
-        total:
-          effectiveServicePrice(offering, now).price +
-          offering.transportFee +
-          nominationFeeFor(store, catalog.bookingRules),
-        freeTotal: effectiveServicePrice(offering, now).price + offering.transportFee,
+        transportFee,
+        total: priced.price + transportFee + nomination,
+        freeTotal: priced.price + transportFee,
         compareTotal:
-          effectiveServicePrice(offering, now).comparePrice === undefined
+          priced.comparePrice === undefined
             ? undefined
-            : effectiveServicePrice(offering, now).comparePrice! +
-              offering.transportFee +
-              nominationFeeFor(store, catalog.bookingRules),
-        promotionEndsAt: effectiveServicePrice(offering, now).promotion?.endsAt,
+            : priced.comparePrice + transportFee + nomination,
+        promotionEndsAt: priced.promotion?.endsAt,
       },
     ];
   });

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import {
   areaDistanceKm,
   effectiveServicePrice,
+  timeSurchargeAt,
+  travelFeeFor,
   type ListingStats,
   type MobileBootstrap,
   type MobileTherapist,
@@ -117,36 +119,36 @@ export async function mobileTherapists(engine: Engine, query: unknown): Promise<
     )
       return [];
     const nominationFee = store.bookingRules?.nominationFee ?? catalog.bookingRules.nominationFee;
+    // Without a chosen area the menu's own travel fee is shown; a chosen area uses the shop table.
+    const travel = (o: (typeof catalog.offerings)[number]) =>
+      travelFeeFor(o, store.bookingRules, d.area);
     const priced = catalog.offerings
       .filter(
         (o) =>
           o.storeId === store.id &&
           listing.offeringIds.includes(o.id) &&
           o.regulatoryCategory === 'RELAXATION' &&
-          (d.travel !== 'free' || o.transportFee === 0) &&
+          (d.travel !== 'free' || travel(o) === 0) &&
           o.durationMinutes === Number(d.duration),
       )
-      .map((o) => ({ o, p: effectiveServicePrice(o, now) }))
-      .sort(
-        (a, b) =>
-          a.p.price + a.o.transportFee - b.p.price - b.o.transportFee ||
-          a.o.id.localeCompare(b.o.id),
-      )[0];
+      .map((o) => ({ o, p: effectiveServicePrice(o, now), fee: travel(o) }))
+      .sort((a, b) => a.p.price + a.fee - b.p.price - b.fee || a.o.id.localeCompare(b.o.id))[0];
     if (!priced) return [];
-    const { o: offering, p } = priced;
+    const { o: offering, p, fee: transportFee } = priced;
     return [
       {
         listing,
         store,
         offering,
         nominationFee,
-        total: p.price + offering.transportFee + nominationFee,
+        transportFee,
+        total: p.price + transportFee + nominationFee,
         ...(p.comparePrice !== undefined
-          ? { compareTotal: p.comparePrice + offering.transportFee + nominationFee }
+          ? { compareTotal: p.comparePrice + transportFee + nominationFee }
           : {}),
         ...(p.promotion ? { promotionEndsAt: p.promotion.endsAt } : {}),
         earliestAt: null,
-        badges: { freeTravel: offering.transportFee === 0, instantNow: false },
+        badges: { freeTravel: transportFee === 0, instantNow: false },
       },
     ];
   });
@@ -163,7 +165,7 @@ export async function mobileTherapists(engine: Engine, query: unknown): Promise<
   }));
   const rank = (a: MobileTherapist, b: MobileTherapist) =>
     (d.sort === 'price'
-      ? a.total - b.total
+      ? a.total - (a.timeSurcharge ?? 0) - (b.total - (b.timeSurcharge ?? 0))
       : d.sort === 'rating'
         ? (b.stats.rating ?? -1) - (a.stats.rating ?? -1) ||
           b.stats.reviewCount - a.stats.reviewCount
@@ -198,9 +200,21 @@ export async function mobileTherapists(engine: Engine, query: unknown): Promise<
                 d.area ?? '',
               )
             : undefined;
+      const earliestAt = availability.slots[0] ?? null;
+      // The shown price is the price at the shown time, including any shop time-band surcharge.
+      const surcharge = earliestAt ? timeSurchargeAt(item.store.bookingRules, earliestAt) : 0;
       return {
         ...item,
-        earliestAt: availability.slots[0] ?? null,
+        earliestAt,
+        ...(surcharge
+          ? {
+              timeSurcharge: surcharge,
+              total: item.total + surcharge,
+              ...(item.compareTotal !== undefined
+                ? { compareTotal: item.compareTotal + surcharge }
+                : {}),
+            }
+          : {}),
         badges: { ...item.badges, instantNow: !!instant?.slots.length },
       };
     }),

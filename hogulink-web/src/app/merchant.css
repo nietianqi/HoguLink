@@ -1426,6 +1426,43 @@
 .booking-policy-fields > p {
   grid-column: 1 / -1;
 }
+.booking-surcharge-fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
+}
+.booking-surcharge-fields > legend {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.booking-surcharge-fields > p {
+  margin: 0;
+  color: var(--hl-muted);
+  font-size: 13px;
+}
+.booking-surcharge-fields > .button {
+  justify-self: start;
+}
+.booking-surcharge-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+.booking-surcharge-row .field {
+  min-width: 0;
+}
+.booking-travel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.booking-travel-grid .field {
+  min-width: 0;
+}
 .booking-policy-preview {
   padding: 18px;
   margin-block: 20px;
@@ -1487,6 +1524,13 @@
 @media (max-width: 760px) {
   .booking-policy-fields {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .booking-surcharge-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .booking-surcharge-row > .button {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
   .booking-policy-current,
   .booking-policy-note {

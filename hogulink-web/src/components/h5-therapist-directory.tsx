@@ -584,8 +584,10 @@ export function H5TherapistDirectory({
             <PriceLines
               locale={l}
               quote={{
-                serviceFee: fee.total - fee.offering.transportFee - fee.nominationFee,
-                transportFee: fee.offering.transportFee,
+                serviceFee:
+                  fee.total - fee.transportFee - fee.nominationFee - (fee.timeSurcharge ?? 0),
+                timeSurcharge: fee.timeSurcharge,
+                transportFee: fee.transportFee,
                 nominationFee: fee.nominationFee,
                 total: fee.total,
               }}

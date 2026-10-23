@@ -19,6 +19,7 @@ import type {
   Listing,
   Offering,
   Store,
+  StoreBookingRules,
   TimeOffRequest,
 } from '@hogulink/contracts';
 import type { Records } from './repository.js';
@@ -475,17 +476,32 @@ export class MerchantService {
       );
       const { version: _priorVersion, ...priorPolicy } = prior.cancellationPolicy;
       const { version: _nextVersion, ...nextPolicy } = policy;
+      // Omitted bands keep the current ones; an explicit empty list removes them.
+      const bands = data.timeSurcharges ?? prior.timeSurcharges ?? [];
+      ensure(
+        !data.areaTransportFees ||
+          Object.keys(data.areaTransportFees).every((area) => store.areas.includes(area)),
+        'INVALID_AREA',
+        'Travel fees can only be set for this shop’s own service areas.',
+      );
+      const sorted = (fees: Record<string, number> = {}) =>
+        Object.fromEntries(Object.entries(fees).sort(([a], [b]) => a.localeCompare(b)));
+      const travel = sorted(data.areaTransportFees ?? prior.areaTransportFees);
       if (
         data.nominationFee === prior.nominationFee &&
         data.templateId === prior.templateId &&
-        JSON.stringify(priorPolicy) === JSON.stringify(nextPolicy)
+        JSON.stringify(priorPolicy) === JSON.stringify(nextPolicy) &&
+        JSON.stringify(bands) === JSON.stringify(prior.timeSurcharges ?? []) &&
+        JSON.stringify(travel) === JSON.stringify(sorted(prior.areaTransportFees))
       )
         return prior;
-      const next = {
+      const next: StoreBookingRules = {
         version: prior.version + 1,
         nominationFee: data.nominationFee,
         templateId: data.templateId,
         cancellationPolicy: policy,
+        ...(bands.length ? { timeSurcharges: bands } : {}),
+        ...(Object.keys(travel).length ? { areaTransportFees: travel } : {}),
       };
       await tx.put('stores', { ...store, bookingRules: next, ruleVersion: store.ruleVersion + 1 });
       await tx.put<BookingRulesHistory>('bookingRulesHistory', {

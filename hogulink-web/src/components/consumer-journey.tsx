@@ -328,7 +328,7 @@ export function ServiceCatalog({
               <H5Badges
                 locale={l}
                 promotion={!!item.promotionEndsAt}
-                freeTravel={item.offering.transportFee === 0}
+                freeTravel={item.transportFee === 0}
               />
               <div className="consumer-service-bottom">
                 <div>
@@ -392,9 +392,9 @@ export function ServiceCatalog({
             <PriceLines
               locale={l}
               quote={{
-                serviceFee: selected.freeTotal - selected.offering.transportFee,
+                serviceFee: selected.freeTotal - selected.transportFee,
                 nominationFee: selected.total - selected.freeTotal,
-                transportFee: selected.offering.transportFee,
+                transportFee: selected.transportFee,
                 total: selected.total,
               }}
             />

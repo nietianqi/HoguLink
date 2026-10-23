@@ -1,3 +1,4 @@
+import { travelFeeFor } from '@hogulink/contracts';
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -13,7 +14,15 @@ import {
 import { loadListingStats, type ListingStatsMap } from '@/lib/shop-stats';
 import { ShopStatsNotice } from '@/components/shop-stats-notice';
 import { serverApi, type Catalog } from '@/lib/api';
-import { asLocale, t, areaName, languageNames, money } from '@/lib/i18n';
+import {
+  asLocale,
+  t,
+  areaName,
+  languageNames,
+  money,
+  surchargeNote,
+  areaTravelNote,
+} from '@/lib/i18n';
 import { vt, acceptanceLabel } from '@/lib/visit-i18n';
 import { visitTotal, visitServices, visitPreferences } from '@/lib/visit-model';
 import { seo } from '@/lib/seo';
@@ -57,7 +66,11 @@ export default async function Page({
   const offerings = visitServices(catalog.offerings, listing, team, 'NOMINATED');
   const nominationFee =
     store.bookingRules?.nominationFee ?? catalog.bookingRules?.nominationFee ?? 500;
-  const priced = offerings.map((o) => ({ o, ...visitTotal(o, 'NOMINATED', nominationFee) }));
+  const travel = (o: (typeof offerings)[number]) => travelFeeFor(o, store.bookingRules, carry.area);
+  const priced = offerings.map((o) => ({
+    o,
+    ...visitTotal(o, 'NOMINATED', nominationFee, Date.now(), 0, travel(o)),
+  }));
   const priceOf = (id: string) => {
     const { total, compareTotal, promotionEndsAt } = priced.find((x) => x.o.id === id)!;
     return { total, compareTotal, promotionEndsAt };
@@ -131,7 +144,7 @@ export default async function Page({
                 locale={l}
                 promotion={priced.some((x) => x.promotionEndsAt)}
                 instantNow={instantNow}
-                freeTravel={offerings.some((o) => o.transportFee === 0)}
+                freeTravel={offerings.some((o) => travel(o) === 0)}
               />
               <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
                 <div>
@@ -200,6 +213,14 @@ export default async function Page({
             <span className="eyebrow small">THE SERVICE MENU</span>
             <h2>{vt(l, 'serviceMenu')}</h2>
             <p className="detail-muted">{vt(l, 'totalNote')}</p>
+            {!!store.bookingRules?.timeSurcharges?.length && (
+              <p className="detail-muted">{surchargeNote(l, store.bookingRules.timeSurcharges)}</p>
+            )}
+            {!!store.bookingRules?.areaTransportFees && (
+              <p className="detail-muted">
+                {areaTravelNote(l, store.bookingRules.areaTransportFees, store.areas)}
+              </p>
+            )}
             <div className="detail-service-menu">
               {offerings.map((o) => (
                 <Link key={o.id} href={bookHref(o.id)}>
@@ -212,7 +233,7 @@ export default async function Page({
                     <p>
                       {t(l, 'serviceFee')} {money(l, visitTotal(o, 'FREE', 0).serviceFee)} ·{' '}
                       {t(l, 'nominationFee')} {money(l, nominationFee)} · {t(l, 'transportFee')}{' '}
-                      {money(l, o.transportFee)}
+                      {money(l, travel(o))}
                     </p>
                   </div>
                   <H5Price locale={l} {...priceOf(o.id)} />

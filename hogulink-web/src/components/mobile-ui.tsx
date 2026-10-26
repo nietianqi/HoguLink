@@ -2,6 +2,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { withServiceMode } from '@/lib/visit-model';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
@@ -363,7 +364,7 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
     >
       {visibleItems.map(({ href, label, Icon, active }, index) => (
         <Link
-          href={href}
+          href={role ? href : withServiceMode(href, query.get('fulfillmentMode'))}
           key={href}
           aria-label={!role && index === 0 ? label : undefined}
           aria-current={active ? 'page' : undefined}

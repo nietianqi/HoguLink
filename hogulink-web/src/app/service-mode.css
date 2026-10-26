@@ -1,0 +1,207 @@
+.service-mode-nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-block: 12px;
+}
+.service-mode-selection {
+  margin-block: 16px;
+}
+.service-mode-selection h3 {
+  font-size: 17px;
+  margin-block: 0 8px;
+}
+.service-mode-picker .choice {
+  min-width: 0;
+  min-height: 88px;
+  text-align: left;
+  align-items: flex-start;
+}
+.service-mode-picker .choice strong,
+.service-mode-picker .choice small {
+  display: block;
+}
+.service-mode-picker .choice small {
+  margin-top: 6px;
+  line-height: 1.5;
+  font-size: 12px;
+  font-weight: 400;
+}
+.service-mode-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background: #e5f8ef;
+  color: #006b49;
+  border: 1px solid #dce9e3;
+  border-radius: 12px;
+  margin-block: 12px;
+  overflow-wrap: anywhere;
+}
+.service-mode-summary small {
+  display: block;
+  margin-top: 4px;
+}
+.service-mode-prices {
+  display: grid;
+  gap: 5px;
+  max-width: 100%;
+}
+.service-mode-price {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  line-height: 1.45;
+  font-size: 13px;
+}
+.service-mode-price strong {
+  color: #bd4626;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.service-mode-price small {
+  font-size: 11px;
+  color: #536b63;
+}
+.service-mode-duration {
+  font-size: 11px;
+  color: #536b63;
+  line-height: 1.4;
+}
+.service-mode-tag {
+  font-size: 11px;
+  color: #006b49;
+  background: #e5f8ef;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+:is(.booking-preview, .visit-form, .visit-summary) [hidden] {
+  display: none !important;
+}
+.h5-directory-price .service-mode-price {
+  font-size: 11px;
+}
+.h5-directory-price .service-mode-price strong {
+  font-size: 13px;
+}
+.h5-home-shop-bottom .service-mode-prices {
+  display: grid;
+}
+@media (max-width: 359px) {
+  .service-mode-price strong {
+    font-size: 13px;
+  }
+  .service-mode-picker {
+    gap: 8px;
+  }
+}
+.service-mode-nav .button {
+  min-width: 116px;
+  min-height: 44px;
+}
+.service-mode-picker {
+  margin-block: 12px;
+}
+.venue-info {
+  overflow-wrap: anywhere;
+}
+.venue-info h3 {
+  margin-block: 0 8px;
+}
+.venue-settings form,
+.venue-reviews form {
+  margin-block: 16px;
+}
+.venue-settings fieldset {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.venue-settings textarea {
+  min-height: 76px;
+}
+.venue-staff-mode,
+.venue-menu-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line, #dce9e3);
+}
+.venue-menu-row .field {
+  max-width: 160px;
+}
+.venue-photo-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.venue-photo-list img {
+  object-fit: cover;
+  border-radius: 8px;
+}
+.venue-photo-add {
+  width: fit-content;
+  cursor: pointer;
+}
+.venue-photo-item {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.venue-check-in-code {
+  font-size: clamp(18px, 4vw, 26px);
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.venue-check-in-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.in-store-order {
+  margin-block: 16px;
+}
+.venue-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.venue-schedule-entry {
+  padding-block: 12px;
+  border-top: 1px solid var(--line, #dce9e3);
+  overflow-wrap: anywhere;
+}
+.venue-schedule-entry p {
+  font-size: 13px;
+  margin-block: 6px;
+}
+@media (max-width: 760px) {
+  .desktop-service-mode {
+    display: none;
+  }
+  .h5-home .service-mode-nav {
+    width: auto;
+    margin-inline: 12px;
+    padding-inline: 0;
+  }
+  .service-mode-nav .button {
+    flex: 1;
+  }
+  .venue-info {
+    padding: 14px;
+  }
+  .venue-check-in-form .field {
+    width: 100%;
+  }
+}

@@ -22,7 +22,7 @@ import { localeMap, locales, t } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { ht } from '@/lib/h5-i18n';
-import { visitPreferences, visitSelection } from '@/lib/visit-model';
+import { visitPreferences, visitSelection, withServiceMode } from '@/lib/visit-model';
 export function Header({ locale }: { locale: Locale }) {
   const path = usePathname();
   const query = useSearchParams();
@@ -30,6 +30,7 @@ export function Header({ locale }: { locale: Locale }) {
     area: query.get('area'),
     language: query.get('language'),
     mode: query.get('mode'),
+    fulfillmentMode: query.get('fulfillmentMode'),
   });
   const workspace = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   const base = path.split('/').slice(0, 3).join('/');
@@ -77,7 +78,13 @@ export function Header({ locale }: { locale: Locale }) {
             <ChevronLeft size={22} />
           </Link>
         )}
-        <Link href={`/${locale}`} className="logo" aria-label="HoguLink home">
+        <Link
+          href={
+            workspace ? `/${locale}` : withServiceMode(`/${locale}`, query.get('fulfillmentMode'))
+          }
+          className="logo"
+          aria-label="HoguLink home"
+        >
           <span className="logo-icon">
             <Leaf size={23} />
           </span>
@@ -119,7 +126,11 @@ export function Header({ locale }: { locale: Locale }) {
                 active: path.startsWith(`/${locale}/account/messages`),
               },
             ].map(({ href, label, Icon, active }) => (
-              <Link key={href} href={href} aria-current={active ? 'page' : undefined}>
+              <Link
+                key={href}
+                href={withServiceMode(href, query.get('fulfillmentMode'))}
+                aria-current={active ? 'page' : undefined}
+              >
                 <Icon size={17} aria-hidden="true" />
                 {label}
               </Link>
@@ -148,7 +159,11 @@ export function Header({ locale }: { locale: Locale }) {
           </label>
           <Link
             className="account-link"
-            href={base.endsWith('/admin') ? base : `/${locale}/account`}
+            href={
+              base.endsWith('/admin')
+                ? base
+                : withServiceMode(`/${locale}/account`, query.get('fulfillmentMode'))
+            }
             aria-current={
               !business &&
               path.startsWith(`/${locale}/account`) &&

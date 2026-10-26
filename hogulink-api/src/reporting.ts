@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   canAdmin,
+  fulfillmentMode,
   type Actor,
   type Store,
   type Booking,
@@ -247,6 +248,7 @@ export class ReportingService {
         createdAt: b.createdAt,
         startAt: b.quote.startAt,
         mode: b.quote.bookingMode,
+        fulfillmentMode: fulfillmentMode(b.quote),
         serviceId: b.quote.offeringId,
         service: b.quote.serviceName ??
           ctx.offerings.find((o) => o.id === b.quote.offeringId)?.name ?? {
@@ -330,7 +332,7 @@ export class ReportingService {
       });
       t = stop;
     }
-    const groups = (by: 'serviceId' | 'mode'): ReportGroup[] =>
+    const groups = (by: 'serviceId' | 'mode' | 'fulfillmentMode'): ReportGroup[] =>
       [...new Set(orders.map((o) => o[by]))]
         .map((id) => {
           const rows = orders.filter((o) => o[by] === id),
@@ -341,9 +343,13 @@ export class ReportingService {
             label:
               by === 'serviceId'
                 ? rows[0].service
-                : id === 'INSTANT'
-                  ? { ja: '今すぐ', en: 'Instant', 'zh-cn': '即时预约' }
-                  : { ja: '日時指定', en: 'Scheduled', 'zh-cn': '预约时段' },
+                : by === 'fulfillmentMode'
+                  ? id === 'IN_STORE'
+                    ? { ja: '来店', en: 'In-store', 'zh-cn': '到店服务' }
+                    : { ja: '出張', en: 'Home visit', 'zh-cn': '上门服务' }
+                  : id === 'INSTANT'
+                    ? { ja: '今すぐ', en: 'Instant', 'zh-cn': '即时预约' }
+                    : { ja: '日時指定', en: 'Scheduled', 'zh-cn': '预约时段' },
             orders: rows.length,
             completed,
             closed,
@@ -390,6 +396,7 @@ export class ReportingService {
       trend,
       services: groups('serviceId'),
       modes: groups('mode'),
+      fulfillmentModes: groups('fulfillmentMode'),
       shops: ctx.stores
         .map((store) => {
           const m = metrics(
@@ -602,6 +609,7 @@ export class ReportingService {
           'status',
           'lifetimeCaptured',
           'lifetimeRefunded',
+          'fulfillmentMode',
         ],
         rows: w.orders.map((r) => [
           r.storeId,
@@ -613,6 +621,7 @@ export class ReportingService {
           r.status,
           r.captured,
           r.refunded,
+          r.fulfillmentMode,
         ]),
       };
     if (type === 'settlements')

@@ -31,6 +31,12 @@ export function directoryQuery(raw: Record<string, unknown>): Record<string, str
       : 'recommended';
   return {
     mode: raw.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
+    ...(raw.fulfillmentMode === 'IN_STORE' || raw.fulfillmentMode === 'HOME_VISIT'
+      ? {
+          fulfillmentMode: raw.fulfillmentMode,
+          ...(raw.fulfillmentMode === 'IN_STORE' ? { mode: 'SCHEDULED' } : {}),
+        }
+      : {}),
     duration:
       typeof raw.duration === 'string' && ['60', '90', '120'].includes(raw.duration)
         ? raw.duration
@@ -55,7 +61,9 @@ export function directoryHref(locale: Locale, q: Record<string, string>) {
 export function therapistSelection(q: Record<string, string>, item: MobileTherapist) {
   return new URLSearchParams({
     ...Object.fromEntries(
-      Object.entries(directoryQuery(q)).filter(([k]) => ['area', 'language', 'mode'].includes(k)),
+      Object.entries(directoryQuery(q)).filter(([k]) =>
+        ['area', 'language', 'mode', 'fulfillmentMode'].includes(k),
+      ),
     ),
     nomination: 'NOMINATED',
     offering: item.offering.id,

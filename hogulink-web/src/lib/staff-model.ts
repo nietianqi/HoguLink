@@ -12,10 +12,11 @@ export const canProgress = (b: Booking) =>
   b.staffTaskStatus === 'ACKNOWLEDGED' &&
   b.replacementConsent !== 'PENDING';
 export const nextEvent = (b: Booking) =>
-  canProgress(b)
+  canProgress(b) &&
+  !(b.quote?.fulfillmentMode === 'IN_STORE' && b.status === 'CONFIRMED' && !b.checkIn)
     ? (
         {
-          CONFIRMED: 'EN_ROUTE',
+          CONFIRMED: b.quote?.fulfillmentMode === 'IN_STORE' ? 'START' : 'EN_ROUTE',
           EN_ROUTE: 'ARRIVED',
           ARRIVED: 'START',
           IN_SERVICE: 'COMPLETE',

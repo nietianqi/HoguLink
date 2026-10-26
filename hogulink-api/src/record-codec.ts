@@ -1,6 +1,6 @@
 import { seal, unseal } from './secrets.js';
 const fields: Record<string, string[]> = {
-  bookings: ['address'],
+  bookings: ['address', 'contact', 'checkInCode'],
   addressBooks: ['items'],
   customerAccounts: ['email', 'name'],
   partnerAccounts: ['email', 'name'],

@@ -6,6 +6,16 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+/**
+ * Moves a scheduled start into the default 09:00-22:00 JST business hours, never earlier.
+ * Starts stay at or before 18:00 so a script's "+3 hours" variant is still bookable.
+ */
+function bookable(at) {
+  const minute = Math.floor((at + 9 * 3600000) / 60000) % 1440;
+  if (minute >= 9 * 60 && minute <= 18 * 60) return at;
+  const ten = Math.floor((at + 9 * 3600000) / 86400000) * 86400000 + 3600000;
+  return ten > at ? ten : ten + 86400000;
+}
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..'),
   keep = process.argv.includes('--keep');
 const requested = Number(process.argv.find((a) => a.startsWith('--api-port='))?.split('=')[1] || 0);
@@ -203,7 +213,7 @@ try {
         offeringId: 'store-nagi-60',
         bookingMode: 'SCHEDULED',
         nominationType: 'NOMINATED',
-        startAt: Date.now() + 3 * 3600000,
+        startAt: bookable(Date.now() + 3 * 3600000),
         area: 'shinjuku',
         requiredLanguage: '',
       },

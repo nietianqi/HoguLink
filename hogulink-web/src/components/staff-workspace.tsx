@@ -1,4 +1,5 @@
 'use client';
+import { InStoreOrder } from './in-store-order';
 import { rt } from '@/lib/runtime-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -469,6 +470,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           <span className="staff-tag">{taskStatus(b)}</span>
         </div>
         <PartnerOrderFlow locale={l} booking={b} role="STAFF" />
+        <InStoreOrder locale={l} booking={b} role="STAFF" onUpdated={refresh} />
         <section
           className="staff-fulfillment-section"
           id={`fulfillment-${b.id}`}
@@ -573,7 +575,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
               </div>
             </div>
           )}
-          {!closed && (
+          {!closed && b.quote.fulfillmentMode !== 'IN_STORE' && (
             <ArrivalPanel locale={l} booking={b} staff onUpdated={() => void refresh()} />
           )}
           {b.status === 'IN_SERVICE' && (

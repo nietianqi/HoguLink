@@ -1,3 +1,4 @@
+import { ModePrices } from './service-mode';
 import Link from 'next/link';
 import { ChevronRight, Clock3, Languages, MapPin, ShieldCheck, Store } from 'lucide-react';
 import type { ListingStats, Locale, PublicStore } from '@hogulink/contracts';
@@ -146,7 +147,7 @@ export function H5ShopCard({
         <div className="h5-shop-foot">
           <span className="h5-shop-from">
             <small>{fill(ht(l, 'shopFromMenu'), { n: fromDuration })}</small>
-            <H5Price locale={l} total={fromTotal} compareTotal={fromCompare} />
+            <ModePrices locale={l} prices={card.modePrices ?? []} />
           </span>
           <span className="h5-shop-cta" aria-hidden="true">
             {ht(l, 'enterShop')}

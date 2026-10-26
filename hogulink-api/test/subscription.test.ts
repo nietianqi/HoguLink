@@ -572,6 +572,9 @@ test('existing confirmed visits remain fulfillable after annual arrears and capt
     clock.now = w.subscription.annualEndsAt! + 8 * day;
     assert((await ws(e)).standing.newBookingsBlocked);
     assert.equal((await e.coordination.detail(customer, b.id)).bookingId, b.id);
+    // The pre-visit authorization ran 48 hours ahead and moved the booking version.
+    b = await e.booking(customer, b.id);
+    assert.equal(b.paymentStatus, 'AUTHORIZED');
     clock.now = b.quote.startAt;
     for (const event of ['EN_ROUTE', 'ARRIVED', 'START'] as const)
       b = await e.event(staff, b.id, b.version, event);
@@ -589,6 +592,7 @@ test('a suspended merchant can still propose, obtain consent for and fulfill an 
     b = await e.ack(staff, b.id, b.version);
     clock.now = w.subscription.annualEndsAt! + 8 * day;
     assert((await ws(e)).standing.newBookingsBlocked);
+    b = await e.booking(customer, b.id); // refreshed after the pre-visit authorization
     b = await e.assign(shop, b.id, b.version, 'listing-mio', true);
     b = await e.consent(customer, b.id, b.version, true);
     const mio: Actor = { ...staff, id: 'mio-existing', staffId: 'staff-mio' };

@@ -19,6 +19,8 @@ import { dateTime, money, statusText, t } from '@/lib/i18n';
 import { ht } from '@/lib/h5-i18n';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { sv } from '@/lib/service-mode-i18n';
+import { withServiceMode } from '@/lib/visit-model';
 
 export function BookingQueue({
   locale: l,
@@ -39,7 +41,10 @@ export function BookingQueue({
   role: Role;
   bookings: Booking[];
   allBookings: Booking[];
-  catalog?: Pick<Catalog, 'stores' | 'listings'>;
+  catalog?: {
+    stores: Pick<import('@hogulink/contracts').PublicStore, 'id' | 'name'>[];
+    listings: import('@hogulink/contracts').Listing[];
+  };
   selectedId?: string;
   onSelect: (id: string) => void;
   search: string;
@@ -65,7 +70,12 @@ export function BookingQueue({
     ] ?? t(l, 'unassigned');
   function select(id: string) {
     if (role === 'CUSTOMER') {
-      router.push(`/${l}/account/bookings/${id}`);
+      router.push(
+        withServiceMode(
+          `/${l}/account/bookings/${id}`,
+          bookings.find((b) => b.id === id)?.quote.fulfillmentMode,
+        ),
+      );
       return;
     }
     onSelect(id);
@@ -228,7 +238,8 @@ export function BookingQueue({
                 </span>
                 <strong>{staff(b)}</strong>
                 <span>
-                  {shop(b)} · {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
+                  {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
+                  {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
                 </span>
                 <time>
                   <CalendarDays size={15} />
@@ -276,7 +287,8 @@ export function BookingQueue({
                     <td>
                       <strong>{staff(b)}</strong>
                       <small>
-                        {shop(b)} · {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
+                        {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
+                        {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
                       </small>
                     </td>
                     <td>

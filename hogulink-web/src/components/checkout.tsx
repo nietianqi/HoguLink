@@ -28,7 +28,7 @@ import { t, errorText, dateTime, areaName, languageNames } from '@/lib/i18n';
 import { PriceLines } from './catalog';
 import { VisitSteps } from './visit-shared';
 import { vt, policyText, acceptanceHelp } from '@/lib/visit-i18n';
-import { restoreVisitAddress } from '@/lib/visit-model';
+import { restoreVisitAddress, withServiceMode } from '@/lib/visit-model';
 import { MobilePriceDock } from './mobile-ui';
 import { mt } from '@/lib/mobile-i18n';
 import { xt } from '@/lib/exception-i18n';
@@ -43,6 +43,8 @@ import { CheckoutAddresses } from './address-book';
 import { MobileSheet } from './mobile-ui';
 import { holdSecondsRemaining, visitTimeRange } from '@/lib/booking-presentation';
 import { ca } from '@/lib/customer-auth-i18n';
+import { VenueInfo } from './service-mode';
+import { sv } from '@/lib/service-mode-i18n';
 type CheckoutData = {
   serverNow?: number;
   hold: Hold;
@@ -73,6 +75,13 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
   const [ready, setReady] = useState(false);
   const [sessionVersion, setSessionVersion] = useState(0);
   const [review, setReview] = useState<Address | null>(null);
+  const [phone, setPhone] = useState('');
+  const [reviewPhone, setReviewPhone] = useState('');
+  useEffect(() => {
+    setPhone('');
+    setReviewPhone('');
+  }, [holdId, sessionVersion]);
+  const inStore = data?.quote.fulfillmentMode === 'IN_STORE';
   const [instantUnavailable, setInstantUnavailable] = useState(false);
   const [sourceLabel, setSourceLabel] = useState('');
   const generation = useRef(0),
@@ -215,7 +224,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
       } catch {}
       const q = data.quote;
       router.push(
-        `/${l}/book/${data.visit.listingSlug}?${new URLSearchParams({ offering: q.offeringId, mode: instantUnavailable ? 'SCHEDULED' : q.bookingMode, nomination: q.nominationType, area: q.area, language: q.requiredLanguage, ...(instantUnavailable ? {} : { start: String(q.startAt) }) })}`,
+        `/${l}/book/${data.visit.listingSlug}?${new URLSearchParams({ fulfillmentMode: q.fulfillmentMode ?? 'HOME_VISIT', modeConfirmed: '1', offering: q.offeringId, mode: instantUnavailable ? 'SCHEDULED' : q.bookingMode, nomination: q.nominationType, area: q.area, language: q.requiredLanguage, ...(instantUnavailable ? {} : { start: String(q.startAt) }) })}`,
       );
     } catch (e) {
       if (gen !== generation.current) return;
@@ -262,6 +271,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
     e.preventDefault();
     if (!data || !paymentId || !agreed || remaining === 0) return;
     setReview(structuredClone(address));
+    setReviewPhone(phone.trim());
   }
   async function confirmSubmit() {
     if (!data || !review || !paymentId || !agreed || remaining === 0 || submitLock.current) return;
@@ -286,7 +296,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           holdId,
           quoteId: data.quote.id,
           paymentId,
-          address: review,
+          ...(inStore
+            ? { contact: { name: review.name.trim(), phone: reviewPhone } }
+            : { address: review }),
           termsAccepted: agreed,
           policyVersion: data.quote.cancellationPolicy.version,
         },
@@ -298,7 +310,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         sessionStorage.removeItem(`${flowDraftPrefix}${data.hold.customerId}:${holdId}`);
         sessionStorage.removeItem(`${flowDraftPrefix}${data.hold.customerId}:edit`);
       } catch {}
-      router.push(`/${l}/account/bookings/${booking.id}`);
+      router.push(
+        withServiceMode(`/${l}/account/bookings/${booking.id}`, data.quote.fulfillmentMode),
+      );
     } catch (e) {
       if (gen !== generation.current) return;
       try {
@@ -407,17 +421,21 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
     );
   return (
     <>
-      <VisitSteps locale={l} step={2} />
+      <VisitSteps locale={l} step={2} inStore={inStore} />
       <div className="visit-page-heading">
         <span className="eyebrow small">{vt(l, 'step2')}</span>
         <h1>{t(l, 'checkout')}</h1>
         <p>{vt(l, 'checkoutText')}</p>
       </div>
       <nav className="checkout-section-nav" aria-label={t(l, 'checkout')}>
-        <a href="#checkout-address">01 · {t(l, 'address')}</a>
+        <a href="#checkout-address">01 · {inStore ? sv(l, 'venue') : t(l, 'address')}</a>
         <a href="#checkout-payment">02 · {t(l, 'payment')}</a>
         <a href="#checkout-policy">03 · {t(l, 'policy')}</a>
       </nav>
+      <p className="service-mode-summary">
+        <strong>{sv(l, inStore ? 'IN_STORE' : 'HOME_VISIT')}</strong>
+        <span>{inStore ? data.quote.venue?.address : sv(l, 'homeChoice')}</span>
+      </p>
       <div className="booking-layout visit-booking-layout checkout-layout">
         <div className="mobile-checkout-recap">
           <span>{mt(l, 'review')}</span>
@@ -436,7 +454,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         <form id="checkout-form" className="form-card visit-form checkout-form" onSubmit={submit}>
           <div className="visit-form-heading" id="checkout-address">
             <span>01</span>
-            <h2>{t(l, 'addressType')}</h2>
+            <h2>{inStore ? sv(l, 'venue') : t(l, 'addressType')}</h2>
           </div>
           <p
             className={`hold-timer ${remaining === 0 ? 'error-message' : ''}`}
@@ -463,111 +481,142 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           )}
           <fieldset disabled={busy || remaining === 0}>
             <legend className="sr-only">{t(l, 'checkout')}</legend>
-            <div className="checkout-area">
-              <MapPin size={18} />
-              <div>
-                <strong>{areaName(l, data.quote.area)}</strong>
-                <small>{vt(l, 'addressPrivacy')}</small>
-              </div>
-              <button type="button" className="text-button" onClick={editVisit} disabled={busy}>
-                {vt(l, 'edit')}
-              </button>
-            </div>
-            {data.visit.hotelOnly && (
-              <p className="notice">
-                <ShieldCheck size={16} />
-                {vt(l, 'hotelHelp')}
-              </p>
-            )}
-            <CheckoutAddresses
-              key={`${data.hold.customerId}:${holdId}`}
-              locale={l}
-              owner={data.hold.customerId}
-              holdId={holdId}
-              area={data.quote.area}
-              hotelOnly={data.visit.hotelOnly}
-              address={address}
-              disabled={busy || remaining === 0}
-              onChoose={(item) => chooseAddress(item)}
-              onSuggest={(item) => chooseAddress(item, true)}
-            />
-            {sourceLabel && (
-              <p className="flow-muted" role="status">
-                {af(l, 'picked')} · {sourceLabel}
-              </p>
-            )}
-            <div className="checkout-address-fields">
-              <label className="field">
-                {t(l, 'name')}
-                <input
-                  name="name"
-                  value={address.name}
-                  autoComplete="name"
-                  required
-                  minLength={2}
-                  maxLength={80}
-                  onChange={(e) => field('name', e.target.value)}
-                />
-              </label>
-              <label className="field">
-                {t(l, 'addressType')}
-                <select
-                  value={address.type}
-                  onChange={(e) => field('type', e.target.value as Address['type'])}
-                >
-                  <option value="HOTEL">{t(l, 'hotel')}</option>
-                  <option value="HOME" disabled={data.visit.hotelOnly}>
-                    {t(l, 'home')}
-                  </option>
-                </select>
-              </label>
-              <label className="field checkout-full-field">
-                {t(l, 'address')}
-                <input
-                  name="address"
-                  autoComplete="street-address"
-                  value={address.detail}
-                  required
-                  minLength={5}
-                  maxLength={250}
-                  onChange={(e) => field('detail', e.target.value)}
-                />
-              </label>
-              {address.type === 'HOTEL' && (
-                <>
-                  <div className="field-grid">
-                    <label className="field">
-                      {t(l, 'hotelName')}
-                      <input
-                        value={address.hotelName}
-                        required
-                        maxLength={100}
-                        onChange={(e) => field('hotelName', e.target.value)}
-                      />
-                    </label>
-                    <label className="field">
-                      {t(l, 'room')}
-                      <input
-                        value={address.room}
-                        required
-                        maxLength={30}
-                        onChange={(e) => field('room', e.target.value)}
-                      />
-                    </label>
+            {inStore ? (
+              <>
+                {data.quote.venue && <VenueInfo locale={l} venue={data.quote.venue} />}
+                <label className="field">
+                  {t(l, 'name')}
+                  <input
+                    required
+                    minLength={2}
+                    maxLength={80}
+                    autoComplete="name"
+                    value={address.name}
+                    onChange={(e) => field('name', e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  {sv(l, 'phone')}
+                  <input
+                    required
+                    minLength={5}
+                    maxLength={40}
+                    type="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <div className="checkout-area">
+                  <MapPin size={18} />
+                  <div>
+                    <strong>{areaName(l, data.quote.area)}</strong>
+                    <small>{vt(l, 'addressPrivacy')}</small>
                   </div>
-                  <label className="checkbox">
+                  <button type="button" className="text-button" onClick={editVisit} disabled={busy}>
+                    {vt(l, 'edit')}
+                  </button>
+                </div>
+                {data.visit.hotelOnly && (
+                  <p className="notice">
+                    <ShieldCheck size={16} />
+                    {vt(l, 'hotelHelp')}
+                  </p>
+                )}
+                <CheckoutAddresses
+                  key={`${data.hold.customerId}:${holdId}`}
+                  locale={l}
+                  owner={data.hold.customerId}
+                  holdId={holdId}
+                  area={data.quote.area}
+                  hotelOnly={data.visit.hotelOnly}
+                  address={address}
+                  disabled={busy || remaining === 0}
+                  onChoose={(item) => chooseAddress(item)}
+                  onSuggest={(item) => chooseAddress(item, true)}
+                />
+                {sourceLabel && (
+                  <p className="flow-muted" role="status">
+                    {af(l, 'picked')} · {sourceLabel}
+                  </p>
+                )}
+                <div className="checkout-address-fields">
+                  <label className="field">
+                    {t(l, 'name')}
                     <input
-                      type="checkbox"
-                      checked={address.hotelPermission}
+                      name="name"
+                      value={address.name}
+                      autoComplete="name"
                       required
-                      onChange={(e) => field('hotelPermission', e.target.checked)}
+                      minLength={2}
+                      maxLength={80}
+                      onChange={(e) => field('name', e.target.value)}
                     />
-                    <span>{t(l, 'hotelPermission')}</span>
                   </label>
-                </>
-              )}
-            </div>
-            <hr />
+                  <label className="field">
+                    {t(l, 'addressType')}
+                    <select
+                      value={address.type}
+                      onChange={(e) => field('type', e.target.value as Address['type'])}
+                    >
+                      <option value="HOTEL">{t(l, 'hotel')}</option>
+                      <option value="HOME" disabled={data.visit.hotelOnly}>
+                        {t(l, 'home')}
+                      </option>
+                    </select>
+                  </label>
+                  <label className="field checkout-full-field">
+                    {t(l, 'address')}
+                    <input
+                      name="address"
+                      autoComplete="street-address"
+                      value={address.detail}
+                      required
+                      minLength={5}
+                      maxLength={250}
+                      onChange={(e) => field('detail', e.target.value)}
+                    />
+                  </label>
+                  {address.type === 'HOTEL' && (
+                    <>
+                      <div className="field-grid">
+                        <label className="field">
+                          {t(l, 'hotelName')}
+                          <input
+                            value={address.hotelName}
+                            required
+                            maxLength={100}
+                            onChange={(e) => field('hotelName', e.target.value)}
+                          />
+                        </label>
+                        <label className="field">
+                          {t(l, 'room')}
+                          <input
+                            value={address.room}
+                            required
+                            maxLength={30}
+                            onChange={(e) => field('room', e.target.value)}
+                          />
+                        </label>
+                      </div>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={address.hotelPermission}
+                          required
+                          onChange={(e) => field('hotelPermission', e.target.checked)}
+                        />
+                        <span>{t(l, 'hotelPermission')}</span>
+                      </label>
+                    </>
+                  )}
+                </div>
+                <hr />
+              </>
+            )}
             <div className="visit-form-heading">
               <span>02</span>
               <h3>
@@ -770,6 +819,10 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
             <p>{af(l, 'reviewHelp')}</p>
             <dl>
               <div>
+                <dt>{sv(l, 'mode')}</dt>
+                <dd>{sv(l, inStore ? 'IN_STORE' : 'HOME_VISIT')}</dd>
+              </div>
+              <div>
                 <dt>{t(l, 'shopProvider')}</dt>
                 <dd>
                   {data.storeName[l]}
@@ -796,12 +849,20 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 <dd>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</dd>
               </div>
               <div>
-                <dt>{t(l, 'address')}</dt>
+                <dt>{inStore ? sv(l, 'venue') : t(l, 'address')}</dt>
                 <dd>
                   {review.name}
                   <br />
-                  {areaName(l, review.area)} · {review.detail}
-                  {review.type === 'HOTEL' && (
+                  {inStore
+                    ? data.quote.venue?.address
+                    : `${areaName(l, review.area)} · ${review.detail}`}
+                  {inStore && (
+                    <>
+                      <br />
+                      {reviewPhone}
+                    </>
+                  )}
+                  {!inStore && review.type === 'HOTEL' && (
                     <>
                       <br />
                       {review.hotelName} / {review.room}
@@ -810,7 +871,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 </dd>
               </div>
             </dl>
-            {review.type === 'HOTEL' && <p className="flow-muted">{af(l, 'hotelReconfirm')}</p>}
+            {!inStore && review.type === 'HOTEL' && (
+              <p className="flow-muted">{af(l, 'hotelReconfirm')}</p>
+            )}
             <PriceLines locale={l} quote={data.quote} />
             <p className="flow-muted">
               {(paymentStatus || data.payment?.status) === 'METHOD_SAVED'

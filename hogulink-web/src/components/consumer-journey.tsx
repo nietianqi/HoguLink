@@ -1,4 +1,7 @@
 'use client';
+import { sv } from '@/lib/service-mode-i18n';
+import { ModePrices } from './service-mode';
+import { choiceModePrices } from '@/lib/consumer-model';
 import { CustomerSignIn } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -41,7 +44,7 @@ import {
   historyKey,
   readVisitHistory,
   rememberVisit,
-  serviceChoices,
+  browseServiceChoices as serviceChoices,
   type VisitHistory,
 } from '@/lib/consumer-model';
 import { useSession } from './booking-form';
@@ -54,7 +57,9 @@ import { instantServiceMembers } from '@/lib/service-availability';
 
 const durationWords = { 60: 'short', 90: 'medium', 120: 'long' } as const;
 const safeCarry = (q: Record<string, string>) =>
-  Object.fromEntries(['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])));
+  Object.fromEntries(
+    ['area', 'language', 'mode', 'fulfillmentMode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
+  );
 export function MobileConsumerEntries({
   locale: l,
   catalog,
@@ -64,7 +69,12 @@ export function MobileConsumerEntries({
   catalog: Catalog;
   q: Record<string, string>;
 }) {
-  const items = serviceChoices(catalog, { area: q.area, language: q.language, mode: q.mode }),
+  const items = serviceChoices(catalog, {
+      area: q.area,
+      language: q.language,
+      mode: q.mode,
+      fulfillmentMode: q.fulfillmentMode,
+    }),
     carry = safeCarry(q);
   return (
     <section className="consumer-mobile-home wrap" aria-label={ut(l, 'serviceFirst')}>
@@ -110,7 +120,11 @@ export function MobileConsumerEntries({
                 <small>{t(l, 'minutes')}</small>
               </span>
               <strong>{ut(l, durationWords[n])}</strong>
-              <small>{price === undefined ? '—' : `${money(l, price)} ${ut(l, 'from')}`}</small>
+              <small>
+                {price === undefined
+                  ? '—'
+                  : `${sv(l, items.find((x) => x.offering.durationMinutes === n && x.total === price)?.offering.fulfillmentMode ?? 'HOME_VISIT')} ${money(l, price)} ${ut(l, 'from')}`}
+              </small>
             </Link>
           );
         })}
@@ -144,6 +158,7 @@ export function ServiceCatalog({
     area: q.area,
     language: q.language,
     mode,
+    fulfillmentMode: q.fulfillmentMode,
     search: q.search,
     locale: l,
     sort: q.sort,
@@ -162,11 +177,14 @@ export function ServiceCatalog({
     setError('');
     try {
       const fresh = await api<Catalog>(
-        `public/staff-listings?${new URLSearchParams({ ...safeCarry(q), mode })}`,
+        `public/staff-listings?${new URLSearchParams({ ...safeCarry(q), mode, fulfillmentMode: q.fulfillmentMode || 'ALL' })}`,
       );
-      const current = serviceChoices(fresh, { area: q.area, language: q.language, mode }).find(
-        (x) => x.offering.id === item.offering.id,
-      );
+      const current = serviceChoices(fresh, {
+        area: q.area,
+        language: q.language,
+        mode,
+        fulfillmentMode: q.fulfillmentMode,
+      }).find((x) => x.offering.id === item.offering.id);
       if (!current) throw Error('unavailable');
       let candidates = current.members;
       if (mode === 'INSTANT') {
@@ -192,7 +210,9 @@ export function ServiceCatalog({
   }
   useEffect(() => {
     if (!q.offering) return;
-    const item = choices.find((choice) => choice.offering.id === q.offering);
+    const item = choices.find((choice) =>
+      choice.variants.some((v) => v.offering.id === q.offering),
+    );
     if (item) void choose(item);
     return () => {
       choiceRequest.current++;
@@ -202,6 +222,14 @@ export function ServiceCatalog({
   }, [q.offering]);
   const advancedFields = (
     <>
+      <label>
+        <span>{sv(l, 'mode')}</span>
+        <select name="fulfillmentMode" defaultValue={q.fulfillmentMode ?? ''}>
+          <option value="">{t(l, 'all')}</option>
+          <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
+          <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
+        </select>
+      </label>
       <label>
         <span>{t(l, 'area')}</span>
         <select aria-label={t(l, 'area')} name="area" defaultValue={q.area ?? ''}>
@@ -246,11 +274,12 @@ export function ServiceCatalog({
     `/${l}/book/${member.slug}?${new URLSearchParams({ ...safeCarry(q), mode, offering: selected!.offering.id, nomination: free ? 'FREE' : 'NOMINATED' })}`;
   return (
     <main id="main" className="wrap consumer-page">
-      {q.offering && !choices.some((item) => item.offering.id === q.offering) && (
-        <p className="quality-error" role="alert">
-          {qt(l, 'unavailable')}
-        </p>
-      )}
+      {q.offering &&
+        !choices.some((item) => item.variants.some((v) => v.offering.id === q.offering)) && (
+          <p className="quality-error" role="alert">
+            {qt(l, 'unavailable')}
+          </p>
+        )}
       <div className="consumer-intro">
         <span className="quality-eyebrow">YOUR TIME / YOUR CHOICE</span>
         <h1>{ut(l, 'serviceTitle')}</h1>
@@ -332,12 +361,7 @@ export function ServiceCatalog({
               />
               <div className="consumer-service-bottom">
                 <div>
-                  <H5Price
-                    locale={l}
-                    total={item.total}
-                    compareTotal={item.compareTotal}
-                    promotionEndsAt={item.promotionEndsAt}
-                  />
+                  <ModePrices locale={l} prices={item.modePrices} />
                   <small>{ut(l, 'total')}</small>
                 </div>
                 <button className="quality-primary" onClick={() => void choose(item)}>
@@ -389,15 +413,7 @@ export function ServiceCatalog({
               {selected.offering.name[l]} · {selected.offering.durationMinutes} {t(l, 'minutes')}
             </h3>
             <p>{selected.store.name[l]}</p>
-            <PriceLines
-              locale={l}
-              quote={{
-                serviceFee: selected.freeTotal - selected.transportFee,
-                nominationFee: selected.total - selected.freeTotal,
-                transportFee: selected.transportFee,
-                total: selected.total,
-              }}
-            />
+            <ModePrices locale={l} prices={selected.modePrices} />
             {busy ? (
               <p role="status">{ut(l, 'checking')}</p>
             ) : (
@@ -419,9 +435,11 @@ export function ServiceCatalog({
                     <Store size={19} />
                     <span>
                       <strong>{ut(l, 'shopAssign')}</strong>
-                      <small>
-                        {money(l, selected.freeTotal)} · {ut(l, 'noNomination')}
-                      </small>
+                      <ModePrices
+                        locale={l}
+                        prices={choiceModePrices(selected.variants, undefined, true)}
+                      />
+                      <small>{ut(l, 'noNomination')}</small>
                     </span>
                     <ArrowUpRight size={17} />
                   </Link>

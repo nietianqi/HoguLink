@@ -157,9 +157,9 @@ const words = {
     '地址按预约权限与履约阶段共享。',
   ],
   paymentHelp: [
-    '現時点で請求は行いません。購入時間の提供とお客様の完了確認後に請求します。',
-    'No charge is captured now. Capture follows the purchased duration and your confirmation.',
-    '当前不作实际扣款，服务足时结束且由你确认完成后才扣款。',
+    '現時点で請求は行いません。購入時間の提供後、お客様の完了確認、または終了から72時間異議がない場合に請求します。',
+    'No charge is captured now. Capture follows the purchased duration and your confirmation, or 72 hours after the visit ends without a dispute.',
+    '当前不作实际扣款。服务足时结束后，由你确认完成或72小时内未提出异议时才扣款。',
   ],
   frozenQuote: [
     '確保時の見積りとキャンセル条件が適用されます。',

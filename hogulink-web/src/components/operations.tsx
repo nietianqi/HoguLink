@@ -1,4 +1,6 @@
 'use client';
+import { sv } from '@/lib/service-mode-i18n';
+import { InStoreOrder } from './in-store-order';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { goCustomerAccess } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -662,6 +664,30 @@ export function Operations({
                             )}
                           </div>
                         )}
+                      {b.paymentStatus === 'FAILED' &&
+                        b.paymentActionBy !== undefined &&
+                        !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) && (
+                          <div className="replacement-panel" role="status">
+                            <h3>{xt(l, 'guaranteeTitle')}</h3>
+                            <p>
+                              {xt(l, role === 'CUSTOMER' ? 'guaranteeText' : 'guaranteeProvider')}
+                            </p>
+                            <small className="workday-response">
+                              {xt(l, 'guaranteeBy')} · {dateTime(l, b.paymentActionBy)} JST
+                            </small>
+                            {role === 'CUSTOMER' && (
+                              <div className="button-row">
+                                <button
+                                  className="button small"
+                                  disabled={busy}
+                                  onClick={() => task(action(b, 'payment-guarantee'))}
+                                >
+                                  {xt(l, 'guaranteeRenew')}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       {role === 'CUSTOMER' && b.replacementConsent === 'PENDING' && (
                         <div className="replacement-panel">
                           <h3>{t(l, 'replacement')}</h3>
@@ -822,6 +848,9 @@ export function Operations({
                             {stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot}
                           </h3>
                           <p className="muted legal-name">{b.legalNameSnapshot}</p>
+                          <p className="service-mode-tag">
+                            {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')}
+                          </p>
                           <dl>
                             <div>
                               <dt>{af(l, 'serviceItem')}</dt>
@@ -899,6 +928,13 @@ export function Operations({
                           <PriceLines locale={l} quote={b.quote} />
                         </div>
                       </div>
+                      <InStoreOrder
+                        key={b.id}
+                        locale={l}
+                        booking={b}
+                        role={role}
+                        onUpdated={refresh}
+                      />
                       {role === 'CUSTOMER' && (
                         <>
                           <details className="order-policy-snapshot" id={`order-policy-${b.id}`}>
@@ -906,11 +942,13 @@ export function Operations({
                             <p>{policyText(l, b.quote.cancellationPolicy, b.quote.bookingMode)}</p>
                             <small>{b.quote.cancellationPolicy.version}</small>
                           </details>
-                          <ArrivalPanel
-                            locale={l}
-                            booking={b}
-                            onUpdated={() => void task(refresh)}
-                          />
+                          {b.quote.fulfillmentMode !== 'IN_STORE' && (
+                            <ArrivalPanel
+                              locale={l}
+                              booking={b}
+                              onUpdated={() => void task(refresh)}
+                            />
+                          )}
                           <CustomerExperiencePanel locale={l} booking={b} />
                           {bookingId && (
                             <OrderCarePanel
@@ -976,7 +1014,8 @@ export function Operations({
                                   {t(l, 'unavailable')}
                                 </button>
                               )}
-                            {b.staffTaskStatus === 'ACKNOWLEDGED' &&
+                            {b.quote.fulfillmentMode !== 'IN_STORE' &&
+                              b.staffTaskStatus === 'ACKNOWLEDGED' &&
                               b.replacementConsent !== 'PENDING' &&
                               (['CONFIRMED', 'EN_ROUTE'] as const).includes(
                                 b.status as 'CONFIRMED',

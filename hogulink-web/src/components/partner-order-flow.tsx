@@ -6,6 +6,7 @@ import { nextWork, workOrderStage } from '@/lib/coordination-model';
 import { ot } from '@/lib/coordination-i18n';
 import { pf } from '@/lib/partner-flow-i18n';
 import { ar } from '@/lib/acceptance-i18n';
+import { sv } from '@/lib/service-mode-i18n';
 
 export function OrderQueueDisclosure({
   locale,
@@ -57,7 +58,9 @@ export function PartnerOrderFlow({
     <>
       <header className="partner-order-hero">
         <span className="partner-order-eyebrow">
-          {pf(l, role === 'MERCHANT' ? 'dispatch' : 'visit')}
+          {b.quote.fulfillmentMode === 'IN_STORE'
+            ? sv(l, 'IN_STORE')
+            : pf(l, role === 'MERCHANT' ? 'dispatch' : 'visit')}
         </span>
         <h2>{b.quote.serviceName?.[l] ?? pf(l, 'service')}</h2>
         <div className="partner-order-meta">
@@ -75,7 +78,13 @@ export function PartnerOrderFlow({
         </div>
         <div className="partner-order-next">
           <span>{pf(l, 'current')}</span>
-          <strong>{stage === null ? pf(l, 'cancelled') : ot(l, next)}</strong>
+          <strong>
+            {stage === null
+              ? pf(l, 'cancelled')
+              : b.quote.fulfillmentMode === 'IN_STORE' && next === 'visit'
+                ? sv(l, b.checkIn ? 'readyToStart' : 'waitCheckIn')
+                : ot(l, next)}
+          </strong>
         </div>
         {stage !== null && (
           <ol className="partner-order-progress" aria-label={pf(l, 'journey')}>
@@ -86,7 +95,11 @@ export function PartnerOrderFlow({
                 aria-current={i === stage ? 'step' : undefined}
               >
                 <span>{String(i + 1).padStart(2, '0')}</span>
-                <strong>{pf(l, step)}</strong>
+                <strong>
+                  {step === 'visit' && b.quote.fulfillmentMode === 'IN_STORE'
+                    ? sv(l, 'IN_STORE')
+                    : pf(l, step)}
+                </strong>
               </li>
             ))}
           </ol>

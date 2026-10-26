@@ -45,6 +45,8 @@ const text = {
   ASSIGNMENT_BLOCKED: ['担当の手配が必要です', 'Assignment needs attention', '技师接单或安排受阻'],
   CONSENT_DUE: ['担当変更の同意待ち', 'Replacement consent due', '改派同意临近超时'],
   LATE_ARRIVAL: ['到着遅延の確認', 'Arrival delay', '到达延迟'],
+  STORE_CHECK_IN_DUE: ['来店状況の確認', 'Check appointment attendance', '到店情况待核实'],
+  STORE_START_DELAYED: ['受付後の開始待ち', 'Checked in, awaiting service', '已到店，等待开始服务'],
   SERVICE_OVERRUN: ['サービス終了の確認', 'Service overrun', '服务结束超时'],
   COMPLETION_REVIEW: ['完了確認の審査', 'Completion exception', '服务完成确认异常'],
   NO_SHOW_REVIEW: ['不在申告の確認', 'No-show review', '爽约申报待核验'],

@@ -40,6 +40,7 @@ import type {
   PartnerSnapshot,
 } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
+import { compressImage, fileBase64 } from '@/lib/image-upload';
 import { areaName, dateTime, languageNames } from '@/lib/i18n';
 import { onboardingError, ot, type OnboardingText } from '@/lib/onboarding-i18n';
 import { useSession } from './booking-form';
@@ -1228,40 +1229,8 @@ function EvidenceUploader({
     onBusy(true);
     onError('');
     try {
-      if (file.size > 350000 && file.type.startsWith('image/')) {
-        const bitmap = await createImageBitmap(file);
-        try {
-          const canvas = document.createElement('canvas');
-          let edge = 1600,
-            result: Blob | undefined;
-          for (let round = 0; round < 4 && !result; round++, edge = Math.floor(edge * 0.75)) {
-            const scale = Math.min(1, edge / Math.max(bitmap.width, bitmap.height));
-            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-            const context = canvas.getContext('2d');
-            if (!context) throw new Error('Image processing unavailable');
-            context.fillStyle = '#fff';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-            const blob = await new Promise<Blob | null>((resolve) =>
-              canvas.toBlob(resolve, 'image/jpeg', 0.82),
-            );
-            if (blob && blob.size <= 350000) result = blob;
-          }
-          if (!result) throw new Error('Image remains too large');
-          file = new File([result], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
-            type: 'image/jpeg',
-          });
-        } finally {
-          bitmap.close();
-        }
-      }
-      const encoded = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result).split(',')[1]);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
+      if (file.type.startsWith('image/')) file = await compressImage(file);
+      const encoded = await fileBase64(file);
       const e = await api<EvidenceInfo>('onboarding/evidence', {
         name: file.name,
         mime: file.type,

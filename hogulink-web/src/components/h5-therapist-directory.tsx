@@ -1,4 +1,6 @@
 'use client';
+import { sv } from '@/lib/service-mode-i18n';
+import { ModePrices } from './service-mode';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -98,11 +100,13 @@ export function H5TherapistDirectory({
       let replace = false;
       try {
         next = await api<MobileTherapists>(
-          `public/h5/therapists?${new URLSearchParams({ ...q, cursor: data.nextCursor })}`,
+          `public/h5/therapists?${new URLSearchParams({ ...q, fulfillmentMode: q.fulfillmentMode || 'ALL', cursor: data.nextCursor })}`,
         );
       } catch (e) {
         if (!(e instanceof ClientError) || e.code !== 'INVALID_CURSOR') throw e;
-        next = await api<MobileTherapists>(`public/h5/therapists?${new URLSearchParams(q)}`);
+        next = await api<MobileTherapists>(
+          `public/h5/therapists?${new URLSearchParams({ ...q, fulfillmentMode: q.fulfillmentMode || 'ALL' })}`,
+        );
         replace = true;
       }
       if (gen === generation.current)
@@ -180,12 +184,13 @@ export function H5TherapistDirectory({
             { travel: values.travel === 'free' ? '' : 'free' },
             values.travel === 'free',
           )}
-          {pill(
-            ht(l, 'instant'),
-            { mode: values.mode === 'INSTANT' ? 'SCHEDULED' : 'INSTANT' },
-            values.mode === 'INSTANT',
-            'h5-directory-instant',
-          )}
+          {values.fulfillmentMode !== 'IN_STORE' &&
+            pill(
+              ht(l, 'instant'),
+              { mode: values.mode === 'INSTANT' ? 'SCHEDULED' : 'INSTANT' },
+              values.mode === 'INSTANT',
+              'h5-directory-instant',
+            )}
         </div>
         {!expanded && (
           <button
@@ -350,11 +355,17 @@ export function H5TherapistDirectory({
                   aria-label={`${ht(l, 'feeDetails')} · ${listing.name[l]} · ${money(l, total)}`}
                   onClick={() => setFee(item)}
                 >
-                  <H5Price
+                  <ModePrices
                     locale={l}
-                    total={total}
-                    compareTotal={item.compareTotal}
-                    durationMinutes={offering.durationMinutes}
+                    prices={
+                      item.modePrices ?? [
+                        {
+                          mode: offering.fulfillmentMode ?? 'HOME_VISIT',
+                          total,
+                          durationMinutes: offering.durationMinutes,
+                        },
+                      ]
+                    }
                   />
                   <Info size={11} />
                 </button>
@@ -375,7 +386,12 @@ export function H5TherapistDirectory({
                     <>
                       <Clock3 size={10} />
                       <span>
-                        {ht(l, 'earliestShort')}
+                        {sv(
+                          l,
+                          offering.fulfillmentMode === 'IN_STORE'
+                            ? 'storeEarliest'
+                            : 'homeEarliest',
+                        )}
                         <br />
                         <time dateTime={new Date(earliestAt).toISOString()}>
                           {directoryTime(l, earliestAt, data.checkedAt, ht(l, 'today'))}
@@ -482,6 +498,18 @@ export function H5TherapistDirectory({
             </summary>
             <div className="h5-directory-fields">
               <label>
+                {sv(l, 'mode')}
+                <select
+                  name="fulfillmentMode"
+                  value={draft.fulfillmentMode ?? ''}
+                  onChange={(e) => setDraft({ ...draft, fulfillmentMode: e.target.value })}
+                >
+                  <option value="">{t(l, 'all')}</option>
+                  <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
+                  <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
+                </select>
+              </label>
+              <label>
                 {ht(l, 'directoryDuration')}
                 <select
                   name="duration"
@@ -573,6 +601,9 @@ export function H5TherapistDirectory({
           <>
             <p>
               {fee.listing.name[l]} · {fee.offering.durationMinutes} {t(l, 'minutes')}
+            </p>
+            <p className="service-mode-tag">
+              {sv(l, fee.offering.fulfillmentMode ?? 'HOME_VISIT')}
             </p>
             <H5Price
               locale={l}

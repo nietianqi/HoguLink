@@ -5,9 +5,9 @@ const words = {
   loading: ['完了状況を確認しています…', 'Checking completion status…', '正在读取完成状态…'],
   title: ['サービスの完了確認', 'Service completion', '服务完成确认'],
   intro: [
-    '購入時間を実際の開始時刻から計測します。お客様の確認後にのみ請求します。',
-    'Purchased time runs from the actual service start. Payment follows customer confirmation.',
-    '从实际开始时间计算购买的服务时长，用户确认完成后才扣款。',
+    '購入時間を実際の開始時刻から計測します。お客様の確認後、または終了から72時間異議がない場合に請求します。',
+    'Purchased time runs from the actual service start. Payment follows your confirmation, or 72 hours after the visit ends without a dispute.',
+    '从实际开始时间计算购买的服务时长。用户确认完成后，或服务结束后72小时内未提出异议时才扣款。',
   ],
   scheduled: ['予約開始', 'Booked start', '预约开始'],
   started: ['実際の開始', 'Actual start', '实际开始'],
@@ -96,6 +96,11 @@ const words = {
   submit: ['送信する', 'Submit', '确认提交'],
   cancel: ['戻る', 'Back', '返回'],
   case: ['関連するサポートケース', 'Related support case', '查看关联处理工单'],
+  autoConfirm: [
+    '確認期限までに確認・異議がない場合、完了として注文金額を1回だけ請求します。問題があれば期限前に報告してください。',
+    'If you neither confirm nor report an issue by the deadline, the visit counts as completed and the order amount is charged once. Report any problem before then.',
+    '确认截止前既未确认也未提出异议的，视为服务完成，按订单金额扣款一次。如有问题请在截止前提出。',
+  ],
   reviewOnly: [
     '自動請求は行いません。店舗が事実を確認し、必要に応じて運営が対応します。',
     'No automatic charge. The shop reviews the facts with platform support when needed.',
@@ -109,6 +114,11 @@ const words = {
   history: ['対応記録', 'Handling history', '处理记录'],
   REQUEST: ['担当者が終了を申請', 'Therapist requested confirmation', '技师提交结束'],
   CONFIRM: ['お客様が完了を確認', 'Customer confirmed completion', '用户确认完成'],
+  AUTO_CONFIRMED: [
+    '72時間異議がなく自動で完了',
+    'Completed automatically after 72 hours without a dispute',
+    '72小时内无异议，自动确认完成',
+  ],
   REAUTHORIZE: [
     'お客様がデモ与信を更新',
     'Customer renewed demo authorization',

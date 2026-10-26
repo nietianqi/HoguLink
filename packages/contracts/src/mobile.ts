@@ -15,6 +15,7 @@ export type MobileBootstrap = {
   };
 };
 export type MobileTherapist = {
+  modePrices?: { mode: 'HOME_VISIT' | 'IN_STORE'; total: number; durationMinutes: number }[];
   listing: Listing;
   store: PublicStore;
   offering: Offering;

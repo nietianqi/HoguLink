@@ -4,15 +4,21 @@ import type { Booking, Listing, Offering, Role } from '@hogulink/contracts';
 export function japanDay(time: number): string {
   return new Date(time + 9 * 3600_000).toISOString().slice(0, 10);
 }
-export function matchingOffering(listing: Listing, offerings: Offering[], duration: number) {
+export function matchingOffering(
+  listing: Listing,
+  offerings: Offering[],
+  duration: number,
+  /** Travel fee for the chosen area, so the cheapest menu is chosen at the price shown. */
+  transportFee = (o: Offering) => o.transportFee,
+) {
   return offerings
     .filter((o) => listing.offeringIds.includes(o.id) && o.durationMinutes === duration)
     .sort(
       (a, b) =>
         effectiveServicePrice(a, Date.now()).price +
-        a.transportFee -
+        transportFee(a) -
         effectiveServicePrice(b, Date.now()).price -
-        b.transportFee,
+        transportFee(b),
     )[0];
 }
 /** Nominated total at the price charged now (a live shop promotion is applied). */

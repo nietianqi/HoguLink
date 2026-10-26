@@ -388,6 +388,8 @@ export class ApiController {
             area: typeof req.query.area === 'string' ? req.query.area : undefined,
             language: typeof req.query.language === 'string' ? req.query.language : undefined,
             mode: typeof req.query.mode === 'string' ? req.query.mode : undefined,
+            fulfillmentMode:
+              typeof req.query.fulfillmentMode === 'string' ? req.query.fulfillmentMode : undefined,
           }),
         );
       let match = path.match(/^public\/staff-listings\/([^/]+)\/availability$/);
@@ -400,11 +402,14 @@ export class ApiController {
             typeof req.query.language === 'string' ? req.query.language : '',
             req.query.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
             typeof req.query.area === 'string' ? req.query.area : '',
+            req.query.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT',
           ),
         );
       match = path.match(/^public\/stores\/([^/]+)\/free-availability$/);
       if (match && method === 'GET') {
-        const c = await this.engine.publicCatalog();
+        const c = await this.engine.publicCatalog({
+          fulfillmentMode: req.query.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT',
+        });
         const store = c.stores.find((x) => x.slug === match![1]);
         const listing = store && c.listings.find((x) => x.storeId === store.id);
         ensure(listing, 'NOT_FOUND', 'Shop not found.', 404);
@@ -416,12 +421,13 @@ export class ApiController {
             typeof req.query.language === 'string' ? req.query.language : '',
             req.query.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
             typeof req.query.area === 'string' ? req.query.area : '',
+            req.query.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT',
           ),
         );
       }
       match = path.match(/^public\/staff-listings\/([^/]+)$/);
       if (match && method === 'GET') {
-        const catalog = await this.engine.publicCatalog();
+        const catalog = await this.engine.publicCatalog({ fulfillmentMode: 'ALL' });
         const listing = catalog.listings.find((x) => x.slug === match![1] || x.id === match![1]);
         ensure(listing, 'NOT_FOUND', 'Listing not found.', 404);
         return res.json({
@@ -432,7 +438,7 @@ export class ApiController {
       }
       match = path.match(/^public\/stores\/([^/]+)$/);
       if (match && method === 'GET') {
-        const catalog = await this.engine.publicCatalog();
+        const catalog = await this.engine.publicCatalog({ fulfillmentMode: 'ALL' });
         const store = catalog.stores.find((x) => x.slug === match![1]);
         ensure(store, 'NOT_FOUND', 'Shop not found.', 404);
         return res.json({
@@ -440,6 +446,18 @@ export class ApiController {
           listings: catalog.listings.filter((x) => x.storeId === store.id),
           offerings: catalog.offerings.filter((x) => x.storeId === store.id),
         });
+      }
+      match = path.match(/^public\/venue-photos\/(evidence_[0-9a-f-]{36})$/);
+      if (match && method === 'GET') {
+        // Signed-in shops and reviewers may also preview photos that are not yet approved.
+        const viewer = await this.actor(req).catch(() => undefined);
+        const photo = await this.engine.venues.photo(match[1], viewer);
+        res.setHeader('Content-Type', photo.mime);
+        res.setHeader(
+          'Cache-Control',
+          photo.published ? 'public, max-age=300' : 'private, no-store',
+        );
+        return res.send(photo.bytes);
       }
       match = path.match(/^public\/portraits\/([^/]+)$/);
       if (match && method === 'GET') {
@@ -630,6 +648,31 @@ export class ApiController {
         return res.json(await this.engine.assignmentCandidates(actor, match[1]));
       if (path === 'merchant/workspace' && method === 'GET')
         return res.json(await this.engine.merchant.snapshot(actor));
+      if (path === 'merchant/venue' && method === 'PUT')
+        return res.json(await this.engine.venues.save(actor, body));
+      if (path === 'merchant/venue/photos' && method === 'POST')
+        return res.status(201).json(await this.engine.venues.uploadPhoto(actor, body));
+      if (path === 'merchant/venue/calendar' && method === 'GET')
+        return res.json(await this.engine.venues.calendar(actor, { date: req.query.date }));
+      if (path === 'merchant/home-visits' && method === 'PUT')
+        return res.json(await this.engine.venues.homeVisits(actor, body));
+      if (path === 'admin/venues' && method === 'GET')
+        return res.json(await this.engine.venues.list(actor));
+      match = path.match(/^admin\/venues\/([^/]+)\/review$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.venues.review(actor, match[1], body));
+      match = path.match(/^merchant\/team\/([^/]+)\/service-modes$/);
+      if (match && method === 'PUT')
+        return res.json(await this.engine.venues.staffModes(actor, match[1], body));
+      match = path.match(/^merchant\/services\/([^/]+)\/in-store$/);
+      if (match && method === 'POST')
+        return res.status(201).json(await this.engine.venues.createOffering(actor, match[1], body));
+      match = path.match(/^merchant\/bookings\/([^/]+)\/check-in$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.checkIn(actor, match[1], body));
+      match = path.match(/^merchant\/bookings\/([^/]+)\/late-arrival$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.closeLateArrival(actor, match[1], body));
       if (path === 'merchant/time-blocks' && method === 'POST')
         return res
           .status(201)
@@ -1058,6 +1101,9 @@ export class ApiController {
             req.get('Idempotency-Key') ?? '',
           ),
         );
+      match = path.match(/^customer\/bookings\/([^/]+)\/payment-guarantee$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.renewPaymentGuarantee(actor, match[1], body));
       match = path.match(/^bookings\/([^/]+)\/cancellation-preview$/);
       if (match && method === 'GET')
         return res.json(await this.engine.cancellationPreview(actor, match[1]));

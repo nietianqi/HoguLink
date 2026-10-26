@@ -229,7 +229,7 @@ export class NotificationWorker {
       return [...recipients].map(([to, { locale, path }]) => ({
         to,
         subject: `HoguLink · ${titles[locale][sensitive ? 'safety' : 'update']}`,
-        text: `${titles[locale].body}\n\n${siteOrigin()}/${locale}/${path}`,
+        text: `${titles[locale].body}${job.type === 'IN_STORE_APPOINTMENT_REMINDER' && b?.quote.venue ? `\n\n${new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Tokyo' }).format(b.quote.startAt)} JST\n${b.quote.venue.address}\n${b.quote.venue.contact}` : ''}\n\n${siteOrigin()}/${locale}/${path}`,
       }));
     });
   }

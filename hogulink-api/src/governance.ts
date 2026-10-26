@@ -35,9 +35,15 @@ const hash = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).dige
 export function bookingAlertActive(kind: OrderAlert['kind'], b: Booking, now: number) {
   const active = !ended(b);
   const rules: Partial<Record<OrderAlert['kind'], boolean>> = {
+    // Whoever must act before the deadline: the shop to accept, the shop to assign someone
+    // to an accepted shop-arranged order, or the offered therapist to respond.
     RESPONSE_DUE:
       active &&
-      (b.status === 'REQUESTED' || b.staffTaskStatus === 'OFFERED') &&
+      (b.status === 'REQUESTED' ||
+        b.staffTaskStatus === 'OFFERED' ||
+        (b.status === 'ACCEPTED' &&
+          b.staffTaskStatus === 'NOT_SENT' &&
+          b.replacementConsent !== 'PENDING')) &&
       b.deadline - now <= monitorRules.responseLeadMinutes * minute,
     ASSIGNMENT_BLOCKED:
       active &&
@@ -51,6 +57,7 @@ export function bookingAlertActive(kind: OrderAlert['kind'], b: Booking, now: nu
       (b.replacementDeadline ?? b.deadline) - now <= 5 * minute,
     LATE_ARRIVAL:
       active &&
+      b.quote.fulfillmentMode !== 'IN_STORE' &&
       (lateInstant(b, now) ||
         (b.quote.bookingMode === 'SCHEDULED' &&
           !b.arrivedAt &&
@@ -63,6 +70,20 @@ export function bookingAlertActive(kind: OrderAlert['kind'], b: Booking, now: nu
         (b.startedAt ?? b.quote.startAt) +
           (b.quote.endAt - b.quote.startAt) +
           monitorRules.serviceOverrunMinutes * minute,
+    STORE_CHECK_IN_DUE:
+      active &&
+      b.quote.fulfillmentMode === 'IN_STORE' &&
+      b.status === 'CONFIRMED' &&
+      b.staffTaskStatus === 'ACKNOWLEDGED' &&
+      b.replacementConsent !== 'PENDING' &&
+      !b.checkIn &&
+      now >= b.quote.startAt + monitorRules.scheduledDelayMinutes * minute,
+    STORE_START_DELAYED:
+      active &&
+      b.quote.fulfillmentMode === 'IN_STORE' &&
+      b.status === 'CONFIRMED' &&
+      !!b.checkIn &&
+      now >= b.quote.startAt + monitorRules.scheduledDelayMinutes * minute,
     NO_SHOW_REVIEW: active && b.noShow?.status === 'REPORTED',
     COMPLETION_REVIEW:
       active &&
@@ -446,6 +467,9 @@ export class GovernanceService {
             b.id,
             b.storeId,
           );
+        for (const kind of ['STORE_CHECK_IN_DUE', 'STORE_START_DELAYED'] as const)
+          if (bookingAlertActive(kind, b, now))
+            add(kind, b.id, String(b.version), b.quote.startAt, 'NORMAL', b.id, b.storeId);
         if (bookingAlertActive('LATE_ARRIVAL', b, now))
           add(
             'LATE_ARRIVAL',
@@ -494,7 +518,8 @@ export class GovernanceService {
           b.completion!.ticketId,
         );
     }
-    for (const s of await tx.list<SafetyEvent>('safetyEvents'))
+    // The same records staff SOS, safety stops and missed check-ins write to.
+    for (const s of await tx.list<SafetyEvent>('safety'))
       if (s.status === 'OPEN')
         add(
           'SAFETY_OPEN',

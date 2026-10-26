@@ -13,6 +13,7 @@ import { Engine } from '../src/engine.js';
 import { Repository } from '../src/repository.js';
 import { seed } from '../src/seed.js';
 import { DomainError } from '../src/errors.js';
+import { openAllDay } from './helpers/business-hours.js';
 
 const owner: Actor = {
   id: 'owner-nagi',
@@ -201,6 +202,7 @@ test('time and inclusive amount boundaries use the complete frozen quote', () =>
 
 test('two simultaneous submissions cannot exceed a daily limit, retries do not consume another quota', () =>
   fixture(async (e) => {
+    await openAllDay(e);
     await rules(e, { dailyLimit: 1 });
     const p1 = await prepare(e);
     const p2 = await prepare(

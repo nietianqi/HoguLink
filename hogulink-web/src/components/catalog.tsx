@@ -1,6 +1,10 @@
+import { ModePrices } from './service-mode';
+import { providerModePrices } from '@/lib/consumer-model';
 import Link from 'next/link';
+import { fulfillmentMode } from '@hogulink/contracts';
 import { ArrowRight, BadgeCheck, Languages, Clock3, ArrowUpRight } from 'lucide-react';
 import {
+  travelFeeFor,
   effectiveServicePrice,
   type Listing,
   type Locale,
@@ -54,8 +58,8 @@ export function TherapistCard({
       )[0];
   if (!selected) return null;
   const bookingHref = (start?: number) =>
-    `/${locale}/book/${listing.slug}?${new URLSearchParams({ mode, offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}), ...(start ? { start: String(start) } : {}) })}`;
-  const profileHref = `/${locale}/therapists/${listing.slug}?${new URLSearchParams({ mode, offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}) })}`;
+    `/${locale}/book/${listing.slug}?${new URLSearchParams({ mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}), offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}), ...(start ? { start: String(start) } : {}) })}`;
+  const profileHref = `/${locale}/therapists/${listing.slug}?${new URLSearchParams({ mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}), offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}) })}`;
   return (
     <article className="therapist-card">
       <Link className="portrait-link" href={profileHref} tabIndex={-1} aria-hidden="true">
@@ -84,7 +88,7 @@ export function TherapistCard({
           </div>
           <Link
             className="shop-link"
-            href={`/${locale}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences({ area, language, mode }), offering: selected.id })}`}
+            href={`/${locale}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences({ area, language, mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}) }), offering: selected.id })}`}
           >
             {store.name[locale]}
             <ArrowUpRight size={12} />
@@ -95,22 +99,22 @@ export function TherapistCard({
           </p>
           <p className="card-description">{listing.description[locale]}</p>
           <span className="service-setting">
-            {dt(locale, listing.hotelOnly ? 'hotel' : 'homeHotel')} · {selected.durationMinutes}{' '}
-            {t(locale, 'minutes')}
+            {fulfillmentMode(selected) === 'IN_STORE'
+              ? locale === 'zh-cn'
+                ? '到店服务'
+                : locale === 'ja'
+                  ? '来店サービス'
+                  : 'In-store service'
+              : dt(locale, listing.hotelOnly ? 'hotel' : 'homeHotel')}{' '}
+            · {selected.durationMinutes} {t(locale, 'minutes')}
           </span>
         </div>
         <div className="card-bottom">
           <div>
-            <span className="price">
-              {money(
-                locale,
-                nominatedTotal(selected, store.bookingRules?.nominationFee ?? nominationFee),
-              )}
-            </span>
-            <span className="price-suffix">
-              {' '}
-              / {selected.durationMinutes} {t(locale, 'minutes')}
-            </span>
+            <ModePrices
+              locale={locale}
+              prices={providerModePrices(store, offerings, [listing], area)}
+            />
             <small>{dt(locale, 'total')}</small>
           </div>
           <Link

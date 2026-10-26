@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { acceptanceScopeInput, type AcceptanceRule } from '@hogulink/contracts';
+import { acceptanceScopeInput, fulfillmentMode, type AcceptanceRule } from '@hogulink/contracts';
 import {
   makeCancellationPolicy,
   storeBookingRulesInput,
@@ -239,6 +239,11 @@ export class MerchantService {
       )
         return service;
       const priceChanged = service.price !== data.price;
+      ensure(
+        fulfillmentMode(service) !== 'IN_STORE' || data.transportFee === 0,
+        'INVALID_TRANSPORT_FEE',
+        'In-store services have no travel fee.',
+      );
       const next: Offering = {
         ...service,
         ...data,
@@ -487,12 +492,14 @@ export class MerchantService {
       const sorted = (fees: Record<string, number> = {}) =>
         Object.fromEntries(Object.entries(fees).sort(([a], [b]) => a.localeCompare(b)));
       const travel = sorted(data.areaTransportFees ?? prior.areaTransportFees);
+      const hours = data.businessHours ?? prior.businessHours;
       if (
         data.nominationFee === prior.nominationFee &&
         data.templateId === prior.templateId &&
         JSON.stringify(priorPolicy) === JSON.stringify(nextPolicy) &&
         JSON.stringify(bands) === JSON.stringify(prior.timeSurcharges ?? []) &&
-        JSON.stringify(travel) === JSON.stringify(sorted(prior.areaTransportFees))
+        JSON.stringify(travel) === JSON.stringify(sorted(prior.areaTransportFees)) &&
+        JSON.stringify(hours ?? null) === JSON.stringify(prior.businessHours ?? null)
       )
         return prior;
       const next: StoreBookingRules = {
@@ -502,6 +509,7 @@ export class MerchantService {
         cancellationPolicy: policy,
         ...(bands.length ? { timeSurcharges: bands } : {}),
         ...(Object.keys(travel).length ? { areaTransportFees: travel } : {}),
+        ...(hours ? { businessHours: hours } : {}),
       };
       await tx.put('stores', { ...store, bookingRules: next, ruleVersion: store.ruleVersion + 1 });
       await tx.put<BookingRulesHistory>('bookingRulesHistory', {

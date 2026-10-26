@@ -18,6 +18,7 @@ import { Repository } from '../src/repository.js';
 import { seed } from '../src/seed.js';
 import { DomainError } from '../src/errors.js';
 import { purchaseAnnual } from './helpers/subscription-fixture.js';
+import { openAllDay } from './helpers/business-hours.js';
 
 const customer: Actor = { id: 'full-customer', role: 'CUSTOMER', verificationLevel: 1 };
 const other: Actor = { ...customer, id: 'full-other' };
@@ -230,6 +231,7 @@ for (const [utcHour, restricted] of [
 ] as const)
   test(`FULL-RISK first home visit at Japan hour ${(utcHour + 9) % 24}`, () =>
     fixture(async (e) => {
+      await openAllDay(e);
       const p = await prepare(e, { startAt: Date.UTC(2026, 9, 18, utcHour) }),
         data = { ...p.data, address: { ...address, type: 'HOME' as const } };
       if (restricted) {
@@ -333,6 +335,7 @@ for (const [label, offset, accepted] of [
 ] as const)
   test(`FULL-TIME quote boundary ${label}`, () =>
     fixture(async (e) => {
+      await openAllDay(e);
       const run = e.quote(customer, input(e, { startAt: e.now() + offset }));
       if (accepted) assert.equal((await run).startAt, e.now() + offset);
       else await assert.rejects(run, code('INVALID_TIME'));

@@ -1,4 +1,4 @@
-import { advanceVisit, confirmVisit } from './qa-clock.mjs';
+import { advanceVisit, bookable, confirmVisit } from './qa-clock.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 const base = process.env.SMOKE_API_ORIGIN,
@@ -58,7 +58,7 @@ async function book(days, nominationType = 'NOMINATED') {
         offeringId: 'store-mori-60',
         bookingMode: 'SCHEDULED',
         nominationType,
-        startAt: Date.now() + days * 86400000,
+        startAt: bookable(Date.now() + days * 86400000),
         area: 'shinjuku',
       },
       'POST',

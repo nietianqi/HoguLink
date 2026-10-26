@@ -1,4 +1,5 @@
 import { localeMap, locales, type Locale } from '@hogulink/contracts';
+import { serviceModeError } from './service-mode-i18n';
 import { ct, isCareKey } from './care-i18n';
 export { localeMap, locales };
 export function asLocale(value: string): Locale {
@@ -218,9 +219,9 @@ const words = {
   authorized: ['デモ決済の認証が完了しました', 'Demo payment authenticated', '演示支付认证已完成'],
   declinePayment: ['認証失敗を試す', 'Try a failed challenge', '模拟认证失败'],
   payExplain: [
-    '今は与信のみ。購入時間の提供後、お客様が完了確認してから請求します。遠い日付では認証済みの決済方法を保存します。',
-    'Payment is secured now. Capture follows the purchased service duration and your completion confirmation. For distant dates, an authenticated method is saved.',
-    '现在仅作支付保障，服务足时结束且由你确认完成后才扣款。远期预约保存已认证的支付方式。',
+    '今は与信のみ。購入時間の提供後、お客様の完了確認、または終了から72時間異議がない場合に請求します。遠い日付では認証済みの決済方法を保存し、訪問の48時間前に与信します。',
+    'Payment is secured now. Capture follows the purchased duration and your confirmation, or 72 hours after the visit ends without a dispute. For distant dates, an authenticated method is saved and authorized 48 hours before the visit.',
+    '现在仅作支付保障。服务足时结束后，由你确认完成或72小时内未提出异议时才扣款。远期预约先保存已认证的支付方式，并在上门前48小时预授权。',
   ],
   policy: ['キャンセルポリシー（デモ）', 'Cancellation policy (demo)', '取消政策（演示）'],
   policyText: [
@@ -279,9 +280,9 @@ const words = {
   cancelReason: ['キャンセル理由', 'Cancellation reason', '取消原因'],
   timeline: ['予約の進み方', 'Your booking journey', '预约进度'],
   confirmedNote: [
-    '店舗と担当者が確認しました。サービス終了後、お客様の完了確認を待って請求します。',
-    'Your shop and therapist have confirmed. Capture waits for your confirmation after service.',
-    '店铺与技师均已确认，服务结束后须由你确认完成才扣款。',
+    '店舗と担当者が確認しました。サービス終了後、お客様の完了確認（72時間異議がなければ自動確認）を待って請求します。',
+    'Your shop and therapist have confirmed. Capture waits for your confirmation after service (automatic after 72 hours without a dispute).',
+    '店铺与技师均已确认。服务结束后待你确认完成再扣款（72小时内无异议则自动确认）。',
   ],
   requestedNote: [
     '店舗と担当者の確認をお待ちください。再度のお支払い操作は不要です。',
@@ -377,6 +378,11 @@ const words = {
     '有効な決済認証が必要です。',
     'Authenticate a payment method first.',
     '请先完成有效的支付认证。',
+  ],
+  OUTSIDE_BOOKING_HOURS: [
+    'この店舗の受付時間外です。表示されている時間からお選びください。',
+    'That start time is outside this shop’s business hours. Choose one of the listed times.',
+    '该时间不在店铺营业时间内，请选择列表中的时段。',
   ],
   PAYMENT_FAILED: [
     '決済認証に失敗し、仮予約を解除しました。空き時間を選び直してください。',
@@ -499,6 +505,8 @@ export function statusText(locale: Locale, status: string) {
   return statusWords[status]?.[locale === 'ja' ? 0 : locale === 'en' ? 1 : 2] ?? status;
 }
 export function errorText(locale: Locale, code?: string) {
+  const serviceError = serviceModeError(locale, code);
+  if (serviceError) return serviceError;
   if (code && isCareKey(code)) return ct(locale, code);
   return t(locale, code && code in words ? (code as TextKey) : 'error');
 }

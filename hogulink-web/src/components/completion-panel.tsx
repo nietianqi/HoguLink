@@ -9,6 +9,7 @@ import { cpt } from '@/lib/completion-i18n';
 import { MobileSheet } from './mobile-ui';
 
 type View = {
+  autoConfirmationEligible?: boolean;
   serverNow: number;
   bookingVersion: number;
   eligibleAt?: number;
@@ -40,7 +41,9 @@ export function CompletionPanel({
   const latest = useRef({ version: b.version, onUpdated });
   latest.current = { version: b.version, onUpdated };
   const relevant =
-    ['ARRIVED', 'IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) || !!b.completion;
+    ['ARRIVED', 'IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) ||
+    !!b.completion ||
+    (b.quote.fulfillmentMode === 'IN_STORE' && b.status === 'CONFIRMED' && !!b.checkIn);
   const load = useCallback(async () => {
     const request = ++generation.current;
     setLoading(true);
@@ -83,6 +86,8 @@ export function CompletionPanel({
     eligibleAt = view?.eligibleAt;
   const current = !!view && view.bookingVersion === b.version;
   const short = !!c && (!!c.timingInvalid || c.endedAt < c.eligibleAt);
+  // Silence accepts only an undisputed visit; once a problem was raised, someone must act.
+  const raised = !!c?.history.some((h) => h.action === 'DISPUTE' || h.action === 'EXCEPTION');
   const remaining = eligibleAt ? Math.max(0, Math.ceil((eligibleAt - now) / 60000)) : 0;
   const open = (next: string) => {
     setAction(next);
@@ -170,7 +175,9 @@ export function CompletionPanel({
         </div>
         {status && <span className="completion-status">{cpt(l, status)}</span>}
       </div>
-      <p className="completion-intro">{cpt(l, 'intro')}</p>
+      <p className="completion-intro">
+        {cpt(l, b.quote.completionPolicy ? 'intro' : 'reviewOnly')}
+      </p>
       {loading && !view && <p role="status">{cpt(l, 'loading')}</p>}
       <dl className="completion-times">
         <div>
@@ -215,22 +222,33 @@ export function CompletionPanel({
         </p>
       )}
       {status && !['CONFIRMED', 'VOIDED'].includes(status) && (
-        <p className="completion-advice">{cpt(l, 'reviewOnly')}</p>
+        <p className="completion-advice">
+          {cpt(
+            l,
+            status === 'PENDING' && !short && !raised && view?.autoConfirmationEligible
+              ? 'autoConfirm'
+              : 'reviewOnly',
+          )}
+        </p>
       )}
       <div className="completion-actions">
-        {role === 'STAFF' && b.status === 'ARRIVED' && (
-          <>
-            <button
-              className="button"
-              disabled={locked || now < b.quote.startAt}
-              onClick={() => open('START')}
-            >
-              {cpt(l, 'start')}
-              <ArrowRight size={16} />
-            </button>
-            {now < b.quote.startAt && <small>{cpt(l, 'startWait')}</small>}
-          </>
-        )}
+        {role === 'STAFF' &&
+          (b.status === 'ARRIVED' ||
+            (b.quote.fulfillmentMode === 'IN_STORE' && b.status === 'CONFIRMED' && b.checkIn)) && (
+            <>
+              <button
+                className="button"
+                disabled={locked || (b.quote.bookingMode === 'SCHEDULED' && now < b.quote.startAt)}
+                onClick={() => open('START')}
+              >
+                {cpt(l, 'start')}
+                <ArrowRight size={16} />
+              </button>
+              {b.quote.bookingMode === 'SCHEDULED' && now < b.quote.startAt && (
+                <small>{cpt(l, 'startWait')}</small>
+              )}
+            </>
+          )}
         {role === 'STAFF' && b.status === 'IN_SERVICE' && (
           <button
             className="button"

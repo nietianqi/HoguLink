@@ -1,11 +1,11 @@
 import type { Catalog } from './api';
-import { serviceChoices } from './consumer-model';
+import { browseServiceChoices as serviceChoices } from './consumer-model';
 import { visitPreferences } from './visit-model';
 
 export function shopVisitContext(
   catalog: Catalog,
   storeId: string,
-  filters: { area?: string; language?: string; mode?: string } = {},
+  filters: { area?: string; language?: string; mode?: string; fulfillmentMode?: string } = {},
 ) {
   const services = serviceChoices(catalog, filters).filter((s) => s.store.id === storeId);
   const members = [
@@ -20,7 +20,13 @@ export function shopVisitContext(
 
 export function shopChoices(
   catalog: Catalog,
-  filters: { area?: string; search?: string; language?: string; mode?: string } = {},
+  filters: {
+    area?: string;
+    search?: string;
+    language?: string;
+    mode?: string;
+    fulfillmentMode?: string;
+  } = {},
 ) {
   const choices = serviceChoices(catalog, filters);
   return catalog.stores

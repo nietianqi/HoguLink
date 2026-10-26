@@ -1,4 +1,4 @@
-import { advanceVisit, confirmVisit } from './qa-clock.mjs';
+import { advanceVisit, bookable, confirmVisit } from './qa-clock.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 const base = process.env.SMOKE_API_ORIGIN,
@@ -100,7 +100,7 @@ const q = await call(
     offeringId: 'store-nagi-60',
     bookingMode: 'SCHEDULED',
     nominationType: 'NOMINATED',
-    startAt: Date.now() + 5 * 86400000 + 4 * 3600000,
+    startAt: bookable(Date.now() + 5 * 86400000 + 4 * 3600000),
     area: 'shinjuku',
   },
   'POST',

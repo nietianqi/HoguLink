@@ -32,13 +32,21 @@ import {
 import type { Actor, Locale, MobileBootstrap } from '@hogulink/contracts';
 import { type Catalog } from '@/lib/api';
 import { areaName, areas, languageNames, localeMap, locales, t } from '@/lib/i18n';
+import { sv } from '@/lib/service-mode-i18n';
+import { withServiceMode } from '@/lib/visit-model';
 import { ht } from '@/lib/h5-i18n';
-import { featuredServices, featuredTherapists, serviceChoices } from '@/lib/consumer-model';
+import {
+  featuredServices,
+  featuredTherapists,
+  browseServiceChoices as serviceChoices,
+} from '@/lib/consumer-model';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ut } from '@/lib/consumer-i18n';
 import { h5Portrait, h5ServiceImage } from '@/lib/h5-media';
 import { H5EmptyArt, H5PageHeading, H5PortraitThumbnail } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
+import { ModePrices } from './service-mode';
+import { choiceModePrices } from '@/lib/consumer-model';
 import { H5Price, useDeviceLocation } from './h5-business';
 import { H5ShopCard, H5ShopCover, H5ShopLogo, shopAreaText } from './h5-shops';
 import { shopCards, shopCardHref } from '@/lib/shop-model';
@@ -121,7 +129,7 @@ type HomeProps = {
 
 export function H5Home({ locale: l, catalog, q, shopStats }: HomeProps) {
   const carry = Object.fromEntries(
-    ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
+    ['area', 'language', 'mode', 'fulfillmentMode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
   );
   const path = (base: string) => `/${l}/${base}?${new URLSearchParams(carry)}`;
   return (
@@ -149,7 +157,7 @@ export function H5Home({ locale: l, catalog, q, shopStats }: HomeProps) {
           <H5Language locale={l} compact />
           <div className="h5-hero-copy">
             <h1>{ht(l, 'homeHeadline')}</h1>
-            <p>{ht(l, 'homeSubline')}</p>
+            <p>{q.fulfillmentMode === 'IN_STORE' ? sv(l, 'IN_STORE') : ht(l, 'homeSubline')}</p>
           </div>
         </section>
       </div>
@@ -169,7 +177,7 @@ export function HomeRecommendations({
   const [dimension, setDimension] = useState<'services' | 'therapists' | 'shops'>('services');
   const browseId = useId();
   const carry = Object.fromEntries(
-    ['area', 'language', 'mode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
+    ['area', 'language', 'mode', 'fulfillmentMode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),
   );
   const choices = serviceChoices(catalog, carry);
   // Shop-run limited prices that are live right now; hidden entirely when none run.
@@ -190,7 +198,9 @@ export function HomeRecommendations({
       <p>{ht(l, 'homeNoMatchesHelp')}</p>
       <div>
         <Link href={path('services', { mode: 'SCHEDULED' })}>{ht(l, 'scheduled')}</Link>
-        <Link href={`/${l}/therapists`}>{ht(l, 'allTherapists')}</Link>
+        <Link href={withServiceMode(`/${l}/therapists`, q.fulfillmentMode)}>
+          {ht(l, 'allTherapists')}
+        </Link>
       </div>
     </div>
   );
@@ -229,6 +239,9 @@ export function HomeRecommendations({
                 {offer.offering.durationMinutes} {t(l, 'minutes')}
               </span>
               <strong>{offer.offering.name[l]}</strong>
+              <span className="service-mode-tag">
+                {sv(l, offer.offering.fulfillmentMode ?? 'HOME_VISIT')}
+              </span>
             </span>
             <H5Price
               locale={l}
@@ -342,7 +355,7 @@ export function HomeRecommendations({
                           <span className="h5-tag">
                             {card.fromDuration} {t(l, 'minutes')}
                           </span>
-                          <H5Price locale={l} total={card.fromTotal} />
+                          <ModePrices locale={l} prices={card.modePrices ?? []} />
                           <small>{ht(l, 'from')}</small>
                         </span>
                         <span className="h5-home-shop-cta" aria-hidden="true">
@@ -370,7 +383,10 @@ export function HomeRecommendations({
             </div>
             <div className="h5-home-service-list">
               {featured.map(
-                ({ offering, store, members, total, compareTotal, promotionEndsAt }, index) => (
+                (
+                  { offering, store, members, total, compareTotal, promotionEndsAt, modePrices },
+                  index,
+                ) => (
                   <Link
                     className="h5-home-service-card"
                     key={offering.id}
@@ -410,13 +426,7 @@ export function HomeRecommendations({
                       </p>
                       <div className="h5-home-service-bottom">
                         <div className="h5-home-service-price">
-                          <H5Price
-                            locale={l}
-                            total={total}
-                            compareTotal={compareTotal}
-                            promotionEndsAt={promotionEndsAt}
-                            durationMinutes={offering.durationMinutes}
-                          />
+                          <ModePrices locale={l} prices={modePrices} />
                         </div>
                         <span className="h5-home-service-cta">{ht(l, 'homeServiceBook')}</span>
                       </div>
@@ -484,10 +494,10 @@ export function HomeRecommendations({
                       </p>
                       <div className="h5-home-therapist-bottom">
                         <div className="h5-home-therapist-price">
-                          <H5Price locale={l} total={choice.total} />
-                          <span className="h5-home-therapist-duration">
-                            / {choice.offering.durationMinutes} {t(l, 'minutes')}
-                          </span>
+                          <ModePrices
+                            locale={l}
+                            prices={choiceModePrices(choice.variants, listing.id)}
+                          />
                         </div>
                         <span className="h5-home-times">
                           {ht(l, 'chooseTime')}

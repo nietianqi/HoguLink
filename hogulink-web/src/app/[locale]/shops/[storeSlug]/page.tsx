@@ -1,3 +1,7 @@
+import { choiceModePrices } from '@/lib/consumer-model';
+import { ModePrices } from '@/components/service-mode';
+import { VenueInfo } from '@/components/service-mode';
+import { sv } from '@/lib/service-mode-i18n';
 import { travelFeeFor } from '@hogulink/contracts';
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
@@ -15,7 +19,7 @@ import { loadShopStats, type ShopStatsMap } from '@/lib/shop-stats';
 import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale, t, areaName, money, surchargeNote, areaTravelNote } from '@/lib/i18n';
 import { vt, acceptanceLabel, acceptanceHelp } from '@/lib/visit-i18n';
-import { visitTotal } from '@/lib/visit-model';
+import { visitTotal, visitPreferences } from '@/lib/visit-model';
 import { seo } from '@/lib/seo';
 import { DetailBreadcrumb, VisitNotes } from '@/components/visit-shared';
 import { PublicReviews } from '@/components/experience-ui';
@@ -28,7 +32,7 @@ import { H5ShopCover, ShopFacts } from '@/components/h5-shops';
 import { shopCards, shopMonogram, shopTone } from '@/lib/shop-model';
 import { ht } from '@/lib/h5-i18n';
 const shopData = cache(async (slug: string) => {
-  const catalog = await serverApi<Catalog>('public/staff-listings');
+  const catalog = await serverApi<Catalog>('public/staff-listings?fulfillmentMode=ALL');
   const store = catalog.stores.find((x) => x.slug === slug);
   if (!store) notFound();
   return { catalog, store };
@@ -48,37 +52,55 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ locale: string; storeSlug: string }>;
-  searchParams: Promise<{ area?: string; language?: string; mode?: string }>;
+  searchParams: Promise<{
+    area?: string;
+    language?: string;
+    mode?: string;
+    fulfillmentMode?: string;
+  }>;
 }) {
   const p = await params,
     l = asLocale(p.locale),
-    { catalog, store: s } = await shopData(p.storeSlug);
-  const team = catalog.listings.filter((x) => x.storeId === s.id);
+    { catalog: allCatalog, store: baseStore } = await shopData(p.storeSlug);
   const q = await searchParams;
+  const serviceMode = q.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT';
+  const catalog = allCatalog;
+  const s = catalog.stores.find((store) => store.id === baseStore.id) ?? baseStore;
+  const team = catalog.listings.filter((x) => x.storeId === s.id);
   const context = shopVisitContext(catalog, s.id, {
+    fulfillmentMode: 'ALL',
     area: typeof q.area === 'string' ? q.area : undefined,
     language: typeof q.language === 'string' ? q.language : undefined,
-    mode: q.mode === 'INSTANT' || q.mode === 'SCHEDULED' ? q.mode : undefined,
+    mode: 'SCHEDULED',
   });
+  context.carry = { ...context.carry, ...visitPreferences(q) };
   const offerings = context.services.map((s) => s.offering);
   // Shop-level facts from approved reviews, completed visits and shop saves only.
   const stats = (await loadShopStats([s.id], (path) => serverApi<ShopStatsMap>(path)))[s.id];
-  const shop = shopCards(catalog, { ...context.carry, locale: l }).find(
+  const shop = shopCards(catalog, { ...context.carry, mode: 'SCHEDULED', locale: l }).find(
     (card) => card.store.id === s.id,
   );
   const travel = (o: (typeof offerings)[number]) =>
     travelFeeFor(o, s.bookingRules, context.carry.area);
-  const priced = offerings.map((o) => ({
-    o,
-    ...visitTotal(o, 'FREE', 0, Date.now(), 0, travel(o)),
+  const priced = context.services.map((c) => ({
+    o: c.offering,
+    total: c.freeTotal,
+    compareTotal: c.compareTotal,
+    promotionEndsAt: c.promotionEndsAt,
+    modePrices: choiceModePrices(c.variants, undefined, true),
   }));
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page">
+      {s.venue?.status === 'APPROVED' && s.venue.enabled && (
+        <VenueInfo locale={l} venue={s.venue} />
+      )}
       <DetailBreadcrumb locale={l} name={s.name[l]} preferences={context.carry} />
       <section className="shop-detail-hero">
         <H5ShopCover store={s} className="shop-hero-cover" />
         <div className="shop-hero-copy">
-          <span className="eyebrow small">{ht(l, 'shopHomeVisit')}</span>
+          <span className="eyebrow small">
+            {shop?.modePrices?.map((p) => sv(l, p.mode)).join(' · ')}
+          </span>
           <span className={`shop-monogram tone-${shopTone(s.id)}`}>{shopMonogram(s)}</span>
           <h1>{s.name[l]}</h1>
           <p>{s.legalName}</p>
@@ -115,12 +137,7 @@ export default async function Page({
           {shop && (
             <div className="shop-hero-price">
               <small>{ht(l, 'shopArranged')}</small>
-              <H5Price
-                locale={l}
-                total={shop.fromTotal}
-                durationMinutes={shop.fromDuration}
-                compareTotal={shop.fromCompare}
-              />
+              <ModePrices locale={l} prices={shop.modePrices ?? []} />
               <p>{ht(l, 'shopFees')}</p>
             </div>
           )}
@@ -181,7 +198,7 @@ export default async function Page({
                   </Link>
                 </p>
               )}
-              {priced.map(({ o, total, compareTotal, promotionEndsAt }) => {
+              {priced.map(({ o, total, compareTotal, promotionEndsAt, modePrices }) => {
                 const representative = context.members.find((x) => x.offeringIds.includes(o.id))!;
                 return (
                   <Link
@@ -194,18 +211,9 @@ export default async function Page({
                     </span>
                     <div>
                       <h3>{o.name[l]}</h3>
-                      <p>
-                        {t(l, 'serviceFee')} {money(l, visitTotal(o, 'FREE', 0).serviceFee)} ·{' '}
-                        {t(l, 'transportFee')} {money(l, travel(o))} · {t(l, 'nominationFee')}{' '}
-                        {money(l, 0)}
-                      </p>
+                      <p>{sv(l, 'modeBookingIntro')}</p>
                     </div>
-                    <H5Price
-                      locale={l}
-                      total={total}
-                      compareTotal={compareTotal}
-                      promotionEndsAt={promotionEndsAt}
-                    />
+                    <ModePrices locale={l} prices={modePrices} />
                     <ArrowRight size={17} />
                   </Link>
                 );
@@ -228,7 +236,12 @@ export default async function Page({
             />
           </section>
           <PublicReviews locale={l} storeId={s.id} />
-          <VisitNotes locale={l} store={s} rules={catalog.bookingRules} />
+          <VisitNotes
+            locale={l}
+            store={s}
+            rules={catalog.bookingRules}
+            inStore={serviceMode === 'IN_STORE'}
+          />
           <section className="detail-section" id="business-info">
             <span className="eyebrow small">BUSINESS INFORMATION</span>
             <h2>{t(l, 'legal')}</h2>
@@ -236,7 +249,7 @@ export default async function Page({
               <ShieldCheck size={20} />
               <div>
                 <strong>{s.legalName}</strong>
-                <p>{vt(l, 'shopLocationNote')}</p>
+                <p>{serviceMode === 'IN_STORE' ? sv(l, 'IN_STORE') : vt(l, 'shopLocationNote')}</p>
               </div>
             </div>
             <details className="business-disclosure">
@@ -284,11 +297,12 @@ export default async function Page({
           {context.members[0] && (
             <Suspense fallback={<div className="booking-preview">{t(l, 'waiting')}</div>}>
               <BookingPreview
+                key={serviceMode}
                 locale={l}
                 listing={context.members[0]}
-                store={s}
-                offerings={offerings}
-                team={context.members}
+                store={baseStore}
+                offerings={allCatalog.offerings.filter((o) => o.storeId === s.id)}
+                team={allCatalog.listings.filter((x) => x.storeId === s.id)}
                 rules={catalog.bookingRules}
                 defaultNomination="FREE"
               />

@@ -15,6 +15,7 @@ import {
   moderation,
   start,
 } from './helpers/experience-fixture.js';
+import { openAllDay } from './helpers/business-hours.js';
 const fail = (code: string) => (e: unknown) => e instanceof DomainError && e.code === code;
 const other: Actor = { ...customer, id: 'other-hub-customer' };
 test('completion confirmation remains on customer home while urgent replacement consent keeps priority', () =>
@@ -167,6 +168,7 @@ test('cancelled charged orders do not create review tasks and recent cards retai
   }));
 test('recent orders are bounded and response counts cover the full owned history', () =>
   fixture(async (e, clock) => {
+    await openAllDay(e);
     for (let i = 0; i < 4; i++) await complete(e, clock);
     const o = await e.experience.overview(customer);
     assert.equal(o.recent.length, 3);

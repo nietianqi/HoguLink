@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+import { sv } from '@/lib/service-mode-i18n';
 import { travelFeeFor } from '@hogulink/contracts';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -54,11 +56,25 @@ export default async function Home({
   const date = /^\d{4}-\d{2}-\d{2}$/.test(q.date ?? '') ? q.date : '';
   const href = (changes: Record<string, string>) =>
     `/${l}?${new URLSearchParams({ ...q, ...changes })}#discover`;
-  const mode = q.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED';
+  const mode =
+    q.fulfillmentMode === 'IN_STORE' ? 'SCHEDULED' : q.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED';
+  const serviceMode =
+    q.fulfillmentMode === 'IN_STORE'
+      ? 'IN_STORE'
+      : q.fulfillmentMode === 'HOME_VISIT'
+        ? 'HOME_VISIT'
+        : 'ALL';
+  q.mode = mode;
   const catalog = await serverApi<Catalog>(
-    `public/staff-listings?${new URLSearchParams({ ...(q.area ? { area: q.area } : {}), ...(q.language ? { language: q.language } : {}), mode })}`,
+    `public/staff-listings?${new URLSearchParams({ ...(q.area ? { area: q.area } : {}), ...(q.language ? { language: q.language } : {}), mode, fulfillmentMode: serviceMode })}`,
   );
-  const shopFilters = { area: q.area, language: q.language, mode, locale: l };
+  const shopFilters = {
+    area: q.area,
+    language: q.language,
+    mode,
+    locale: l,
+    fulfillmentMode: serviceMode,
+  };
   const featuredShops = shopCards(catalog, shopFilters).slice(0, 4);
   const listingStatsPromise = loadListingStats(
     featuredTherapists(serviceChoices(catalog, shopFilters)).map(({ listing }) => listing.id),
@@ -69,19 +85,13 @@ export default async function Home({
     (path) => serverApi<ShopStatsMap>(path),
   );
   const candidates = catalog.listings.flatMap((listing) => {
-    const offering = matchingOffering(listing, catalog.offerings, duration);
-    const store = catalog.stores.find((s) => s.id === listing.storeId)!;
-    if (
-      !offering ||
-      (maxTotal &&
-        nominatedTotal(
-          offering,
-          nominationFeeFor(store, catalog.bookingRules),
-          Date.now(),
-          travelFeeFor(offering, store.bookingRules, q.area),
-        ) > maxTotal)
-    )
-      return [];
+    const choices = serviceChoices(catalog, { ...shopFilters, duration }).filter((c) =>
+      c.members.some((m) => m.id === listing.id),
+    );
+    const chosen = choices.find((c) => c.offering.fulfillmentMode !== 'IN_STORE') ?? choices[0];
+    const store = chosen?.store ?? catalog.stores.find((s) => s.id === listing.storeId)!;
+    const offering = chosen?.offering;
+    if (!offering || (maxTotal && !choices.some((c) => c.total <= maxTotal))) return [];
     if (q.acceptance === 'manual' && store.acceptanceMode !== 'MANUAL') return [];
     if (q.acceptance === 'auto' && store.acceptanceMode === 'MANUAL') return [];
     return [{ listing, offering, store }];
@@ -93,7 +103,7 @@ export default async function Home({
         try {
           slots = (
             await serverApi<{ slots: number[] }>(
-              `public/staff-listings/${item.listing.id}/availability?${new URLSearchParams({ offeringId: item.offering.id, area: q.area ?? '', language: q.language ?? '' })}`,
+              `public/staff-listings/${item.listing.id}/availability?${new URLSearchParams({ offeringId: item.offering.id, fulfillmentMode: item.offering.fulfillmentMode ?? 'HOME_VISIT', area: q.area ?? '', language: q.language ?? '' })}`,
             )
           ).slots;
         } catch {
@@ -143,9 +153,9 @@ export default async function Home({
           <h1>
             {ht(l, 'homeHeadline')}
             <br />
-            <em>{ht(l, 'homeSubline')}</em>
+            <em>{serviceMode === 'IN_STORE' ? sv(l, 'IN_STORE') : ht(l, 'homeSubline')}</em>
           </h1>
-          <p>{t(l, 'heroText')}</p>
+          <p>{serviceMode === 'IN_STORE' ? sv(l, 'inStoreHelp') : t(l, 'heroText')}</p>
           <a className="hero-discover" href="#desktop-home-browse">
             {dt(l, 'discovery')}
             <ArrowUpRight size={18} />
@@ -182,7 +192,7 @@ export default async function Home({
             </button>
           </div>
           <input type="hidden" name="duration" value={duration} />
-          {['date', 'maxTotal', 'acceptance', 'sort', 'view'].map((key) => (
+          {['date', 'maxTotal', 'acceptance', 'sort', 'view', 'fulfillmentMode'].map((key) => (
             <input type="hidden" key={key} name={key} value={q[key] ?? ''} />
           ))}
           <div className="search-fields">

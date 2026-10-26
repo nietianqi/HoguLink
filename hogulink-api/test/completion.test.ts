@@ -228,9 +228,50 @@ test('customer disputes a full visit; shop review still needs fresh customer con
     assert(b.completion!.history.some((x) => x.action === 'DISPUTE'));
     assert(b.completion!.ticketId);
   }));
-test('confirmation timeout never charges; creates one case and permits reviewed confirmation', async () =>
+test('silence for the disclosed window confirms an undisputed visit and captures exactly once', async () =>
   fixture(async (e, clock) => {
     let b = await request(e, clock);
+    clock.now += completionWindowMs - 1;
+    b = await current(e, b.id);
+    assert.equal(b.completion!.status, 'PENDING');
+    assert.equal(b.capturedAmount, 0);
+    clock.now++;
+    b = await current(e, b.id);
+    assert.equal(b.status, 'COMPLETED');
+    assert.equal(b.completion!.status, 'CONFIRMED');
+    assert.equal(b.completion!.autoConfirmed, true);
+    assert.equal(b.capturedAmount, b.quote.total);
+    await assert.rejects(confirm(e, b), code('INVALID_STATE'));
+    clock.now += completionWindowMs;
+    await current(e, b.id);
+    await e.repo.transaction(async (tx) =>
+      assert.equal(
+        (await tx.list<any>('feeEntries')).filter(
+          (x) => x.bookingId === b.id && x.type === 'CAPTURE',
+        ).length,
+        1,
+      ),
+    );
+  }));
+test('a reviewed dispute is never accepted by silence; timeout opens one case for the shop', async () =>
+  fixture(async (e, clock) => {
+    let b = await request(e, clock);
+    b = await e.completionAction(
+      customer,
+      b.id,
+      { version: b.version, action: 'DISPUTE', note: 'The visit felt shorter than booked.' },
+      key(),
+    );
+    b = await e.completionAction(
+      shop,
+      b.id,
+      {
+        version: b.version,
+        action: 'REVIEW',
+        note: 'Shared the recorded times with the customer; please verify.',
+      },
+      key(),
+    );
     clock.now += completionWindowMs;
     b = await current(e, b.id);
     assert.equal(b.completion!.status, 'TIMED_OUT');
@@ -350,9 +391,37 @@ test('renewing an expired demo authorization does not capture or erase an existi
     assert.equal(b.capturedAmount, 0);
     await assert.rejects(confirm(e, b), code('COMPLETION_REVIEW_REQUIRED'));
   }));
-test('distant-date saved payment needs customer renewal and then a separate completion confirmation', async () =>
+test('distant-date saved payment is authorized 48 hours before the visit, so completion needs no renewal', async () =>
   fixture(async (e, clock) => {
-    let b = await request(e, clock, await booking(e, { startAt: clock.now + 10 * 86400000 }));
+    let b = await booking(e, { startAt: clock.now + 10 * 86400000 });
+    assert.equal(b.paymentStatus, 'METHOD_SAVED');
+    b = await e.ack(staff, b.id, b.version);
+    clock.now = b.quote.startAt - 48 * 3600000 - 1;
+    assert.equal((await current(e, b.id)).paymentStatus, 'METHOD_SAVED');
+    clock.now++;
+    b = await current(e, b.id);
+    assert.equal(b.paymentStatus, 'AUTHORIZED');
+    clock.now = b.quote.startAt;
+    for (const event of ['EN_ROUTE', 'ARRIVED', 'START'])
+      b = await e.event(staff, b.id, b.version, event);
+    clock.now = b.quote.endAt;
+    b = await e.event(staff, b.id, b.version, 'COMPLETE');
+    assert.equal(b.completion!.status, 'PENDING');
+    b = await confirm(e, b);
+    assert.equal(b.capturedAmount, b.quote.total);
+  }));
+test('a visit that reaches completion without an authorization needs customer renewal and then confirmation', async () =>
+  fixture(async (e, clock) => {
+    let b = await start(e, clock);
+    // A record that skipped the pre-visit authorization (for example, created before it existed).
+    await e.repo.transaction(async (tx) => {
+      const p = await tx.get<any>('payments', b.paymentId);
+      await tx.put('payments', { ...p, status: 'METHOD_SAVED' });
+      const stored = await tx.get<any>('bookings', b.id);
+      await tx.put('bookings', { ...stored, paymentStatus: 'METHOD_SAVED' });
+    });
+    clock.now = b.startedAt! + b.quote.endAt - b.quote.startAt;
+    b = await e.event(staff, b.id, b.version, 'COMPLETE');
     b = await current(e, b.id);
     assert.equal(b.completion!.status, 'PAYMENT_REVIEW');
     assert.equal(b.capturedAmount, 0);

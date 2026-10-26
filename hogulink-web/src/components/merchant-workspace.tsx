@@ -5,6 +5,8 @@ import { FinanceCenter } from './finance-center';
 import { pt } from '@/lib/subscription-i18n';
 import { AcceptanceSettings } from './acceptance-settings';
 import { BookingRulesSettings } from './booking-rules-settings';
+import { VenueSettings } from './venue-settings';
+import { VenueSchedule } from './venue-schedule';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -659,6 +661,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'schedule' && (
               <>
+                {data.store.venue && <VenueSchedule locale={l} />}
                 {data.timeOffRequests.some((r) => r.status === 'PENDING') && (
                   <section className="merchant-panel" style={{ marginBottom: 24 }}>
                     <div className="merchant-panel-heading">
@@ -945,6 +948,13 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             {tab === 'settings' && (
               <div className="merchant-settings-grid">
                 <div className="merchant-settings-stack">
+                  <VenueSettings
+                    locale={l}
+                    store={data.store}
+                    listings={data.listings}
+                    offerings={data.offerings}
+                    onChanged={refresh}
+                  />
                   <BookingRulesSettings
                     key={`${data.store.id}:prices:${data.bookingRules.version}`}
                     rules={data.bookingRules}
@@ -1053,6 +1063,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                 {st(l, 'travel')}
                 <input
                   name="travel"
+                  readOnly={editor.fulfillmentMode === 'IN_STORE'}
                   type="number"
                   inputMode="numeric"
                   min={0}

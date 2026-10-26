@@ -27,6 +27,7 @@ import './directory.css';
 import './business.css';
 import './shops.css';
 import './h5-home.css';
+import './service-mode.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

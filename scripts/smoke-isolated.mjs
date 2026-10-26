@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 
@@ -29,6 +31,7 @@ if (
     'invoicing',
     'reporting',
     'completion',
+    'in-store',
     'h5',
   ].includes(only)
 )
@@ -53,6 +56,8 @@ const env = {
   NODE_ENV: 'development',
   WEB_ORIGIN: origin,
   SMOKE_CLOCK_TOKEN: randomUUID(),
+  // Uploaded test files stay out of the developer's private evidence folder.
+  EVIDENCE_DIRECTORY: join(tmpdir(), `hogulink-smoke-evidence-${randomUUID()}`),
 };
 function startApi() {
   const child = spawn(
@@ -162,6 +167,7 @@ try {
       'invoicing',
       'reporting',
       'completion',
+      'in-store',
       'h5',
     ];
     // Handling, employee and engagement checks intentionally reuse prior bookings.
@@ -187,4 +193,5 @@ try {
   }
 } finally {
   await stopApi();
+  await rm(env.EVIDENCE_DIRECTORY, { recursive: true, force: true });
 }

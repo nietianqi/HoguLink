@@ -165,7 +165,7 @@ export function ArrivalPanel({
     b.staffTaskStatus === 'ACKNOWLEDGED' &&
     ['CONFIRMED', 'EN_ROUTE'].includes(b.status) &&
     b.replacementConsent !== 'PENDING';
-  if (!b.arrival && !canUpdate) return null;
+  if (b.quote.fulfillmentMode === 'IN_STORE' || (!b.arrival && !canUpdate)) return null;
   return (
     <section className="quality-arrival">
       <div>

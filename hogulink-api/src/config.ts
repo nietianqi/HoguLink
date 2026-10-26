@@ -31,6 +31,10 @@ export const config = {
     replacementSameDayMinutes: 15,
   },
   authorizationDays: 7,
+  /** Far-future bookings keep a saved method and are authorized this many hours before the visit. */
+  preAuthorizeHours: 48,
+  /** After a failed pre-visit authorization the customer has this long to renew it. */
+  paymentUpdateHours: 12,
 };
 export function assertDemoRuntime() {
   if (process.env.APP_MODE === 'staging') {

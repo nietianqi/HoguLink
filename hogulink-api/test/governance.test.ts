@@ -275,7 +275,7 @@ test('case alerts honor employee team and safety visibility', () =>
     const { t, b } = await dispute(e, clock);
     await e.repo.transaction(async (tx) => {
       await tx.put('supportTickets', { ...t, dueAt: clock.now - 1 });
-      await tx.put('safetyEvents', {
+      await tx.put('safety', {
         id: 'private_safety',
         bookingId: b.id,
         storeId: b.storeId,
@@ -801,4 +801,43 @@ test('case and financial alerts never expose private reports to order participan
     });
     for (const actor of [customer, shop, staff])
       assert.deepEqual((await e.coordination.detail(actor, b.id)).platformAttention, []);
+  }));
+
+test('a real staff SOS reaches the order monitor and clears when resolved', () =>
+  fixture(async (e) => {
+    const b = await booking(e);
+    const confirmed = await e.ack(staff, b.id, b.version);
+    await e.safety(staff, confirmed.id, 'SOS', confirmed.version);
+    const sos = (await e.governance.monitor(admin)).alerts.filter(
+      (a) => a.kind === 'SAFETY_OPEN' && a.bookingId === b.id,
+    );
+    assert.equal(sos.length, 1, 'the SOS from the task flow is visible to the platform monitor');
+    const event = (await e.care.safetyEvents(admin)).find((x) => x.bookingId === b.id)!;
+    await e.care.resolveSafety(
+      admin,
+      event.id,
+      event.version ?? 1,
+      'Contacted the therapist and the shop; the visit ended safely.',
+    );
+    const after = (await e.governance.monitor(admin)).alerts.filter(
+      (a) => a.kind === 'SAFETY_OPEN' && a.bookingId === b.id,
+    );
+    assert.deepEqual(
+      after.map((a) => a.state),
+      ['RESOLVED'],
+      'the alert records that the condition recovered',
+    );
+  }));
+
+test('an accepted shop-arranged order still waiting for a therapist raises a response alert', () =>
+  fixture(async (e, clock) => {
+    const b = await booking(e, { nominationType: 'FREE' });
+    assert.equal(b.status, 'ACCEPTED', 'auto-accepted within the shop scope');
+    assert.equal(b.staffTaskStatus, 'NOT_SENT');
+    clock.now = b.deadline - 4 * 60000;
+    const alert = (await e.governance.monitor(admin)).alerts.find(
+      (a) => a.bookingId === b.id && a.kind === 'RESPONSE_DUE',
+    );
+    assert.ok(alert, 'the platform sees the missing assignment before the order expires');
+    assert.notEqual(alert!.state, 'RESOLVED');
   }));

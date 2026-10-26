@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { advanceVisit, advanceTo, fixtureCall } from './qa-clock.mjs';
+import { advanceVisit, advanceTo, bookable, fixtureCall } from './qa-clock.mjs';
 const base = process.env.SMOKE_API_ORIGIN,
   origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:3000';
 let checks = 0;
@@ -39,7 +39,7 @@ async function book() {
         offeringId: 'store-nagi-60',
         bookingMode: 'SCHEDULED',
         nominationType: 'NOMINATED',
-        startAt: Date.now() + 180 * 60000,
+        startAt: bookable(Date.now() + 180 * 60000),
         area: 'shinjuku',
       },
       201,
@@ -182,12 +182,30 @@ check(
   short.status === 'CANCELLED' && short.paymentStatus === 'VOIDED' && short.capturedAmount === 0,
   'Early-ended visit closes without charge',
 );
+let silent = await request(await start(await book()));
+await advanceTo(silent.completion.confirmBy - 60000);
+silent = await call(c, `bookings/${silent.id}`);
+check(
+  silent.completion.status === 'PENDING' && silent.capturedAmount === 0,
+  'Nothing is captured inside the confirmation window',
+);
+await advanceTo(silent.completion.confirmBy + 1000);
+silent = await call(c, `bookings/${silent.id}`);
+check(
+  silent.status === 'COMPLETED' &&
+    silent.completion.autoConfirmed === true &&
+    silent.capturedAmount === silent.quote.total,
+  'Silence for 72 hours confirms an undisputed visit and captures once',
+);
+await action(c, silent, 'CONFIRM', { expectedAmount: silent.quote.total }, 409);
 let overdue = await request(await start(await book()));
+overdue = await action(c, overdue, 'DISPUTE', { note });
+overdue = await action(m, overdue, 'REVIEW', { note });
 await advanceTo(overdue.completion.confirmBy + 1000);
 overdue = await call(c, `bookings/${overdue.id}`);
 check(
   overdue.completion.status === 'TIMED_OUT' && overdue.capturedAmount === 0,
-  'Confirmation timeout never captures',
+  'A reviewed dispute is never captured by silence',
 );
 await action(c, overdue, 'CONFIRM', { expectedAmount: overdue.quote.total }, 409);
 overdue = await action(m, overdue, 'REVIEW', { note });
@@ -215,5 +233,5 @@ check(
   'Renewed and reviewed visit can complete with customer confirmation',
 );
 console.log(
-  `Completion HTTP smoke passed: ${checks} checks. Timing, consent, disputes, timeout, reauthorization and single capture verified in memory.`,
+  `Completion HTTP smoke passed: ${checks} checks. Timing, consent, disputes, 72-hour acceptance, timeout, reauthorization and single capture verified in memory.`,
 );

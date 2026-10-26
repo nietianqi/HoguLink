@@ -5,7 +5,16 @@ import type { PublicStore, BookingRules } from '@/lib/api';
 import { t, areaName } from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
 import { visitPreferences } from '@/lib/visit-model';
-export function VisitSteps({ locale: l, step }: { locale: Locale; step: 1 | 2 | 3 }) {
+import { sv } from '@/lib/service-mode-i18n';
+export function VisitSteps({
+  locale: l,
+  step,
+  inStore = false,
+}: {
+  locale: Locale;
+  step: 1 | 2 | 3;
+  inStore?: boolean;
+}) {
   return (
     <ol className="visit-steps" aria-label={t(l, 'timeline')}>
       {(['step1', 'step2', 'step3'] as const).map((key, i) => (
@@ -15,7 +24,11 @@ export function VisitSteps({ locale: l, step }: { locale: Locale; step: 1 | 2 | 
           aria-current={i + 1 === step ? 'step' : undefined}
         >
           <span>{i + 1 < step ? <Check size={14} /> : String(i + 1).padStart(2, '0')}</span>
-          {vt(l, key)}
+          {i === 1 && step === 1
+            ? sv(l, 'detailsAndPayment')
+            : inStore && i === 1
+              ? sv(l, 'contactStep')
+              : vt(l, key)}
         </li>
       ))}
     </ol>
@@ -62,11 +75,13 @@ export function VisitNotes({
   store,
   hotelOnly = false,
   rules,
+  inStore = false,
 }: {
   locale: Locale;
   store: PublicStore;
   hotelOnly?: boolean;
   rules?: BookingRules;
+  inStore?: boolean;
 }) {
   return (
     <section className="detail-section visit-notes" id="visit-info">
@@ -75,9 +90,21 @@ export function VisitNotes({
       <div className="visit-note-grid">
         <div>
           <MapPin size={21} />
-          <h3>{t(l, 'coverage')}</h3>
-          <p>{store.areas.map((x) => areaName(l, x)).join(' · ')}</p>
-          <p>{vt(l, hotelOnly ? 'hotelHelp' : 'homeHelp')}</p>
+          <h3>{sv(l, 'modeLocations')}</h3>
+          {store.homeVisitsEnabled !== false && (
+            <>
+              <strong>{sv(l, 'HOME_VISIT')}</strong>
+              <p>{store.areas.map((x) => areaName(l, x)).join(' · ')}</p>
+              <p>{vt(l, hotelOnly ? 'hotelHelp' : 'homeHelp')}</p>
+            </>
+          )}
+          {store.venue?.status === 'APPROVED' && store.venue.enabled && (
+            <>
+              <strong>{sv(l, 'IN_STORE')}</strong>
+              <p>{store.venue.address}</p>
+              <p>{sv(l, 'storeChoice')}</p>
+            </>
+          )}
         </div>
         <div>
           <ShieldCheck size={21} />
@@ -88,11 +115,7 @@ export function VisitNotes({
         <div>
           <ReceiptText size={21} />
           <h3>{t(l, 'policy')}</h3>
-          <p>
-            {(store.bookingRules ?? rules)
-              ? policyText(l, (store.bookingRules ?? rules)!.cancellationPolicy)
-              : t(l, 'policyText')}
-          </p>
+          <p>{sv(l, 'modePolicyNote')}</p>
           <Link href={`/${l}/guides/booking-and-safety`}>{vt(l, 'policyLink')} ↗</Link>
         </div>
       </div>

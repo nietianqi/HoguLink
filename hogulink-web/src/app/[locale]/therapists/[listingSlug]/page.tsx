@@ -1,3 +1,7 @@
+import { sv } from '@/lib/service-mode-i18n';
+import { browseServiceChoices, choiceModePrices } from '@/lib/consumer-model';
+import { ModePrices } from '@/components/service-mode';
+import { VenueInfo } from '@/components/service-mode';
 import { travelFeeFor } from '@hogulink/contracts';
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
@@ -35,7 +39,7 @@ import { H5Badges, H5Price } from '@/components/h5-business';
 import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
 const listingData = cache(async (slug: string) => {
-  const catalog = await serverApi<Catalog>('public/staff-listings');
+  const catalog = await serverApi<Catalog>('public/staff-listings?fulfillmentMode=ALL');
   const listing = catalog.listings.find((x) => x.slug === slug);
   if (!listing) notFound();
   return { catalog, listing, store: catalog.stores.find((s) => s.id === listing.storeId)! };
@@ -59,34 +63,45 @@ export default async function Page({
 }) {
   const p = await params,
     l = asLocale(p.locale),
-    { catalog, listing, store } = await listingData(p.listingSlug);
+    { catalog: allCatalog, listing, store: baseStore } = await listingData(p.listingSlug);
   const raw = await searchParams;
+  const serviceMode = raw.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT';
+  const catalog = allCatalog;
+  const store = catalog.stores.find((s) => s.id === baseStore.id) ?? baseStore;
   const carry = visitPreferences(raw);
   const team = catalog.listings.filter((x) => x.storeId === store.id);
-  const offerings = visitServices(catalog.offerings, listing, team, 'NOMINATED');
+  const choices = browseServiceChoices(catalog, {
+    ...carry,
+    mode: 'SCHEDULED',
+    fulfillmentMode: 'ALL',
+  }).filter((c) => c.members.some((m) => m.id === listing.id));
+  const offerings = choices.map((c) => c.offering);
+  const priced = choices.map((c) => ({
+    o: c.offering,
+    total: c.total,
+    compareTotal: c.compareTotal,
+    promotionEndsAt: c.promotionEndsAt,
+  }));
   const nominationFee =
     store.bookingRules?.nominationFee ?? catalog.bookingRules?.nominationFee ?? 500;
   const travel = (o: (typeof offerings)[number]) => travelFeeFor(o, store.bookingRules, carry.area);
-  const priced = offerings.map((o) => ({
-    o,
-    ...visitTotal(o, 'NOMINATED', nominationFee, Date.now(), 0, travel(o)),
-  }));
-  const priceOf = (id: string) => {
-    const { total, compareTotal, promotionEndsAt } = priced.find((x) => x.o.id === id)!;
-    return { total, compareTotal, promotionEndsAt };
-  };
   // Aggregated only from approved reviews, completed visits and active favorites.
   const stats = (await loadListingStats([listing.id], (path) => serverApi<ListingStatsMap>(path)))[
     listing.id
   ];
-  const selectedOffering = offerings.find((o) => o.id === raw.offering) ?? offerings[0];
+  const selectedOffering =
+    choices.flatMap((c) => c.variants).find((c) => c.offering.id === raw.offering)?.offering ??
+    offerings[0];
   const shopPreferences = {
     ...carry,
     ...(selectedOffering ? { offering: selectedOffering.id } : {}),
   };
   const shopHref = `/${l}/shops/${store.slug}?${new URLSearchParams(shopPreferences)}`;
   const instantNow =
-    !!selectedOffering && listing.onDuty && store.acceptanceMode !== 'MANUAL'
+    !!selectedOffering &&
+    selectedOffering.fulfillmentMode !== 'IN_STORE' &&
+    listing.onDuty &&
+    store.acceptanceMode !== 'MANUAL'
       ? await serverApi<{ slots: number[] }>(
           `public/staff-listings/${encodeURIComponent(listing.id)}/availability?${new URLSearchParams(
             {
@@ -105,6 +120,9 @@ export default async function Page({
   return (
     <main id="main" className="wrap page-section detail-page therapist-detail-page">
       <RememberProfile id={listing.id} />
+      {store.venue?.status === 'APPROVED' && store.venue.enabled && (
+        <VenueInfo locale={l} venue={store.venue} />
+      )}
       <DetailBreadcrumb
         locale={l}
         name={listing.name[l]}
@@ -230,13 +248,15 @@ export default async function Page({
                   </span>
                   <div>
                     <h3>{o.name[l]}</h3>
-                    <p>
-                      {t(l, 'serviceFee')} {money(l, visitTotal(o, 'FREE', 0).serviceFee)} ·{' '}
-                      {t(l, 'nominationFee')} {money(l, nominationFee)} · {t(l, 'transportFee')}{' '}
-                      {money(l, travel(o))}
-                    </p>
+                    <p>{sv(l, 'modeBookingIntro')}</p>
                   </div>
-                  <H5Price locale={l} {...priceOf(o.id)} />
+                  <ModePrices
+                    locale={l}
+                    prices={choiceModePrices(
+                      choices.find((c) => c.offering.id === o.id)!.variants,
+                      listing.id,
+                    )}
+                  />
                   <ArrowRight size={17} />
                 </Link>
               ))}
@@ -244,6 +264,7 @@ export default async function Page({
           </section>
           <PublicReviews locale={l} listingId={listing.id} />
           <VisitNotes
+            inStore={serviceMode === 'IN_STORE'}
             locale={l}
             store={store}
             hotelOnly={listing.hotelOnly}
@@ -258,11 +279,12 @@ export default async function Page({
         <aside className="detail-booking-sidebar">
           <Suspense fallback={<div className="booking-preview">{t(l, 'waiting')}</div>}>
             <BookingPreview
+              key={serviceMode}
               locale={l}
               listing={listing}
-              store={store}
-              offerings={catalog.offerings}
-              team={team}
+              store={baseStore}
+              offerings={allCatalog.offerings}
+              team={allCatalog.listings.filter((x) => x.storeId === store.id)}
               rules={catalog.bookingRules}
             />
           </Suspense>

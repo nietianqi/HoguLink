@@ -49,6 +49,7 @@ export type ReportMoney = {
   invoiceNumbers: string[];
 };
 export type ReportOrder = {
+  fulfillmentMode: 'HOME_VISIT' | 'IN_STORE';
   id: string;
   storeId: string;
   createdAt: number;
@@ -151,6 +152,7 @@ export type ReportWorkspace = {
   trend: ReportPoint[];
   services: ReportGroup[];
   modes: ReportGroup[];
+  fulfillmentModes?: ReportGroup[];
   shops: {
     id: string;
     label: Record<Locale, string>;

@@ -1,6 +1,23 @@
 import type { Locale } from '@hogulink/contracts';
 const words = {
   retryTime: ['空き時間を選び直す', 'Choose a new time', '重新选择可约时段'],
+  guaranteeTitle: [
+    'お支払いの再認証が必要です',
+    'Renew your payment guarantee',
+    '需要重新认证支付',
+  ],
+  guaranteeText: [
+    '訪問前の与信が承認されませんでした。期限までに決済方法を再認証してください。期限を過ぎると予約は無料でキャンセルされ、時間は解放されます。',
+    'The pre-visit authorization was declined. Renew your payment method by the deadline, or the booking is cancelled free of charge and the time released.',
+    '上门前的预授权未通过。请在截止前重新认证支付方式，逾期预约将免费取消并释放时段。',
+  ],
+  guaranteeProvider: [
+    'お客様の訪問前与信が未完了です。再認証されるまで出発しないでください。期限を過ぎると無料キャンセルになります。',
+    'The customer’s pre-visit authorization failed. Do not depart until it is renewed; after the deadline the booking is cancelled free.',
+    '顾客的上门前预授权未通过。重新认证前请勿出发，逾期将免费取消。',
+  ],
+  guaranteeBy: ['再認証の期限', 'Renew by', '认证截止'],
+  guaranteeRenew: ['決済を再認証', 'Renew payment', '重新认证支付'],
   released: [
     '決済認証に失敗したため、仮予約を解除しました。空き時間を確認して再度お進みください。',
     'Payment authentication failed and your time was released. Check availability again before retrying.',

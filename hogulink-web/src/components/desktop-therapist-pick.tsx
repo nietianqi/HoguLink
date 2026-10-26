@@ -1,3 +1,5 @@
+import { ModePrices } from './service-mode';
+import { choiceModePrices, type browseServiceChoices } from '@/lib/consumer-model';
 import Link from 'next/link';
 import { ChevronRight, Languages } from 'lucide-react';
 import type { ListingStats, Locale } from '@hogulink/contracts';
@@ -20,7 +22,10 @@ export function DesktopTherapistPick({
   point,
   locating,
   onLocate,
-}: ReturnType<typeof featuredTherapists>[number] & {
+}: {
+  listing: import('@hogulink/contracts').Listing;
+  choice: ReturnType<typeof browseServiceChoices>[number];
+} & {
   locale: Locale;
   demo: boolean;
   stats?: ListingStats;
@@ -66,10 +71,7 @@ export function DesktopTherapistPick({
         />
         <div className="h5-home-therapist-bottom">
           <div className="h5-home-therapist-price">
-            <H5Price locale={l} total={choice.total} />
-            <span className="h5-home-therapist-duration">
-              / {choice.offering.durationMinutes} {t(l, 'minutes')}
-            </span>
+            <ModePrices locale={l} prices={choiceModePrices(choice.variants, listing.id)} />
           </div>
           <Link className="h5-home-times" href={href}>
             {ht(l, 'chooseTime')}

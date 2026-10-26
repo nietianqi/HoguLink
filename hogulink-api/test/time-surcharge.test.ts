@@ -243,7 +243,7 @@ test('the order freezes the surcharge: a later band change needs a new quote, ca
     assert.equal(done.capturedAmount, q.total);
   }));
 
-test('the H5 directory price at the shown slot equals the quote and price sorting uses the base price', () =>
+test('the H5 directory price at the shown slot equals the quote and "lowest total" sorts by that price', () =>
   fixture(async (e) => {
     // A band covering the whole bookable day makes every shown slot carry it.
     await setBands(e, [{ startMinute: 0, endMinute: 23 * 60 + 45, amount: 1200 }]);
@@ -253,8 +253,10 @@ test('the H5 directory price at the shown slot equals the quote and price sortin
     assert.equal(aoi.timeSurcharge, 1200);
     const q = await quote(e, aoi.earliestAt!);
     assert.equal(q.total, aoi.total);
-    const base = (row: (typeof page.items)[number]) => row.total - (row.timeSurcharge ?? 0);
-    assert.ok(page.items.every((row, i) => i === 0 || base(page.items[i - 1]) <= base(row)));
+    assert.ok(
+      page.items.every((row, i) => i === 0 || page.items[i - 1].total <= row.total),
+      'sorted by the total the customer sees',
+    );
     // Other shops without bands are unchanged.
     const mori = page.items.find((row) => row.store.id === 'store-mori');
     if (mori) assert.equal(mori.timeSurcharge, undefined);
@@ -310,4 +312,28 @@ test('an instant slot is offered only when the total with the surcharge fits the
     );
     // A daytime instant visit is unaffected by the evening band.
     assert.equal(timeSurchargeAt(await rules(e), jst(12)), 0);
+  }));
+
+test('"lowest total" ranks by the surcharge-inclusive price across pages', () =>
+  fixture(async (e) => {
+    // Nagi charges a surcharge on every bookable start; the other shops do not.
+    await setBands(e, [{ startMinute: 0, endMinute: 23 * 60 + 45, amount: 9000 }]);
+    const all: number[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await mobileTherapists(e, {
+        duration: '60',
+        sort: 'price',
+        limit: '2',
+        ...(cursor ? { cursor } : {}),
+      });
+      all.push(...page.items.map((row) => row.total));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    assert.ok(all.length > 2);
+    assert.deepEqual(
+      all,
+      [...all].sort((a, b) => a - b),
+      'ascending across every page',
+    );
   }));

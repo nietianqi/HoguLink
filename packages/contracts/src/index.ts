@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { FulfillmentMode, Venue, VenueSnapshot, PublicVenue } from './service-mode.js';
+export type * from './service-mode.js';
 
 export const locales = ['ja', 'en', 'zh-cn'] as const;
 export type Locale = (typeof locales)[number];
@@ -164,8 +166,14 @@ export type Store = {
   ownerStaffId?: string;
   legalAddress: string;
   contact: string;
+  /** The live venue that bookings use. */
+  venue?: Venue;
+  /** Reviewed facts (address, photos, ...) awaiting platform review; the live venue keeps serving. */
+  venueDraft?: Venue;
+  homeVisitsEnabled?: boolean;
 };
 export type Offering = {
+  fulfillmentMode?: FulfillmentMode;
   id: string;
   storeId: string;
   name: Localized;
@@ -196,6 +204,8 @@ export type PublicStore = Pick<
   | 'approved'
   | 'areas'
 > & {
+  venue?: PublicVenue;
+  homeVisitsEnabled?: boolean;
   bookingRules?: Pick<
     StoreBookingRules,
     | 'version'
@@ -204,9 +214,12 @@ export type PublicStore = Pick<
     | 'cancellationPolicy'
     | 'timeSurcharges'
     | 'areaTransportFees'
+    | 'businessHours'
   >;
 };
 export type Listing = {
+  serviceModesVersion?: number;
+  fulfillmentModes?: FulfillmentMode[];
   id: string;
   slug: string;
   storeId: string;
@@ -228,6 +241,9 @@ export type Listing = {
   photo: string;
 };
 export type Quote = {
+  fulfillmentMode?: FulfillmentMode;
+  venue?: VenueSnapshot;
+  completionPolicy?: { version: 'silence-72h-v1'; windowHours: 72 };
   id: string;
   customerId: string;
   listingId: string;
@@ -258,6 +274,7 @@ export type Quote = {
   cancellationPolicy: CancellationPolicy;
 };
 export type Hold = {
+  resourceId?: string;
   id: string;
   quoteId: string;
   customerId: string;
@@ -292,6 +309,11 @@ export type Booking = {
   staffTaskStatus: 'NOT_SENT' | 'OFFERED' | 'ACKNOWLEDGED' | 'DECLINED' | 'EXPIRED' | 'WITHDRAWN';
   acceptanceMode: AcceptanceMode;
   paymentStatus: PaymentStatus;
+  /**
+   * Set when the pre-visit authorization of a far-future booking failed: the customer must
+   * renew the payment guarantee by this time, otherwise the booking is cancelled free.
+   */
+  paymentActionBy?: number;
   acceptanceDecision?: AcceptanceDecision;
   replacementConsent: 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'DECLINED' | 'EXPIRED';
   proposedListingId?: string;
@@ -299,6 +321,12 @@ export type Booking = {
   cancelReason?: string;
   quote: Quote;
   address?: Address;
+  contact?: { name: string; phone: string };
+  resourceId?: string;
+  checkIn?: { at: number; actorId: string };
+  resourceName?: string;
+  checkInCode?: string;
+  visitReminderAt?: number;
   legalNameSnapshot: string;
   deadline: number;
   version: number;
@@ -320,6 +348,8 @@ export type Booking = {
     requestedAt: number;
     confirmBy: number;
     confirmedAt?: number;
+    /** Confirmed because no dispute arrived within the disclosed window. */
+    autoConfirmed?: boolean;
     ticketId?: string;
     reviewStatus?: 'PENDING' | 'DISPUTED' | 'TIMED_OUT';
     history: { action: string; at: number; role: Role; note?: string }[];
@@ -531,7 +561,7 @@ export type Message = {
 export type ApiError = { error: { code: string; message: string }; requestId?: string };
 export type AdminBooking = Omit<
   Booking,
-  'address' | 'customerId' | 'paymentId' | 'holdId' | 'quote'
+  'address' | 'contact' | 'checkInCode' | 'customerId' | 'paymentId' | 'holdId' | 'quote'
 > & { quote: Omit<Quote, 'customerId'> };
 export type AdminReview = {
   id: string;
@@ -561,12 +591,13 @@ export type TimeOffRequest = {
 };
 export const quoteInput = z
   .object({
+    fulfillmentMode: z.enum(['HOME_VISIT', 'IN_STORE']).default('HOME_VISIT'),
     listingId: z.string().min(1),
     offeringId: z.string().min(1),
     bookingMode: z.enum(['INSTANT', 'SCHEDULED']),
     nominationType: z.enum(['NOMINATED', 'FREE']),
     startAt: z.number().int().positive(),
-    area: z.enum(['shinjuku', 'shibuya', 'minato', 'chuo', 'taito']),
+    area: z.enum(['', 'shinjuku', 'shibuya', 'minato', 'chuo', 'taito']).default(''),
     requiredLanguage: z.enum(['', 'ja', 'en', 'zh']).default(''),
   })
   .strict();
@@ -586,7 +617,11 @@ export const bookingInput = z
     holdId: z.string(),
     quoteId: z.string(),
     paymentId: z.string(),
-    address: addressInput,
+    address: addressInput.optional(),
+    contact: z
+      .object({ name: z.string().trim().min(2).max(80), phone: z.string().trim().min(5).max(40) })
+      .strict()
+      .optional(),
     termsAccepted: z.literal(true),
     policyVersion: z.string(),
   })
@@ -619,7 +654,31 @@ export type StoreBookingRules = {
    * menu's travel fee; other areas use the menu's own fee. Free-travel menus stay free.
    */
   areaTransportFees?: Record<string, number>;
+  /**
+   * When scheduled visits may start, in JST minutes. An end before the start crosses
+   * midnight; 0-1440 means all day. Unset shops use the platform default 09:00-22:00.
+   * Instant visits follow on-duty status instead.
+   */
+  businessHours?: BusinessHours;
 };
+export type BusinessHours = { startMinute: number; endMinute: number };
+export const DEFAULT_BUSINESS_HOURS: BusinessHours = { startMinute: 9 * 60, endMinute: 22 * 60 };
+/** Whether a scheduled visit may start at `startAt` under the shop's business hours. */
+export function withinBusinessHours(
+  rules: { businessHours?: BusinessHours } | undefined,
+  startAt: number,
+) {
+  const hours = rules?.businessHours ?? DEFAULT_BUSINESS_HOURS;
+  const minute = japanMinute(startAt);
+  return surchargeSegments(hours).some(([start, end]) => minute >= start && minute < end);
+}
+export const businessHoursInput = z
+  .object({
+    startMinute: z.number().int().min(0).max(1410).multipleOf(30),
+    endMinute: z.number().int().min(30).max(1440).multipleOf(30),
+  })
+  .strict()
+  .refine((h) => h.startMinute !== h.endMinute % 1440 || h.endMinute === 1440);
 export const AREA_TRAVEL_RULES = { maxFee: 20000 } as const;
 /** The travel fee a visit to `area` pays for this menu under the shop's current rules. */
 export function travelFeeFor(
@@ -722,6 +781,8 @@ export const storeBookingRulesInput = z
     timeSurcharges: timeSurchargesInput.optional(),
     /** Omitted keeps the current table; {} removes it. Areas must be the shop's own. */
     areaTransportFees: areaTransportFeesInput.optional(),
+    /** Omitted keeps the current hours. */
+    businessHours: businessHoursInput.optional(),
   })
   .strict()
   .refine((d) => (d.templateId === 'CUSTOM' ? !!d.customPolicy : d.customPolicy === undefined));
@@ -848,10 +909,15 @@ export function dailyAutomaticCount(bookings: Booking[], storeId: string, startA
 
 export function automaticAcceptanceReason(
   store: Pick<Store, 'acceptanceMode' | 'acceptanceRule'>,
-  quote: Pick<Quote, 'bookingMode' | 'offeringId' | 'area' | 'startAt' | 'endAt' | 'total'>,
+  quote: Pick<
+    Quote,
+    'bookingMode' | 'offeringId' | 'area' | 'startAt' | 'endAt' | 'total' | 'fulfillmentMode'
+  >,
   listingId: string,
   used: number,
 ): AcceptanceReason {
+  // Store visits require an explicit shop acceptance until mode-scoped automation exists.
+  if (quote.fulfillmentMode === 'IN_STORE') return 'MANUAL_MODE';
   if (store.acceptanceMode !== 'AUTO_PREAUTHORIZED') return 'MANUAL_MODE';
   const r = store.acceptanceRule;
   if (!r) return 'NO_RULE';
@@ -1027,3 +1093,195 @@ export function areaDistanceKm(from: string, to: string[]) {
     ...to.map((x) => (areaCentroids[x] ? distanceKm(a, areaCentroids[x]) : Infinity)),
   );
 }
+
+// Shared runtime lives in the package entry, matching the source-only bundler contract.
+export const fulfillmentModes = ['HOME_VISIT', 'IN_STORE'] as const;
+export const fulfillmentMode = (value: { fulfillmentMode?: FulfillmentMode }): FulfillmentMode =>
+  value.fulfillmentMode ?? 'HOME_VISIT';
+export const venueInput = z
+  .object({
+    version: z.number().int().min(0),
+    enabled: z.boolean(),
+    address: z.string().trim().min(5).max(300),
+    area: z.enum(['shinjuku', 'shibuya', 'minato', 'chuo', 'taito']),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    contact: z.string().trim().min(3).max(100),
+    directions: z.string().trim().max(500),
+    photos: z
+      .array(
+        z
+          .string()
+          .max(500)
+          // Platform images or this shop's uploads only: an external link could change after review.
+          .refine((p) => /^\/images\/[\w/.-]+$/.test(p) || venuePhotoId(p) !== undefined),
+      )
+      .min(1)
+      .max(8),
+    businessHours: z
+      .object({
+        startMinute: z.number().int().min(0).max(1410).multipleOf(30),
+        endMinute: z.number().int().min(30).max(1440).multipleOf(30),
+      })
+      .strict()
+      .refine((h) => h.startMinute !== h.endMinute % 1440 || h.endMinute === 1440),
+    turnoverMinutes: z.number().int().min(5).max(120).multipleOf(5),
+    closedDates: z
+      .array(
+        z
+          .string()
+          .regex(/^20\d{2}-\d{2}-\d{2}$/)
+          .refine(
+            (s) =>
+              Number.isFinite(Date.parse(`${s}T00:00:00Z`)) &&
+              new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s,
+          ),
+      )
+      .max(366)
+      .default([]),
+    closedWeekdays: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+    nominationFee: z.number().int().min(0).max(20000).default(500),
+    cancellationTemplateId: z.enum(['FLEXIBLE_2H', 'STANDARD_24H']).default('FLEXIBLE_2H'),
+    resources: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(/^[a-zA-Z0-9_-]{1,60}$/),
+            name: z.string().trim().min(1).max(60),
+            active: z.boolean(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(50),
+  })
+  .strict()
+  .refine(
+    (v) => new Set(v.resources.map((r) => r.id)).size === v.resources.length,
+    'Resource IDs must be unique',
+  );
+export const venueAvailable = (store: {
+  venue?: {
+    status: string;
+    enabled: boolean;
+    capacity?: number;
+    resources?: { active: boolean }[];
+  };
+}) =>
+  store.venue?.status === 'APPROVED' &&
+  store.venue.enabled &&
+  (store.venue.resources
+    ? store.venue.resources.some((r) => r.active)
+    : store.venue.capacity === undefined || store.venue.capacity > 0);
+export const listingSupports = (
+  listing: Pick<Listing, 'fulfillmentModes'>,
+  mode: FulfillmentMode,
+) => (listing.fulfillmentModes ?? ['HOME_VISIT']).includes(mode);
+/** Every minute of service must fall inside one continuous JST opening window. */
+export function withinVenueHours(hours: BusinessHours, startAt: number, endAt: number) {
+  if (endAt <= startAt) return false;
+  if (hours.startMinute === 0 && hours.endMinute === 1440) return true;
+  return openingDay(hours, startAt, endAt) !== undefined;
+}
+/** JST midnight (epoch ms) of the business day whose opening window holds the whole service. */
+function openingDay(hours: BusinessHours, startAt: number, endAt: number) {
+  const day = 86_400_000,
+    midnight = Math.floor((startAt + 9 * 3_600_000) / day) * day - 9 * 3_600_000;
+  for (const base of [midnight - day, midnight]) {
+    const from = base + hours.startMinute * 60_000;
+    const to =
+      base +
+      (hours.endMinute <= hours.startMinute ? hours.endMinute + 1440 : hours.endMinute) * 60_000;
+    if (startAt >= from && endAt <= to) return base;
+  }
+  return undefined;
+}
+export const venueSnapshot = (venue: Venue): VenueSnapshot => {
+  const {
+    version,
+    address,
+    area,
+    latitude,
+    longitude,
+    contact,
+    directions,
+    turnoverMinutes,
+    businessHours,
+  } = venue;
+  return {
+    version,
+    address,
+    area,
+    latitude,
+    longitude,
+    contact,
+    directions,
+    turnoverMinutes,
+    businessHours: { ...businessHours },
+    closedDates: [...(venue.closedDates ?? [])],
+    closedWeekdays: [...(venue.closedWeekdays ?? [])],
+  };
+};
+export function venueCanServe(
+  venue: Pick<Venue, 'businessHours' | 'closedDates' | 'closedWeekdays'>,
+  startAt: number,
+  endAt: number,
+) {
+  if (!withinVenueHours(venue.businessHours, startAt, endAt)) return false;
+  const day = 86_400_000,
+    hours = venue.businessHours;
+  // `jstDay` is a JST calendar day expressed as a UTC date.
+  const closed = (jstDay: number) => {
+    const date = new Date(jstDay);
+    return (
+      !!venue.closedDates?.includes(date.toISOString().slice(0, 10)) ||
+      !!venue.closedWeekdays?.includes(date.getUTCDay())
+    );
+  };
+  // A night that runs past midnight belongs to the day it opened, so Friday 18:00-04:00 is
+  // still open at 01:00 when Saturday is the closing day.
+  if (hours.startMinute !== 0 || hours.endMinute !== 1440)
+    return !closed(openingDay(hours, startAt, endAt)! + 9 * 3_600_000);
+  for (
+    let at = Math.floor((startAt + 9 * 3_600_000) / day) * day;
+    at < endAt + 9 * 3_600_000;
+    at += day
+  )
+    if (closed(at)) return false;
+  return true;
+}
+/** Venue fields customers rely on to find the place; changing them needs platform review. */
+export const VENUE_REVIEWED_FIELDS = [
+  'address',
+  'area',
+  'latitude',
+  'longitude',
+  'contact',
+  'directions',
+  'photos',
+] as const;
+/**
+ * The venue as the shop edits it: pending reviewed facts over the live operating settings.
+ * Bookings always use `store.venue`.
+ */
+export function editableVenue(store: { venue?: Venue; venueDraft?: Venue }): Venue | undefined {
+  const { venue, venueDraft: draft } = store;
+  if (!venue || !draft) return venue ?? draft;
+  const facts = Object.fromEntries(VENUE_REVIEWED_FIELDS.map((key) => [key, draft[key]]));
+  return {
+    ...venue,
+    ...facts,
+    status: draft.status,
+    version: draft.version,
+    reviewedBy: draft.reviewedBy,
+    reviewNote: draft.reviewNote,
+  };
+}
+const VENUE_PHOTO_PATH = /^\/v1\/public\/venue-photos\/(evidence_[0-9a-f-]{36})$/;
+/** Public path of a venue photo uploaded through the platform. */
+export const venuePhotoUrl = (id: string) => `/v1/public/venue-photos/${id}`;
+export const venuePhotoId = (url: string) => VENUE_PHOTO_PATH.exec(url)?.[1];
+/** After a shop reports an in-store no-show, the customer can reply this long before any fee. */
+export const IN_STORE_NO_SHOW_REPLY_MINUTES = 30;
+export const offeringSupports = (offering: Offering, mode: FulfillmentMode) =>
+  fulfillmentMode(offering) === mode;

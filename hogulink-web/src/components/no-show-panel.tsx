@@ -1,13 +1,25 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import type { Booking, Locale, Role } from '@hogulink/contracts';
+import {
+  IN_STORE_NO_SHOW_REPLY_MINUTES,
+  type Booking,
+  type Locale,
+  type Role,
+} from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
 import { dateTime, money } from '@/lib/i18n';
 import { xt, exceptionError } from '@/lib/exception-i18n';
+import { sv } from '@/lib/service-mode-i18n';
 import { MobileSheet } from './mobile-ui';
 
-type NoShowBooking = Pick<Booking, 'id' | 'version' | 'status' | 'noShow' | 'arrivedAt'> & {
-  quote: Pick<Booking['quote'], 'total' | 'transportFee' | 'cancellationPolicy'>;
+type NoShowBooking = Pick<
+  Booking,
+  'id' | 'version' | 'status' | 'noShow' | 'arrivedAt' | 'checkIn'
+> & {
+  quote: Pick<
+    Booking['quote'],
+    'total' | 'transportFee' | 'cancellationPolicy' | 'fulfillmentMode' | 'startAt'
+  >;
 };
 export function NoShowPanel({
   locale: l,
@@ -27,6 +39,10 @@ export function NoShowPanel({
     [review, setReview] = useState(false),
     [agreed, setAgreed] = useState(false);
   const request = useRef('');
+  const inStore = b.quote.fulfillmentMode === 'IN_STORE';
+  const atVenue = inStore && b.status === 'CONFIRMED' && !b.checkIn;
+  const arrived = b.status === 'ARRIVED' || atVenue;
+  const canContact = role === 'STAFF' || (inStore && role === 'MERCHANT');
   useEffect(() => {
     setText(xt(l, role === 'STAFF' ? 'contactText' : 'noteText'));
     setError('');
@@ -35,17 +51,17 @@ export function NoShowPanel({
     request.current = '';
   }, [b.id, l, role]);
   useEffect(() => {
-    if (b.status !== 'ARRIVED' || b.noShow?.status !== 'REPORTED') setReview(false);
+    if (!arrived || b.noShow?.status !== 'REPORTED') setReview(false);
   }, [b.status, b.noShow?.status]);
   useEffect(() => {
-    if (b.status !== 'ARRIVED' || (role !== 'STAFF' && role !== 'MERCHANT')) return;
+    if (!arrived || (role !== 'STAFF' && role !== 'MERCHANT')) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [b.id, b.status, role]);
   const policy = b.quote.cancellationPolicy.noShow,
     report = b.noShow;
-  if (!(role === 'STAFF' && b.status === 'ARRIVED') && !report) return null;
+  if (!(canContact && arrived) && !report) return null;
   if (!policy) return <p className="notice">{xt(l, 'legacy')}</p>;
   const fee = Math.floor(((b.quote.total - b.quote.transportFee) * policy.feeBps) / 10000);
   const ready =
@@ -86,10 +102,10 @@ export function NoShowPanel({
   return (
     <section className="exception-panel" aria-label={xt(l, 'title')}>
       <div className="exception-heading">
-        <h3>{xt(l, 'title')}</h3>
+        <h3>{inStore ? sv(l, 'noShow') : xt(l, 'title')}</h3>
         <span>{xt(l, report?.status ?? 'CONTACTING')}</span>
       </div>
-      <p>{xt(l, 'help')}</p>
+      <p>{inStore ? sv(l, 'noShowHelp') : xt(l, 'help')}</p>
       <dl className="exception-facts">
         <div>
           <dt>{xt(l, 'attempts')}</dt>
@@ -101,6 +117,12 @@ export function NoShowPanel({
           <div>
             <dt>{xt(l, 'waitUntil')}</dt>
             <dd>{dateTime(l, report.waitUntil)} JST</dd>
+          </div>
+        )}
+        {inStore && report?.status === 'REPORTED' && report.reportedAt !== undefined && (
+          <div>
+            <dt>{sv(l, 'replyUntil')}</dt>
+            <dd>{dateTime(l, report.reportedAt + IN_STORE_NO_SHOW_REPLY_MINUTES * 60000)} JST</dd>
           </div>
         )}
         <div>
@@ -118,50 +140,49 @@ export function NoShowPanel({
         </ol>
       )}
       {report?.reviewNote && <p>{report.reviewNote}</p>}
-      {role === 'STAFF' &&
-        b.status === 'ARRIVED' &&
-        (!report || report.status === 'CONTACTING') && (
-          <>
-            <label className="field">
-              {xt(l, 'message')}
-              <textarea
-                value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  request.current = '';
-                }}
-                minLength={10}
-                maxLength={500}
-                disabled={busy}
-                rows={3}
-              />
-            </label>
-            <div className="button-row">
-              <button
-                className="button secondary"
-                disabled={busy || !now || now < nextContact}
-                onClick={() => void act('CONTACT')}
-              >
-                {xt(l, 'contact')}
-              </button>
-              <button
-                className="button"
-                disabled={busy || !ready}
-                onClick={() => void act('REPORT')}
-              >
-                {xt(l, 'report')}
-              </button>
-            </div>
-            {!!nextContact && now < nextContact && (
-              <p>
-                {xt(l, 'nextContact')} · {dateTime(l, nextContact)} JST
-              </p>
-            )}
-            {!ready && <p>{xt(l, 'notReady')}</p>}
-          </>
+      {inStore &&
+        role === 'CUSTOMER' &&
+        (report?.status === 'CONTACTING' || report?.status === 'REPORTED') && (
+          <p className="notice">{sv(l, 'noShowReply')}</p>
         )}
+      {canContact && arrived && (!report || report.status === 'CONTACTING') && (
+        <>
+          <label className="field">
+            {xt(l, 'message')}
+            <textarea
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                request.current = '';
+              }}
+              minLength={10}
+              maxLength={500}
+              disabled={busy}
+              rows={3}
+            />
+          </label>
+          <div className="button-row">
+            <button
+              className="button secondary"
+              disabled={busy || !now || now < nextContact || (inStore && now < b.quote.startAt)}
+              onClick={() => void act('CONTACT')}
+            >
+              {xt(l, 'contact')}
+            </button>
+            <button className="button" disabled={busy || !ready} onClick={() => void act('REPORT')}>
+              {xt(l, 'report')}
+            </button>
+          </div>
+          {!!nextContact && now < nextContact && (
+            <p>
+              {xt(l, 'nextContact')} · {dateTime(l, nextContact)} JST
+            </p>
+          )}
+          {!ready && <p>{xt(l, 'notReady')}</p>}
+        </>
+      )}
       {role === 'MERCHANT' &&
-        b.status === 'ARRIVED' &&
+        arrived &&
         report &&
         ['CONTACTING', 'REPORTED'].includes(report.status) && (
           <>

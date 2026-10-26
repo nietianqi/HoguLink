@@ -32,6 +32,16 @@ export async function advanceVisit(b, event) {
     await clock(Math.max(Date.now(), b.startedAt + b.quote.endAt - b.quote.startAt));
 }
 export const advanceTo = clock;
+/**
+ * Moves a scheduled start into the default 09:00-22:00 JST business hours, never earlier.
+ * Starts stay at or before 18:00 so a script's "+3 hours" variant is still bookable.
+ */
+export function bookable(at) {
+  const minute = Math.floor((at + 9 * 3600000) / 60000) % 1440;
+  if (minute >= 9 * 60 && minute <= 18 * 60) return at;
+  const ten = Math.floor((at + 9 * 3600000) / 86400000) * 86400000 + 3600000;
+  return ten > at ? ten : ten + 86400000;
+}
 export async function fixtureCall(cookie, path, body, expected = 200, key = randomUUID()) {
   const response = await fetch(`${base}/v1/${path}`, {
     method: body === undefined ? 'GET' : 'POST',

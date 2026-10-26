@@ -1,4 +1,5 @@
 'use client';
+import { sv } from '@/lib/service-mode-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -712,11 +713,17 @@ export function ReportingCenter({
               {tiles(['orders', 'completed', 'pending', 'completionBps'])}
               <p className="report-method">{rt(l, 'cohortHelp')}</p>
               <div className="report-two-columns">
-                {(['services', 'modes'] as const).map((group) => (
+                {(['services', 'modes', 'fulfillmentModes'] as const).map((group) => (
                   <div className="finance-panel" key={group}>
-                    <h4>{rt(l, group === 'services' ? 'byService' : 'byMode')}</h4>
-                    {!data[group].length && <p className="finance-muted">{rt(l, 'noData')}</p>}
-                    {data[group].map((g) => (
+                    <h4>
+                      {group === 'fulfillmentModes'
+                        ? sv(l, 'mode')
+                        : rt(l, group === 'services' ? 'byService' : 'byMode')}
+                    </h4>
+                    {!(data[group] ?? []).length && (
+                      <p className="finance-muted">{rt(l, 'noData')}</p>
+                    )}
+                    {(data[group] ?? []).map((g) => (
                       <article className="report-rank" key={g.id}>
                         <strong>{g.label[l]}</strong>
                         <div>

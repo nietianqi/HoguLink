@@ -1,4 +1,5 @@
 import { H5TherapistDirectory } from '@/components/h5-therapist-directory';
+import { Suspense } from 'react';
 import { serverApi } from '@/lib/api';
 import { asLocale, t } from '@/lib/i18n';
 import { directoryQuery, directoryHref } from '@/lib/therapist-directory-model';
@@ -22,17 +23,21 @@ export default async function Page({
   const q = directoryQuery(raw);
   try {
     const [initial, bootstrap] = await Promise.all([
-      serverApi<MobileTherapists>(`public/h5/therapists?${new URLSearchParams(q)}`),
+      serverApi<MobileTherapists>(
+        `public/h5/therapists?${new URLSearchParams({ ...q, fulfillmentMode: q.fulfillmentMode || 'ALL' })}`,
+      ),
       serverApi<MobileBootstrap>('public/h5/bootstrap'),
     ]);
     return (
-      <H5TherapistDirectory
-        key={JSON.stringify(q)}
-        locale={l}
-        q={q}
-        initial={initial}
-        bootstrap={bootstrap}
-      />
+      <>
+        <H5TherapistDirectory
+          key={JSON.stringify(q)}
+          locale={l}
+          q={q}
+          initial={initial}
+          bootstrap={bootstrap}
+        />
+      </>
     );
   } catch {
     return (

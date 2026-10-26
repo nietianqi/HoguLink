@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import { encodeRecord, decodeRecord } from './record-codec.js';
+import { config } from './config.js';
 import type { ListingStats } from '@hogulink/contracts';
 
 type Row = { id: string; body: string };
@@ -39,6 +40,8 @@ const indexedFields = [
   'staffId',
   'assignedStaffId',
   'assignedListingId',
+  'replacementConsent',
+  'proposedListingId',
   'listingId',
   'bookingId',
   'holdId',
@@ -75,6 +78,19 @@ function wakeup(kind: string, value: any): number | undefined {
     if (value.replacementConsent === 'PENDING') times.push(value.replacementDeadline);
     if (value.status === 'AWAITING_COMPLETION' && value.completion?.status === 'PENDING')
       times.push(value.completion.confirmBy);
+    if (
+      value.quote?.fulfillmentMode === 'IN_STORE' &&
+      value.status === 'CONFIRMED' &&
+      value.staffTaskStatus === 'ACKNOWLEDGED' &&
+      !value.visitReminderAt
+    )
+      times.push(value.quote.startAt - 24 * 3600000);
+    // Far-future bookings: the pre-visit authorization, then the renewal deadline if it failed.
+    if (['REQUESTED', 'ACCEPTED', 'CONFIRMED'].includes(value.status) && !value.startedAt) {
+      if (value.paymentStatus === 'METHOD_SAVED')
+        times.push(value.quote.startAt - config.preAuthorizeHours * 3600000);
+      if (value.paymentStatus === 'FAILED') times.push(value.paymentActionBy);
+    }
   }
   if (kind === 'payments' && ['AUTHORIZED', 'METHOD_SAVED'].includes(value.status))
     times.push(value.expiresAt);
@@ -160,6 +176,16 @@ export class Repository {
       'CREATE TABLE IF NOT EXISTS record_wakeups (kind TEXT NOT NULL,id TEXT NOT NULL,due_at BIGINT NOT NULL,PRIMARY KEY(kind,id))',
     );
     await execute('CREATE INDEX IF NOT EXISTS record_wakeups_due ON record_wakeups(due_at)');
+    // Old rows without a mode are home visits. They must not be converted by later writes.
+    if (this.pool)
+      await execute(`CREATE OR REPLACE FUNCTION protect_service_mode() RETURNS trigger AS $$
+      BEGIN IF OLD.kind='bookings' AND COALESCE(NEW.body::jsonb->'quote'->>'fulfillmentMode','HOME_VISIT') IS DISTINCT FROM COALESCE(OLD.body::jsonb->'quote'->>'fulfillmentMode','HOME_VISIT') THEN RAISE EXCEPTION 'Immutable service mode'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+      DROP TRIGGER IF EXISTS immutable_service_mode ON records;
+      CREATE TRIGGER immutable_service_mode BEFORE UPDATE ON records FOR EACH ROW EXECUTE FUNCTION protect_service_mode();`);
+    else
+      await execute(
+        `CREATE TRIGGER IF NOT EXISTS immutable_service_mode BEFORE UPDATE ON records WHEN OLD.kind='bookings' AND COALESCE(json_extract(NEW.body,'$.quote.fulfillmentMode'),'HOME_VISIT') IS NOT COALESCE(json_extract(OLD.body,'$.quote.fulfillmentMode'),'HOME_VISIT') BEGIN SELECT RAISE(ABORT,'Immutable service mode'); END;`,
+      );
     for (const field of indexedFields) {
       const name = field.replace(/\./g, '_');
       await execute(

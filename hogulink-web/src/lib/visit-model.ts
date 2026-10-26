@@ -1,9 +1,26 @@
-import { effectiveServicePrice } from '@hogulink/contracts';
+import {
+  effectiveServicePrice,
+  fulfillmentMode,
+  listingSupports,
+  type FulfillmentMode,
+} from '@hogulink/contracts';
 import type { Address, Listing, Offering } from '@hogulink/contracts';
+
+/** Carry only the public service-mode preference through normal customer navigation. */
+export function withServiceMode(href: string, mode: string | null | undefined) {
+  if (mode !== 'IN_STORE' || !href.startsWith('/') || href.startsWith('//')) return href;
+  const url = new URL(href, 'http://hogulink.local');
+  url.searchParams.set('fulfillmentMode', 'IN_STORE');
+  if (url.searchParams.get('mode') === 'INSTANT') url.searchParams.set('mode', 'SCHEDULED');
+  return `${url.pathname}?${url.searchParams}${url.hash}`;
+}
 
 /** Carry browsing preferences between providers, never a hold, payment or old timeslot. */
 export function visitPreferences(raw: Record<string, unknown>): Record<string, string> {
   return {
+    ...(raw.fulfillmentMode === 'IN_STORE' || raw.fulfillmentMode === 'HOME_VISIT'
+      ? { fulfillmentMode: raw.fulfillmentMode }
+      : {}),
     ...(typeof raw.area === 'string' && raw.area ? { area: raw.area } : {}),
     ...(typeof raw.language === 'string' && raw.language ? { language: raw.language } : {}),
     ...(raw.mode === 'INSTANT' || raw.mode === 'SCHEDULED' ? { mode: raw.mode } : {}),
@@ -14,6 +31,10 @@ export function visitPreferences(raw: Record<string, unknown>): Record<string, s
 export function visitSelection(raw: Record<string, unknown>): Record<string, string> {
   return {
     ...visitPreferences(raw),
+    ...(raw.modeConfirmed === '1' &&
+    (raw.fulfillmentMode === 'HOME_VISIT' || raw.fulfillmentMode === 'IN_STORE')
+      ? { modeConfirmed: '1' }
+      : {}),
     ...(typeof raw.offering === 'string' && raw.offering.length > 0 && raw.offering.length <= 120
       ? { offering: raw.offering }
       : {}),
@@ -31,6 +52,7 @@ export function visitServices(
   listing: Listing,
   team: Listing[],
   nomination: string,
+  serviceMode: FulfillmentMode = 'HOME_VISIT',
 ) {
   const members =
     nomination === 'FREE' ? team.filter((x) => x.storeId === listing.storeId) : [listing];
@@ -38,9 +60,11 @@ export function visitServices(
     .filter(
       (o) =>
         o.approved &&
+        fulfillmentMode(o) === serviceMode &&
+        o.active !== false &&
         o.regulatoryCategory === 'RELAXATION' &&
         o.storeId === listing.storeId &&
-        members.some((x) => x.offeringIds.includes(o.id)),
+        members.some((x) => listingSupports(x, serviceMode) && x.offeringIds.includes(o.id)),
     )
     .sort((a, b) => a.durationMinutes - b.durationMinutes || a.price - b.price);
 }
@@ -51,11 +75,13 @@ export function visitTeam(
   nomination: string,
   language = '',
   mode = 'SCHEDULED',
+  serviceMode?: FulfillmentMode,
 ) {
   return (nomination === 'FREE' ? team : [listing]).filter(
     (x) =>
       x.storeId === listing.storeId &&
       x.offeringIds.includes(offeringId) &&
+      (!serviceMode || listingSupports(x, serviceMode)) &&
       (!language || x.languages.includes(language)) &&
       (mode !== 'INSTANT' || x.onDuty),
   );

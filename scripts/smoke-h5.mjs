@@ -242,7 +242,12 @@ for (const locale of ['zh-cn', 'ja', 'en']) {
     { signal: AbortSignal.timeout(15000) },
   );
   check(profile.ok, `${locale}: profile navigation is readable`);
-  const profileLinks = pageLinks(await profile.text());
+  const profileHtml = await profile.text();
+  check(
+    !profileHtml.includes('class="service-mode-nav'),
+    `${locale}: profile has no repeated mode navigation`,
+  );
+  const profileLinks = pageLinks(profileHtml);
   for (const className of ['affiliated-shop', 'sidebar-shop-link']) {
     const link = profileLinks.find((item) => item.attributes.includes(className));
     check(
@@ -272,7 +277,12 @@ for (const locale of ['zh-cn', 'ja', 'en']) {
     { signal: AbortSignal.timeout(15000) },
   );
   check(shop.ok, `${locale}: shop navigation is readable`);
-  const shopLinks = pageLinks(await shop.text());
+  const shopHtml = await shop.text();
+  check(
+    !shopHtml.includes('class="service-mode-nav'),
+    `${locale}: shop has no repeated mode navigation`,
+  );
+  const shopLinks = pageLinks(shopHtml);
   const menu = shopLinks.find(
     (item) =>
       item.url.pathname.startsWith(`/${locale}/book/`) &&
@@ -311,7 +321,20 @@ for (const locale of ['zh-cn', 'ja', 'en']) {
     { signal: AbortSignal.timeout(15000) },
   );
   check(booking.ok, `${locale}: planner return navigation is readable`);
-  const bookingLinks = pageLinks(await booking.text());
+  const bookingHtml = await booking.text();
+  const modeStart = bookingHtml.indexOf('class="choice-grid service-mode-picker"');
+  const choices =
+    modeStart < 0 ? '' : bookingHtml.slice(modeStart, bookingHtml.indexOf('</div>', modeStart));
+  check(
+    (choices.match(/aria-pressed="false"/g) ?? []).length === 2 &&
+      !choices.includes('aria-pressed="true"'),
+    `${locale}: ordinary planner requires an affirmative service-mode choice`,
+  );
+  const bookingLinks = pageLinks(bookingHtml);
+  check(
+    !bookingLinks.some((link) => link.url.searchParams.get('modeConfirmed') === '1'),
+    `${locale}: browsing preferences do not manufacture mode consent`,
+  );
   const returnLink = bookingLinks.find((item) => item.attributes.includes('class="back-link"'));
   check(
     returnLink &&

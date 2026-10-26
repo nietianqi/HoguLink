@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
   Heart,
@@ -16,10 +16,12 @@ import { ut } from '@/lib/consumer-i18n';
 import { xt } from '@/lib/discovery-i18n';
 import { af } from '@/lib/customer-flow-i18n';
 import { ht } from '@/lib/h5-i18n';
+import { withServiceMode } from '@/lib/visit-model';
 
 /** The account's own navigation; business workspaces remain separate. */
 export function CustomerAccountNav({ locale: l }: { locale: Locale }) {
   const pathname = usePathname();
+  const query = useSearchParams();
   const base = `/${l}/account`;
   if (pathname === `${base}/access`) return null;
   const items = [
@@ -51,7 +53,11 @@ export function CustomerAccountNav({ locale: l }: { locale: Locale }) {
             ? pathname === href || pathname.startsWith(`${href}/`)
             : !knownSection;
           return (
-            <Link key={href} href={href} aria-current={active ? 'page' : undefined}>
+            <Link
+              key={href}
+              href={withServiceMode(href, query.get('fulfillmentMode'))}
+              aria-current={active ? 'page' : undefined}
+            >
               <Icon size={18} aria-hidden="true" />
               <span>{label}</span>
             </Link>

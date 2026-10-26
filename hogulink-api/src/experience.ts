@@ -2,6 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   experienceDimensions,
+  fulfillmentMode,
+  venueAvailable,
+  listingSupports,
   type Actor,
   type Booking,
   type CustomerExperience,
@@ -475,6 +478,15 @@ export class ExperienceService {
         409,
       );
       const o = live.offerings.find((o) => o.id === b.quote.offeringId)!;
+      const inStore = fulfillmentMode(b.quote) === 'IN_STORE';
+      ensure(
+        fulfillmentMode(o) === fulfillmentMode(b.quote) &&
+          listingSupports(live.listing, fulfillmentMode(b.quote)) &&
+          (inStore ? venueAvailable(live.store) : live.store.homeVisitsEnabled !== false),
+        'REBOOK_UNAVAILABLE',
+        'This service mode is no longer available.',
+        409,
+      );
       const area = live.store.areas.includes(b.quote.area) ? b.quote.area : live.store.areas[0];
       return {
         listingSlug: live.listing.slug,
@@ -482,6 +494,7 @@ export class ExperienceService {
         offeringId: o.id,
         nominationType: b.quote.nominationType,
         bookingMode: 'SCHEDULED',
+        ...(inStore ? { fulfillmentMode: 'IN_STORE' as const } : {}),
         area,
         language: b.quote.requiredLanguage,
         priceChanged:

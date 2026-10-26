@@ -20,6 +20,7 @@ import {
 } from './helpers/experience-fixture.js';
 import type { Engine } from '../src/engine.js';
 import { DomainError } from '../src/errors.js';
+import { openAllDay } from './helpers/business-hours.js';
 const code = (c: string) => (e: unknown) => e instanceof DomainError && e.code === c;
 const reason = 'Reviewed original transactions, provider observations and the aftercare status.';
 const ws = (e: Engine, actor = admin) => e.finance.workspace(actor, { storeId: 'store-nagi' });
@@ -562,6 +563,7 @@ test('finance role writes, auditor only reads, revoked finance sessions stop imm
   }));
 test('month attribution uses JST and preserves cross-month refund adjustments', () =>
   fixture(async (e, clock) => {
+    await openAllDay(e);
     clock.now = Date.UTC(2026, 9, 31, 10);
     let b = await complete(e, clock);
     const month = (await ws(e)).month;

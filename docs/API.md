@@ -1,5 +1,21 @@
 # API 开发基线
 
+## 上门与到店预约（2026-10-26）
+
+新增独立 `fulfillmentMode`，旧值缺省为 `HOME_VISIT`，到店为 `IN_STORE`。到店使用审核后的门店、独立价目和人员/接待资源保留，提交联系人而非上门地址；核销后从 `CONFIRMED` 开始服务。新增门店提交/审核、人员服务方式、到店价目、核销和关闭新上门预约等接口，详见 [接口及验证说明](DUAL_SERVICE_MODE_IMPLEMENTATION.md#4-新增与扩展接口)。
+
+完成读取新增 `autoConfirmationEligible`；自动验收须有新政策快照，并检查普通售后及安全事件。无新政策快照的旧单仍走人工复核，避免在旧 24 小时截止时间自动记收。
+
+## 业务规则修订（2026-10-26）
+
+- `PUT /v1/merchant/booking-rules` 新增可选 `businessHours`：`{ startMinute, endMinute }`，日本时间、30 的倍数，`startMinute` 0–1410，`endMinute` 30–1440，`endMinute < startMinute` 表示跨午夜，`0–1440` 为全天；起止不能相同。省略保留现有设置。公开店铺 `bookingRules.businessHours` 仅在已配置时出现，未配置按默认 9:00–22:00。
+- 指定时间报价不在店铺营业时间内时返回 422 `OUTSIDE_BOOKING_HOURS`；可约时段列表使用同一规则。
+- 新增 `POST /v1/customer/bookings/{id}/payment-guarantee`，仅订单顾客，`{ version }`。用于上门前 48 小时预授权失败后重新认证；仅当 `paymentStatus=FAILED` 且未超过 `paymentActionBy` 时可用，否则 409 `INVALID_STATE`。订单新增可选 `paymentActionBy`（重新认证截止时间）。
+- 支付失败未更新时，技师 `EN_ROUTE` 返回 402 `PAYMENT_REQUIRED`；顾客取消费为 0；逾期由后台免费取消，`cancelReason=PAYMENT_GUARANTEE_FAILED`。
+- 完成验收确认窗口改为 72 小时；窗口内无确认、无异议的合格订单由后台自动确认并扣款一次，`completion.autoConfirmed=true`，时间线动作 `AUTO_CONFIRMED`。
+- 即时单 `START` 只要求已到达，不再要求到达预计开始时间；指定时间预约不变。
+- 平台订单监控：技师 SOS 读取正确的安全事件数据源；店铺已受理但尚未安排技师的订单在响应期限前触发 `RESPONSE_DUE` 预警。
+
 ## 四端业务一致性（2026-10-23）
 
 统一规则与状态见 [业务逻辑总览](BUSINESS_LOGIC.md)。技师履约事件中的出发、到达、开始在同一事务内按 `assignedStaffId` 检查其他 `EN_ROUTE` / `ARRIVED` / `IN_SERVICE` 订单，包含计划占用已经过期的订单；存在时返回 `409 STAFF_VISIT_IN_PROGRESS`，不修改任一订单或追加成功进程。不会返回其他订单的标识、地址或店铺信息。提交足时结束进入 `AWAITING_COMPLETION` 后不再阻断下一笔出发。
@@ -118,6 +134,7 @@ SOLO 一键受理在写入确认前复用当前派单资格检查，包括有效
 | POST       | /bookings                                                   | holdId、quoteId、paymentId、address、termsAccepted、policyVersion；必须有 Idempotency-Key |
 | GET        | /bookings、/bookings/{id}                                   | 当前角色可访问订单；地址按角色/阶段脱敏                                                   |
 | POST       | /customer/bookings/{id}/cancel                              | version；使用冻结政策                                                                     |
+| POST       | /customer/bookings/{id}/payment-guarantee                   | version；预授权失败后在截止前重新认证                                                     |
 | POST       | /customer/bookings/{id}/replacement-consent                 | version、approved                                                                         |
 | GET / POST | /customer/bookings/{id}/messages                            | 读取 / 发送 text                                                                          |
 | POST       | /merchant/bookings/{id}/accept、/reject、/cancel            | version；SOLO 原子确认                                                                    |

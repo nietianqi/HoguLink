@@ -3,7 +3,25 @@ import type { Actor, Booking, SupportTicket } from '@hogulink/contracts';
 import type { Records } from './repository.js';
 import { syncTicketHandling } from './ticket-handling.js';
 
-export const completionWindowMs = 24 * 60 * 60_000;
+/** Customers confirm or dispute within this window after the visit; silence counts as acceptance. */
+export const completionWindowMs = 72 * 60 * 60_000;
+export async function autoAcceptanceAllowed(tx: Records, b: Booking) {
+  if (
+    b.quote.completionPolicy?.version !== 'silence-72h-v1' ||
+    !b.completion ||
+    b.completion.confirmBy < b.completion.endedAt + completionWindowMs
+  )
+    return false;
+  if (
+    (await tx.find<SupportTicket>('supportTickets', { bookingId: b.id })).some(
+      (t) => !['CLOSED', 'RESOLVED'].includes(t.status),
+    )
+  )
+    return false;
+  return !(await tx.find<{ id: string }>('safety', { bookingId: b.id, status: 'OPEN' })).length;
+}
+/** Follow-up due time for a completion review case. */
+const completionCaseDueMs = 24 * 60 * 60_000;
 // Duration is the purchased snapshot, never the current service catalogue or a client timer.
 export const serviceEligibleAt = (b: Booking) =>
   b.startedAt === undefined ? undefined : b.startedAt + b.quote.endAt - b.quote.startAt;
@@ -15,7 +33,7 @@ export async function completionCase(tx: Records, b: Booking, now: number, note:
     existing.status = 'PLATFORM_ESCALATED';
     existing.version++;
     existing.updatedAt = now;
-    existing.dueAt = now + completionWindowMs;
+    existing.dueAt = now + completionCaseDueMs;
     existing.resolution = undefined;
     existing.resolvedAt = undefined;
     existing.resolvedBy = undefined;
@@ -55,7 +73,7 @@ export async function completionCase(tx: Records, b: Booking, now: number, note:
     version: 1,
     createdAt: now,
     updatedAt: now,
-    dueAt: now + completionWindowMs,
+    dueAt: now + completionCaseDueMs,
   };
   await tx.put('supportTickets', ticket);
   c.ticketId = ticket.id;

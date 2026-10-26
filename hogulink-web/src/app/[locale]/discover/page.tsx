@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { DiscoveryHub } from '@/components/discovery-hub';
 import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale } from '@/lib/i18n';
@@ -21,13 +22,20 @@ export default async function Page({
   const l = asLocale((await params).locale),
     raw = await searchParams;
   const q = Object.fromEntries(
-    ['tab', 'search', 'area', 'language', 'mode', 'shopPage'].flatMap((k) =>
+    ['tab', 'search', 'area', 'language', 'mode', 'fulfillmentMode', 'shopPage'].flatMap((k) =>
       typeof raw[k] === 'string' ? [[k, raw[k].slice(0, 100)]] : [],
     ),
   );
+  if (q.fulfillmentMode === 'IN_STORE') q.mode = 'SCHEDULED';
   const [catalog, feed] = await Promise.all([
     serverApi<Catalog>(
       `public/staff-listings?${new URLSearchParams({
+        fulfillmentMode:
+          q.fulfillmentMode === 'IN_STORE'
+            ? 'IN_STORE'
+            : q.fulfillmentMode === 'HOME_VISIT'
+              ? 'HOME_VISIT'
+              : 'ALL',
         ...(q.area ? { area: q.area } : {}),
         ...(q.language ? { language: q.language } : {}),
         ...(q.mode === 'INSTANT' ? { mode: 'INSTANT' } : {}),
@@ -46,5 +54,9 @@ export default async function Page({
           (path) => serverApi<ShopStatsMap>(path),
         )
       : {};
-  return <DiscoveryHub locale={l} catalog={catalog} q={q} feed={feed} shopStats={shopStats} />;
+  return (
+    <>
+      <DiscoveryHub locale={l} catalog={catalog} q={q} feed={feed} shopStats={shopStats} />
+    </>
+  );
 }

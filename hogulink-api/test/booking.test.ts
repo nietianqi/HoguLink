@@ -8,6 +8,7 @@ import { seed } from '../src/seed.js';
 import { DomainError } from '../src/errors.js';
 import { assertDemoRuntime, config } from '../src/config.js';
 import { purchaseAnnual } from './helpers/subscription-fixture.js';
+import { openAllDay } from './helpers/business-hours.js';
 
 const customer: Actor = { id: 'customer-a', role: 'CUSTOMER', verificationLevel: 1 };
 const other: Actor = { id: 'customer-b', role: 'CUSTOMER', verificationLevel: 1 };
@@ -346,6 +347,7 @@ test('merchant-caused cancellation is free; late customer cancellation uses froz
   }));
 test('late-night first home visit requires L3 and hotel details cannot be omitted', () =>
   fixture(async (e) => {
+    await openAllDay(e);
     const p = await prepare(e, customer, { startAt: Date.UTC(2026, 9, 18, 14, 0) });
     await assert.rejects(
       e.createBooking(

@@ -14,6 +14,9 @@ import { H5DiscoveryFeed } from './h5-discovery-feed';
 import { H5ShopList } from './h5-shops';
 import { shopCards, shopPage, shopCardHref } from '@/lib/shop-model';
 import type { ShopStatsMap } from '@/lib/shop-stats';
+import { ModePrices } from './service-mode';
+import { choiceModePrices } from '@/lib/consumer-model';
+import { sv } from '@/lib/service-mode-i18n';
 
 export function DiscoveryHub({
   locale: l,
@@ -48,7 +51,7 @@ export function DiscoveryHub({
         {articles.map((a, i) => (
           <Link
             className={`discovery-story story-${i}`}
-            href={`/${l}/discover/guide-${a.slug}?${new URLSearchParams(Object.fromEntries(['area', 'language', 'mode', 'tab'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`}
+            href={`/${l}/discover/guide-${a.slug}?${new URLSearchParams(Object.fromEntries(['area', 'language', 'mode', 'fulfillmentMode', 'tab'].flatMap((k) => (q[k] ? [[k, q[k]]] : []))))}`}
             key={a.slug}
           >
             <div className="discovery-story-art">
@@ -143,6 +146,14 @@ export function DiscoveryHub({
           {tab === 'shops' && (
             <form className="discovery-search" action={`/${l}/discover`}>
               <input type="hidden" name="tab" value={tab} />
+              <label>
+                <span>{sv(l, 'mode')}</span>
+                <select name="fulfillmentMode" defaultValue={q.fulfillmentMode ?? ''}>
+                  <option value="">{l === 'zh-cn' ? '全部' : l === 'ja' ? 'すべて' : 'All'}</option>
+                  <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
+                  <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
+                </select>
+              </label>
               {discoveryQuery(q).mode && (
                 <input type="hidden" name="mode" value={discoveryQuery(q).mode} />
               )}
@@ -218,8 +229,14 @@ export function DiscoveryHub({
                   </p>
                   <div className="discovery-shop-price">
                     <span>
-                      <small>{xt(l, 'from')}</small>
-                      <strong>{money(l, total)}</strong>
+                      <ModePrices
+                        locale={l}
+                        prices={choiceModePrices(
+                          services.flatMap((c) => c.variants),
+                          undefined,
+                          true,
+                        )}
+                      />
                     </span>
                     <Link className="quality-button" href={shopHref(store.slug)}>
                       {xt(l, 'viewShop')}

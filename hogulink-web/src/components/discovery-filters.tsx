@@ -9,6 +9,7 @@ import { money, t, areas, areaName } from '@/lib/i18n';
 import { mt } from '@/lib/mobile-i18n';
 import { MobileSheet } from './mobile-ui';
 import { japanDay } from '@/lib/desktop-model';
+import { sv } from '@/lib/service-mode-i18n';
 export function DiscoveryFilters({
   locale: l,
   q,
@@ -25,7 +26,7 @@ export function DiscoveryFilters({
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const count =
-    ['area', 'language', 'date', 'acceptance'].filter((key) => q[key]).length +
+    ['area', 'language', 'date', 'acceptance', 'fulfillmentMode'].filter((key) => q[key]).length +
     Number(duration !== 60) +
     Number(Number(q.maxTotal) > 0);
   const form = (mobile = false) => (
@@ -59,6 +60,14 @@ export function DiscoveryFilters({
       {(mobile ? ['view'] : ['mode', 'area', 'language', 'view']).map((key) => (
         <input type="hidden" key={key} name={key} value={key === 'mode' ? mode : (q[key] ?? '')} />
       ))}
+      <label className="field">
+        {sv(l, 'mode')}
+        <select name="fulfillmentMode" defaultValue={q.fulfillmentMode ?? ''}>
+          <option value="">{t(l, 'all')}</option>
+          <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
+          <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
+        </select>
+      </label>
       {mobile && (
         <>
           <label className="field">

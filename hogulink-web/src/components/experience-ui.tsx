@@ -232,6 +232,7 @@ export function FavoriteToggle({ locale: l, listingId }: { locale: Locale; listi
   );
 }
 type Rebooking = {
+  fulfillmentMode?: 'HOME_VISIT' | 'IN_STORE';
   listingSlug: string;
   offeringId: string;
   nominationType: string;
@@ -309,6 +310,7 @@ export function CustomerExperiencePanel({
             try {
               const r = await api<Rebooking>(`customer/bookings/${b.id}/rebook`);
               const q = new URLSearchParams({
+                ...(r.fulfillmentMode ? { fulfillmentMode: r.fulfillmentMode } : {}),
                 offering: r.offeringId,
                 nomination: r.nominationType,
                 mode: r.bookingMode,

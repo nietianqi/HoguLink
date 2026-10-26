@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
 import {
+  DEFAULT_BUSINESS_HOURS,
   TIME_SURCHARGE_RULES,
   makeCancellationPolicy,
   storeBookingRulesInput,
   type BookingRulesHistory,
+  type BusinessHours,
   type Locale,
   type StoreBookingRules,
 } from '@hogulink/contracts';
@@ -20,6 +22,12 @@ const minutes = (value: string) => {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
   return match ? Number(match[1]) * 60 + Number(match[2]) : -1;
 };
+
+const allDay = (h: BusinessHours) => h.startMinute === 0 && h.endMinute === 1440;
+const hoursText = (l: Locale, h: BusinessHours = DEFAULT_BUSINESS_HOURS) =>
+  allDay(h)
+    ? br(l, 'hoursAllDay')
+    : `${clock(h.startMinute)}–${h.endMinute <= h.startMinute ? br(l, 'nextDay') : ''}${clock(h.endMinute)}`;
 
 const travelText = (l: Locale, fees: Record<string, number> = {}, order: string[] = []) => {
   const rank = (area: string) => (order.includes(area) ? order.indexOf(area) : order.length);
@@ -73,7 +81,18 @@ export function BookingRulesSettings({
       Object.entries(rules.areaTransportFees ?? {}).map(([area, fee]) => [area, String(fee)]),
     ),
   );
+  const [hours, setHours] = useState(() => {
+    const h = rules.businessHours ?? DEFAULT_BUSINESS_HOURS;
+    return { start: clock(h.startMinute), end: clock(h.endMinute % 1440), allDay: allDay(h) };
+  });
   const [error, setError] = useState('');
+  const end = minutes(hours.end);
+  // A 00:00 end means midnight, the end of the day.
+  const businessHours: BusinessHours = hours.allDay
+    ? { startMinute: 0, endMinute: 1440 }
+    : { startMinute: minutes(hours.start), endMinute: end === 0 ? 1440 : end };
+  const hoursChanged =
+    JSON.stringify(businessHours) !== JSON.stringify(rules.businessHours ?? DEFAULT_BUSINESS_HOURS);
   const input = {
     version: rules.version,
     nominationFee: Number(fee),
@@ -89,6 +108,8 @@ export function BookingRulesSettings({
         travel[area]?.trim() ? [[area, Number(travel[area])] as const] : [],
       ),
     ),
+    // Untouched default hours are not written, so saving other rules keeps the platform default.
+    ...(rules.businessHours || hoursChanged ? { businessHours } : {}),
     ...(template === 'CUSTOM'
       ? {
           customPolicy: {
@@ -207,6 +228,45 @@ export function BookingRulesSettings({
             </fieldset>
           )}
           <fieldset className="booking-surcharge-fields">
+            <legend>{br(l, 'hoursTitle')}</legend>
+            <label className="acceptance-check">
+              <input
+                type="checkbox"
+                name="hoursAllDay"
+                checked={hours.allDay}
+                onChange={(e) => setHours((h) => ({ ...h, allDay: e.target.checked }))}
+              />
+              {br(l, 'hoursAllDay')}
+            </label>
+            {!hours.allDay && (
+              <div className="booking-surcharge-row">
+                <label className="field">
+                  {br(l, 'hoursStart')}
+                  <input
+                    name="hoursStart"
+                    type="time"
+                    step={1800}
+                    required
+                    value={hours.start}
+                    onChange={(e) => setHours((h) => ({ ...h, start: e.target.value }))}
+                  />
+                </label>
+                <label className="field">
+                  {br(l, 'hoursEnd')}
+                  <input
+                    name="hoursEnd"
+                    type="time"
+                    step={1800}
+                    required
+                    value={hours.end}
+                    onChange={(e) => setHours((h) => ({ ...h, end: e.target.value }))}
+                  />
+                </label>
+              </div>
+            )}
+            <p>{br(l, 'hoursHelp')}</p>
+          </fieldset>
+          <fieldset className="booking-surcharge-fields">
             <legend>{br(l, 'surchargeTitle')}</legend>
             {bands.map((band, i) => (
               <div className="booking-surcharge-row" key={i}>
@@ -288,6 +348,13 @@ export function BookingRulesSettings({
             </strong>
             <p>{preview ? policyText(l, preview) : br(l, 'error')}</p>
             <p>
+              {br(l, 'hoursTitle')} ·{' '}
+              {hoursText(
+                l,
+                parsed.success ? (parsed.data.businessHours ?? businessHours) : undefined,
+              )}
+            </p>
+            <p>
               {br(l, 'surchargeTitle')} ·{' '}
               {parsed.success && parsed.data.timeSurcharges?.length
                 ? surchargeBands(l, parsed.data.timeSurcharges)
@@ -316,6 +383,9 @@ export function BookingRulesSettings({
           {br(l, 'fee')} · {money(l, rules.nominationFee)}
         </p>
         <p>{policyText(l, rules.cancellationPolicy)}</p>
+        <p>
+          {br(l, 'hoursTitle')} · {hoursText(l, rules.businessHours)}
+        </p>
         <p>
           {br(l, 'surchargeTitle')} ·{' '}
           {rules.timeSurcharges?.length

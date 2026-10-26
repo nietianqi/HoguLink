@@ -7,9 +7,18 @@ import {
   automaticAcceptanceReason,
   dailyAutomaticCount,
   scheduledCancellationBps,
+  IN_STORE_NO_SHOW_REPLY_MINUTES,
   effectiveServicePrice,
   timeSurchargeAt,
   travelFeeFor,
+  withinBusinessHours,
+  fulfillmentMode,
+  venueAvailable,
+  venueSnapshot,
+  withinVenueHours,
+  venueCanServe,
+  listingSupports,
+  type FulfillmentMode,
   type Actor,
   type Audit,
   type Booking,
@@ -23,6 +32,13 @@ import {
   type TimeOffRequest,
 } from '@hogulink/contracts';
 import { config } from './config.js';
+import { VenueService } from './venues.js';
+import {
+  availableResources,
+  reserveResource,
+  transitionAvailable,
+  resourceKey,
+} from './in-store.js';
 import { toPublicStore, toPublicListing, toPublicOffering } from './public-catalog.js';
 import { CustomerAuth } from './customer-auth.js';
 import { NotificationWorker, configuredSender } from './notifications.js';
@@ -54,6 +70,7 @@ import { FulfillmentService, lateInstant, sweepFulfillment } from './fulfillment
 import { OnboardingService, requireCurrentQualifications, sweepOnboarding } from './onboarding.js';
 import {
   completionCase,
+  autoAcceptanceAllowed,
   completionReceipt,
   completionWindowMs,
   serviceEligibleAt,
@@ -67,6 +84,8 @@ type Payment = {
   amount: number;
   account: string;
   status: 'AUTHORIZED' | 'METHOD_SAVED' | 'PAID' | 'VOIDED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+  /** Demo only: the saved method declines the pre-visit authorization. */
+  demoDecline?: boolean;
   verified3ds: boolean;
   expiresAt: number;
   bookingId?: string;
@@ -87,7 +106,12 @@ const activeBookingStatuses = [
 ];
 const minute = 60_000;
 const id = (prefix: string) => `${prefix}_${randomUUID()}`;
+/** A scheduled visit may not start before the booked time; an instant one starts on arrival. */
+const startedOnTime = (b: Booking) =>
+  b.startedAt !== undefined &&
+  (b.quote.bookingMode === 'INSTANT' || b.startedAt >= b.quote.startAt);
 export class Engine {
+  readonly venues: VenueService;
   readonly customers: CustomerAuth;
   readonly notifications: NotificationWorker;
   readonly limits: RateLimiter;
@@ -115,6 +139,11 @@ export class Engine {
     public repo: Repository,
     public now = () => Date.now(),
   ) {
+    this.venues = new VenueService(
+      (fn) => this.run(fn),
+      now,
+      (fn) => this.read(fn),
+    );
     this.customers = new CustomerAuth(repo, now);
     this.notifications = new NotificationWorker(repo, configuredSender(), now);
     this.limits = new RateLimiter(repo, now);
@@ -234,8 +263,34 @@ export class Engine {
     await assertCanBook(tx, actor, storeId, this.now());
   }
   private async currentQuote(tx: Records, quote: Quote) {
-    const { store } = await this.listing(tx, quote.listingId);
+    const { store, listing } = await this.listing(tx, quote.listingId);
+    ensure(
+      quote.nominationType === 'FREE' || listingSupports(listing, fulfillmentMode(quote)),
+      'LISTING_UNAVAILABLE',
+      'This therapist no longer accepts this service mode.',
+      409,
+    );
     const offering = await tx.get<Offering>('offerings', quote.offeringId);
+    ensure(
+      offering && fulfillmentMode(offering) === fulfillmentMode(quote),
+      'INVALID_OFFERING',
+      'Service mode changed.',
+      409,
+    );
+    if (fulfillmentMode(quote) === 'IN_STORE')
+      ensure(
+        venueAvailable(store) && store.venue?.version === quote.venue?.version,
+        'SHOP_RULES_CHANGED',
+        'Venue changed. Request a new quote.',
+        409,
+      );
+    else
+      ensure(
+        store.homeVisitsEnabled !== false,
+        'LISTING_UNAVAILABLE',
+        'Home visits are unavailable.',
+        409,
+      );
     ensure(
       offering?.approved && offering.active !== false && offering.version === quote.offeringVersion,
       'PRICE_CHANGED',
@@ -300,6 +355,11 @@ export class Engine {
     );
   }
   private buffered(quote: Quote) {
+    if (fulfillmentMode(quote) === 'IN_STORE')
+      return {
+        startAt: quote.startAt,
+        endAt: quote.endAt + (quote.venue?.turnoverMinutes ?? 15) * minute,
+      };
     return {
       startAt:
         quote.bookingMode === 'INSTANT'
@@ -331,6 +391,7 @@ export class Engine {
         x.offeringIds.includes(quote.offeringId) &&
         !serving.has(x.staffId) &&
         (!quote.requiredLanguage || x.languages.includes(quote.requiredLanguage)) &&
+        listingSupports(x, fulfillmentMode(quote)) &&
         (quote.nominationType === 'FREE' || x.id === quote.listingId) &&
         (quote.bookingMode !== 'INSTANT' ||
           (x.onDuty && this.now() - x.dutyUpdatedAt < 4 * 60 * minute)),
@@ -338,6 +399,7 @@ export class Engine {
     const available: Listing[] = [];
     for (const candidate of candidates)
       if (
+        (await transitionAvailable(tx, candidate.staffId, quote, this.now(), exceptId)) &&
         !(await tx.conflicts(
           candidate.staffId,
           this.buffered(quote).startAt,
@@ -348,8 +410,13 @@ export class Engine {
         available.push(candidate);
     return available;
   }
-  async publicCatalog(filters: { area?: string; language?: string; mode?: string } = {}) {
+  async publicCatalog(
+    filters: { area?: string; language?: string; mode?: string; fulfillmentMode?: string } = {},
+  ) {
     return this.read(async (tx) => {
+      const selectedMode: FulfillmentMode =
+        filters.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT';
+      const allModes = filters.fulfillmentMode === 'ALL';
       const serving = new Set(
         (await tx.find<Booking>('bookings', { status: ['IN_SERVICE', 'EN_ROUTE', 'ARRIVED'] }))
           .filter(
@@ -360,7 +427,14 @@ export class Engine {
           .map((b) => b.assignedStaffId),
       );
       const stores = (await tx.list<Store>('stores')).filter(
-        (x) => x.active && x.approved && !x.billingBlocked,
+        (x) =>
+          x.active &&
+          x.approved &&
+          !x.billingBlocked &&
+          (allModes ||
+            (selectedMode === 'IN_STORE'
+              ? venueAvailable(x) && filters.mode !== 'INSTANT'
+              : x.homeVisitsEnabled !== false)),
       );
       const catalogOfferings = await tx.list<Offering>('offerings');
       const firstInstant = Math.ceil((this.now() + 60 * minute) / (15 * minute)) * 15 * minute;
@@ -374,10 +448,17 @@ export class Engine {
           x.portraitConsent &&
           x.identityVerified &&
           x.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+          (allModes || listingSupports(x, selectedMode)) &&
           stores.some(
             (s) =>
               s.id === x.storeId &&
-              (!filters.area || s.areas.includes(filters.area)) &&
+              (!filters.area ||
+                (allModes
+                  ? (s.homeVisitsEnabled !== false && s.areas.includes(filters.area)) ||
+                    (venueAvailable(s) && s.venue?.area === filters.area)
+                  : selectedMode === 'IN_STORE'
+                    ? s.venue?.area === filters.area
+                    : s.areas.includes(filters.area))) &&
               (filters.mode !== 'INSTANT' ||
                 (s.acceptanceMode !== 'MANUAL' &&
                   !!s.emergencyContact &&
@@ -432,11 +513,14 @@ export class Engine {
             x.onDuty && !serving.has(x.staffId) && this.now() - x.dutyUpdatedAt < 4 * 60 * minute,
           ),
         ),
-        stores: visibleStores.map(toPublicStore),
+        stores: visibleStores.map((store) => toPublicStore(store, selectedMode)),
         offerings: (await tx.list<Offering>('offerings'))
           .filter(
             (x) =>
-              x.approved && x.active !== false && visibleStores.some((s) => s.id === x.storeId),
+              x.approved &&
+              x.active !== false &&
+              (allModes || fulfillmentMode(x) === selectedMode) &&
+              visibleStores.some((s) => s.id === x.storeId),
           )
           .sort((a, b) => a.durationMinutes - b.durationMinutes)
           .map((x) => toPublicOffering(x, this.now())),
@@ -455,14 +539,22 @@ export class Engine {
     language = '',
     mode = 'SCHEDULED',
     area = '',
+    serviceMode: FulfillmentMode = 'HOME_VISIT',
   ) {
     return this.read(async (tx) => {
       const { listing, store } = await this.listing(tx, listingId);
+      ensure(
+        serviceMode === 'IN_STORE' || store.homeVisitsEnabled !== false,
+        'LISTING_UNAVAILABLE',
+        'This shop is not accepting new home visits.',
+        409,
+      );
       const offerings = (await tx.list<Offering>('offerings')).filter(
         (x) =>
           x.approved &&
           x.active !== false &&
           x.regulatoryCategory === 'RELAXATION' &&
+          fulfillmentMode(x) === serviceMode &&
           x.storeId === store.id &&
           (free || listing.offeringIds.includes(x.id)),
       );
@@ -470,6 +562,12 @@ export class Engine {
         ? offerings.find((x) => x.id === offeringId)
         : offerings.sort((a, b) => a.durationMinutes - b.durationMinutes)[0];
       ensure(offering, 'INVALID_OFFERING', 'Select a valid service.');
+      const inStore = serviceMode === 'IN_STORE';
+      ensure(
+        !inStore || (venueAvailable(store) && mode !== 'INSTANT'),
+        'VENUE_UNAVAILABLE',
+        'Select an approved venue and a scheduled time.',
+      );
       const instant = mode === 'INSTANT';
       const pool = free
         ? (await tx.list<Listing>('listings')).filter(
@@ -496,7 +594,8 @@ export class Engine {
       );
       const candidates = pool.filter(
         (x) =>
-          (!area || store.areas.includes(area)) &&
+          (!area || inStore || store.areas.includes(area)) &&
+          listingSupports(x, serviceMode) &&
           !serving.has(x.staffId) &&
           (!language || x.languages.includes(language)) &&
           (!instant ||
@@ -514,8 +613,21 @@ export class Engine {
         value < this.now() + (instant ? 76 * minute : 72 * 60 * minute);
         value += 30 * minute
       ) {
-        const jstHour = new Date(value + 9 * 60 * minute).getUTCHours();
-        if (!instant && (jstHour < 9 || jstHour >= 22)) continue;
+        const slotQuote = {
+          startAt: value,
+          endAt: value + offering.durationMinutes * minute,
+          fulfillmentMode: serviceMode,
+          storeId: store.id,
+          venue: inStore ? venueSnapshot(store.venue!) : undefined,
+        } as Quote;
+        if (
+          inStore
+            ? !venueCanServe(store.venue!, slotQuote.startAt, slotQuote.endAt)
+            : !instant && !withinBusinessHours(effectiveBookingRules(store), value)
+        )
+          continue;
+        if (inStore && !(await availableResources(tx, store, slotQuote, this.now())).length)
+          continue;
         for (const candidate of candidates)
           if (
             (!instant ||
@@ -541,10 +653,13 @@ export class Engine {
                 candidate.id,
                 await this.dailyAutomaticCount(tx, store.id, value),
               ) === 'ELIGIBLE') &&
+            (await transitionAvailable(tx, candidate.staffId, slotQuote, this.now())) &&
             !(await tx.conflicts(
               candidate.staffId,
-              instant ? this.now() : value - config.bufferMinutes * minute,
-              value + (offering.durationMinutes + config.bufferMinutes) * minute,
+              inStore ? value : instant ? this.now() : value - config.bufferMinutes * minute,
+              inStore
+                ? this.buffered(slotQuote).endAt
+                : value + (offering.durationMinutes + config.bufferMinutes) * minute,
             ))
           ) {
             values.push(value);
@@ -561,18 +676,21 @@ export class Engine {
       const { listing, store } = await this.listing(tx, data.listingId);
       await this.allowed(tx, actor, store.id);
       const offering = await tx.get<Offering>('offerings', data.offeringId);
+      const inStore = data.fulfillmentMode === 'IN_STORE';
       ensure(
         offering &&
           offering.approved &&
           offering.active !== false &&
           offering.regulatoryCategory === 'RELAXATION' &&
           offering.storeId === store.id &&
-          listing.offeringIds.includes(offering.id),
+          listing.offeringIds.includes(offering.id) &&
+          fulfillmentMode(offering) === data.fulfillmentMode &&
+          listingSupports(listing, data.fulfillmentMode),
         'INVALID_OFFERING',
         'Select an available service from this shop.',
       );
       ensure(
-        store.areas.includes(data.area),
+        inStore || (store.homeVisitsEnabled !== false && store.areas.includes(data.area)),
         'OUTSIDE_SERVICE_AREA',
         'The address is outside this shop’s service area.',
       );
@@ -582,6 +700,25 @@ export class Engine {
         'INVALID_TIME',
         'Select a future time within 30 days.',
       );
+      // Scheduled starts follow the shop's business hours, the same rule the time list uses.
+      if (inStore)
+        ensure(
+          venueAvailable(store) && data.bookingMode === 'SCHEDULED',
+          'VENUE_UNAVAILABLE',
+          'Only scheduled visits to an approved venue are available.',
+        );
+      if (data.bookingMode === 'SCHEDULED')
+        ensure(
+          inStore
+            ? venueCanServe(
+                store.venue!,
+                data.startAt,
+                data.startAt + offering.durationMinutes * minute,
+              )
+            : withinBusinessHours(effectiveBookingRules(store), data.startAt),
+          'OUTSIDE_BOOKING_HOURS',
+          'Choose a start time within this shop’s business hours.',
+        );
       if (data.bookingMode === 'INSTANT')
         ensure(
           data.startAt <= this.now() + 180 * minute &&
@@ -592,6 +729,9 @@ export class Engine {
         );
       const q: Quote = {
         ...data,
+        area: inStore ? store.venue!.area : data.area,
+        ...(inStore ? { venue: venueSnapshot(store.venue!) } : {}),
+        completionPolicy: { version: 'silence-72h-v1', windowHours: 72 },
         id: id('quote'),
         customerId: actor.id,
         storeId: store.id,
@@ -614,16 +754,34 @@ export class Engine {
             : { serviceFee: offering.price };
         })(),
         nominationFee:
-          data.nominationType === 'NOMINATED' ? effectiveBookingRules(store).nominationFee : 0,
+          data.nominationType === 'NOMINATED'
+            ? inStore
+              ? store.venue!.nominationFee
+              : effectiveBookingRules(store).nominationFee
+            : 0,
         bookingRulesVersion: effectiveBookingRules(store).version,
-        transportFee: travelFeeFor(offering, effectiveBookingRules(store), data.area),
-        ...(timeSurchargeAt(effectiveBookingRules(store), data.startAt)
-          ? { timeSurcharge: timeSurchargeAt(effectiveBookingRules(store), data.startAt) }
+        transportFee: inStore ? 0 : travelFeeFor(offering, effectiveBookingRules(store), data.area),
+        ...(timeSurchargeAt(inStore ? store.venue : effectiveBookingRules(store), data.startAt)
+          ? {
+              timeSurcharge: timeSurchargeAt(
+                inStore ? store.venue : effectiveBookingRules(store),
+                data.startAt,
+              ),
+            }
           : {}),
         total: 0,
-        cancellationPolicy: effectiveBookingRules(store).cancellationPolicy,
+        cancellationPolicy: inStore
+          ? store.venue!.cancellationPolicy!
+          : effectiveBookingRules(store).cancellationPolicy,
       };
       q.total = q.serviceFee + q.nominationFee + q.transportFee + (q.timeSurcharge ?? 0);
+      if (inStore)
+        ensure(
+          (await availableResources(tx, store, q, this.now())).length,
+          'RESOURCE_UNAVAILABLE',
+          'No reception resource is available.',
+          409,
+        );
       const availableStaff = await this.freeStaff(tx, q);
       ensure(
         availableStaff.length,
@@ -711,6 +869,17 @@ export class Engine {
         active: true,
         createdAt: this.now(),
       };
+      if (fulfillmentMode(q) === 'IN_STORE') {
+        const resources = await availableResources(tx, store, q, this.now());
+        ensure(
+          resources[0],
+          'RESOURCE_UNAVAILABLE',
+          'This reception resource was just reserved.',
+          409,
+        );
+        hold.resourceId = resources[0];
+        await reserveResource(tx, q, hold);
+      }
       await tx.interval({
         id: hold.id,
         staffId: hold.staffId,
@@ -774,7 +943,7 @@ export class Engine {
           photo: quote.nominationType === 'NOMINATED' ? listing.photo : undefined,
           offeringName: offering?.name,
           durationMinutes: (quote.endAt - quote.startAt) / minute,
-          hotelOnly: heldListing?.hotelOnly ?? true,
+          hotelOnly: fulfillmentMode(quote) === 'HOME_VISIT' && (heldListing?.hotelOnly ?? true),
           acceptanceMode:
             store.acceptanceMode === 'AUTO_PREAUTHORIZED' &&
             automaticAcceptanceReason(
@@ -804,6 +973,7 @@ export class Engine {
       hold.active = false;
       await tx.put('holds', hold);
       await tx.releaseInterval(hold.id);
+      await tx.releaseInterval(`resource:${hold.id}`);
       for (const payment of await tx.find<Payment>('payments', { holdId: hold.id })) {
         if (
           payment.holdId === hold.id &&
@@ -861,9 +1031,10 @@ export class Engine {
         amount: quote.total,
         account: store.pspAccount,
         status:
-          quote.startAt - this.now() > config.authorizationDays * 24 * 60 * minute
-            ? 'METHOD_SAVED'
-            : 'AUTHORIZED',
+          quote.endAt + completionWindowMs <
+          this.now() + config.authorizationDays * 24 * 60 * minute
+            ? 'AUTHORIZED'
+            : 'METHOD_SAVED',
         verified3ds: true,
         expiresAt: this.now() + config.authorizationDays * 24 * 60 * minute,
       };
@@ -921,6 +1092,12 @@ export class Engine {
       const { listing, store } = await this.listing(tx, q.listingId);
       await this.currentQuote(tx, q);
       const heldListing = (await this.listing(tx, h.listingId)).listing;
+      ensure(
+        listingSupports(heldListing, fulfillmentMode(q)),
+        'LISTING_UNAVAILABLE',
+        'The reserved therapist no longer accepts this service mode.',
+        409,
+      );
       await this.allowed(tx, actor, store.id);
       const offering = await tx.get<Offering>('offerings', q.offeringId);
       ensure(
@@ -933,43 +1110,68 @@ export class Engine {
               offering.promotion.price === q.serviceFee &&
               offering.price === q.regularServiceFee
             : offering.price === q.serviceFee) &&
-          travelFeeFor(offering, effectiveBookingRules(store), q.area) === q.transportFee,
+          (fulfillmentMode(q) === 'IN_STORE'
+            ? 0
+            : travelFeeFor(offering, effectiveBookingRules(store), q.area)) === q.transportFee,
         'PRICE_CHANGED',
         'The service or price changed. Request a new quote.',
         409,
       );
       ensure(
-        data.policyVersion === q.cancellationPolicy.version &&
-          data.address.area === q.area &&
-          store.areas.includes(data.address.area),
+        data.policyVersion === q.cancellationPolicy.version,
         'POLICY_OR_AREA_CHANGED',
-        'Confirm the current policy and address.',
+        'Confirm the current policy.',
+        409,
       );
-      ensure(
-        !heldListing.hotelOnly || data.address.type === 'HOTEL',
-        'HOTEL_ONLY',
-        'This staff member accepts hotel visits only.',
-      );
-      if (data.address.type === 'HOTEL')
+      if (fulfillmentMode(q) === 'IN_STORE') {
         ensure(
-          data.address.hotelName && data.address.room && data.address.hotelPermission,
-          'HOTEL_DETAILS_REQUIRED',
-          'Enter hotel name and room, and confirm visitors are allowed.',
+          data.contact && !data.address && h.resourceId && q.venue,
+          'CONTACT_REQUIRED',
+          'Confirm your contact details and venue.',
         );
-      const jstHour = new Date(q.startAt + 9 * 60 * minute).getUTCHours();
-      if (
-        data.address.type === 'HOME' &&
-        (jstHour >= 22 || jstHour < 6) &&
-        !(await tx.find<Booking>('bookings', { customerId: actor.id, status: 'COMPLETED' })).some(
-          (b) => b.customerId === actor.id && b.status === 'COMPLETED',
+        ensure(
+          (await availableResources(tx, store, q, this.now(), h.id, false, h.resourceId)).includes(
+            h.resourceId,
+          ),
+          'RESOURCE_UNAVAILABLE',
+          'The reserved resource is unavailable.',
+          409,
+        );
+      } else {
+        ensure(data.address, 'ADDRESS_REQUIRED', 'Enter your service address.');
+        ensure(
+          data.policyVersion === q.cancellationPolicy.version &&
+            data.address.area === q.area &&
+            store.areas.includes(data.address.area),
+          'POLICY_OR_AREA_CHANGED',
+          'Confirm the current policy and address.',
+        );
+        ensure(
+          !heldListing.hotelOnly || data.address.type === 'HOTEL',
+          'HOTEL_ONLY',
+          'This staff member accepts hotel visits only.',
+        );
+        if (data.address.type === 'HOTEL')
+          ensure(
+            data.address.hotelName && data.address.room && data.address.hotelPermission,
+            'HOTEL_DETAILS_REQUIRED',
+            'Enter hotel name and room, and confirm visitors are allowed.',
+          );
+        const jstHour = new Date(q.startAt + 9 * 60 * minute).getUTCHours();
+        if (
+          data.address.type === 'HOME' &&
+          (jstHour >= 22 || jstHour < 6) &&
+          !(await tx.find<Booking>('bookings', { customerId: actor.id, status: 'COMPLETED' })).some(
+            (b) => b.customerId === actor.id && b.status === 'COMPLETED',
+          )
         )
-      )
-        ensure(
-          actor.verificationLevel >= 3,
-          'L3_REQUIRED',
-          'A first late-night home visit requires identity verification. Choose a hotel or another time.',
-          403,
-        );
+          ensure(
+            actor.verificationLevel >= 3,
+            'L3_REQUIRED',
+            'A first late-night home visit requires identity verification. Choose a hotel or another time.',
+            403,
+          );
+      }
       if (q.bookingMode === 'INSTANT')
         ensure(
           store.acceptanceMode !== 'MANUAL' &&
@@ -1037,6 +1239,15 @@ export class Engine {
         replacementConsent: 'NOT_REQUIRED',
         quote: q,
         address: data.address,
+        ...(fulfillmentMode(q) === 'IN_STORE'
+          ? {
+              contact: data.contact,
+              resourceId: h.resourceId,
+              resourceName: store.venue?.resources.find((resource) => resource.id === h.resourceId)
+                ?.name,
+              checkInCode: randomUUID().replaceAll('-', '').slice(0, 12).toUpperCase(),
+            }
+          : {}),
         legalNameSnapshot: store.legalName,
         deadline: this.deadline(q),
         version: 1,
@@ -1052,6 +1263,7 @@ export class Engine {
       h.phase = 'BOOKING_RESERVATION';
       h.bookingId = b.id;
       h.expiresAt = b.deadline;
+      await reserveResource(tx, q, h);
       await tx.interval({
         id: h.id,
         staffId: h.staffId,
@@ -1103,6 +1315,7 @@ export class Engine {
     });
   }
   redact(b: Booking, actor: Actor): Booking {
+    if (actor.role !== 'CUSTOMER') b = { ...b, checkInCode: undefined };
     if (b.acceptanceDecision && !['MERCHANT', 'ADMIN'].includes(actor.role)) {
       const { rule: _rule, ...decision } = b.acceptanceDecision;
       b = { ...b, acceptanceDecision: decision };
@@ -1126,7 +1339,7 @@ export class Engine {
         b.staffTaskStatus === 'ACKNOWLEDGED' &&
         ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status) &&
         b.replacementConsent !== 'PENDING');
-    return visible ? b : { ...b, address: undefined };
+    return visible ? b : { ...b, address: undefined, contact: undefined };
   }
   async booking(actor: Actor, bookingId: string) {
     return this.run(async (tx) => this.redact(await this.getBooking(tx, actor, bookingId), actor));
@@ -1195,6 +1408,7 @@ export class Engine {
     ensure(h?.active, 'HOLD_EXPIRED', 'Reserved time expired.', 409);
     h.phase = 'CONFIRMED_BLOCK';
     h.expiresAt = b.quote.endAt + config.bufferMinutes * minute;
+    await reserveResource(tx, b.quote, h);
     await tx.interval({
       id: h.id,
       staffId: h.staffId,
@@ -1224,7 +1438,9 @@ export class Engine {
           x.publicationStatus !== 'PUBLISHED_INDEXABLE' ||
           !x.offeringIds.includes(b.quote.offeringId) ||
           (b.quote.requiredLanguage && !x.languages.includes(b.quote.requiredLanguage)) ||
-          (x.hotelOnly && b.address?.type !== 'HOTEL') ||
+          (fulfillmentMode(b.quote) === 'HOME_VISIT' &&
+            x.hotelOnly &&
+            b.address?.type !== 'HOTEL') ||
           (b.quote.bookingMode === 'INSTANT' &&
             (!x.onDuty || this.now() - x.dutyUpdatedAt >= 4 * 60 * minute))
         )
@@ -1255,7 +1471,10 @@ export class Engine {
       listing.publicationStatus !== 'PUBLISHED_INDEXABLE' ||
       !listing.offeringIds.includes(b.quote.offeringId) ||
       (b.quote.requiredLanguage && !listing.languages.includes(b.quote.requiredLanguage)) ||
-      (listing.hotelOnly && b.address?.type !== 'HOTEL') ||
+      !listingSupports(listing, fulfillmentMode(b.quote)) ||
+      (fulfillmentMode(b.quote) === 'HOME_VISIT' &&
+        listing.hotelOnly &&
+        b.address?.type !== 'HOTEL') ||
       (b.quote.bookingMode === 'INSTANT' &&
         (!listing.onDuty || this.now() - listing.dutyUpdatedAt >= 4 * 60 * minute))
     )
@@ -1275,6 +1494,8 @@ export class Engine {
             (['EN_ROUTE', 'ARRIVED'].includes(x.status) && x.quote.endAt <= this.now())),
       )
     )
+      return false;
+    if (!(await transitionAvailable(tx, listing.staffId, b.quote, this.now(), b.holdId)))
       return false;
     try {
       await requireCurrentQualifications(tx, b.storeId, listing.id, this.now());
@@ -1317,7 +1538,9 @@ export class Engine {
         store.id === b.storeId &&
           listing.offeringIds.includes(b.quote.offeringId) &&
           (!b.quote.requiredLanguage || listing.languages.includes(b.quote.requiredLanguage)) &&
-          (!listing.hotelOnly || b.address?.type === 'HOTEL') &&
+          (fulfillmentMode(b.quote) === 'IN_STORE' ||
+            !listing.hotelOnly ||
+            b.address?.type === 'HOTEL') &&
           (b.quote.bookingMode !== 'INSTANT' ||
             (listing.onDuty && this.now() - listing.dutyUpdatedAt < 4 * 60 * minute)),
         'INVALID_ASSIGNMENT',
@@ -1458,6 +1681,15 @@ export class Engine {
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId, version);
       await requireCurrentQualifications(tx, b.storeId, b.assignedListingId, this.now());
+      if (fulfillmentMode(b.quote) === 'IN_STORE') {
+        const assigned = await tx.get<Listing>('listings', b.assignedListingId!);
+        ensure(
+          assigned && listingSupports(assigned, 'IN_STORE'),
+          'INVALID_ASSIGNMENT',
+          'Arrange a therapist who accepts in-store service.',
+          409,
+        );
+      }
       ensure(
         ['ACCEPTED', 'CONFIRMED'].includes(b.status) &&
           b.staffTaskStatus === 'OFFERED' &&
@@ -1506,16 +1738,177 @@ export class Engine {
       return this.save(tx, b, actor, 'STAFF_UNAVAILABLE', reason.slice(0, 300));
     });
   }
+  async checkIn(actor: Actor, bookingId: string, input: unknown) {
+    this.role(actor, 'MERCHANT');
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        code: z
+          .string()
+          .trim()
+          .regex(/^[A-F0-9]{12}$/),
+      })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, data.version);
+      ensure(
+        fulfillmentMode(b.quote) === 'IN_STORE' &&
+          b.status === 'CONFIRMED' &&
+          b.staffTaskStatus === 'ACKNOWLEDGED' &&
+          b.replacementConsent !== 'PENDING' &&
+          !b.checkIn,
+        'INVALID_STATE',
+        'This booking cannot be checked in.',
+        409,
+      );
+      ensure(
+        data.code === b.checkInCode,
+        'INVALID_CHECK_IN_CODE',
+        'Check the customer reservation code.',
+        409,
+      );
+      ensure(
+        this.now() >= b.quote.startAt - 30 * minute && this.now() <= b.quote.endAt,
+        'INVALID_TIME',
+        'Check-in is outside the reservation window.',
+        409,
+      );
+      ensure(
+        b.paymentStatus !== 'FAILED',
+        'PAYMENT_REQUIRED',
+        'Payment guarantee requires renewal.',
+        402,
+      );
+      b.checkIn = { at: this.now(), actorId: actor.id };
+      if (b.noShow && ['CONTACTING', 'REPORTED'].includes(b.noShow.status)) {
+        b.noShow.status = 'DISMISSED';
+        b.noShow.resolvedAt = this.now();
+      }
+      return this.save(tx, b, actor, 'CUSTOMER_CHECKED_IN');
+    });
+  }
+  /** The full purchased session must fit before closing, the next customer and the bed. */
+  private async ensureInStoreStart(tx: Records, b: Booking, at: number) {
+    const duration = b.quote.endAt - b.quote.startAt;
+    ensure(
+      at <= b.quote.endAt,
+      'INVALID_TIME',
+      'This appointment window has ended. Arrange a new reservation.',
+      409,
+    );
+    ensure(
+      b.quote.venue && venueCanServe(b.quote.venue, at, at + duration),
+      'OUTSIDE_BOOKING_HOURS',
+      'The full service cannot finish before closing.',
+      409,
+    );
+    const actual = { ...b.quote, startAt: at, endAt: at + duration };
+    ensure(
+      (await transitionAvailable(tx, b.assignedStaffId!, actual, this.now(), b.holdId)) &&
+        !(await tx.conflicts(b.assignedStaffId!, at, this.buffered(actual).endAt, b.holdId)),
+      'SLOT_CONFLICT',
+      'The full service conflicts with the next appointment.',
+      409,
+    );
+    const store = (await tx.get<Store>('stores', b.storeId))!;
+    ensure(
+      (
+        await availableResources(tx, store, actual, this.now(), b.holdId, true, b.resourceId)
+      ).includes(b.resourceId!),
+      'RESOURCE_UNAVAILABLE',
+      'The resource or the following reservation is unavailable.',
+      409,
+    );
+  }
+  /**
+   * A checked-in customer who arrived too late for the full session. Allowed only when the
+   * server-recorded check-in was after the booked start and a full session could not have
+   * started even at that moment, so delays caused by the shop never become customer fees.
+   * The frozen cancellation policy applies as for a cancellation at the booked start.
+   */
+  async closeLateArrival(actor: Actor, bookingId: string, input: unknown) {
+    this.role(actor, 'MERCHANT');
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        note: z.string().trim().min(10).max(500),
+      })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, data.version);
+      ensure(
+        fulfillmentMode(b.quote) === 'IN_STORE' &&
+          b.status === 'CONFIRMED' &&
+          !!b.checkIn &&
+          b.startedAt === undefined,
+        'INVALID_STATE',
+        'Only a checked-in visit that has not started can be closed for late arrival.',
+        409,
+      );
+      ensure(
+        b.checkIn!.at > b.quote.startAt,
+        'NOT_LATE',
+        'The customer arrived on time. Start the service or cancel as the shop.',
+        409,
+      );
+      let blocked = false;
+      try {
+        await this.ensureInStoreStart(tx, b, b.checkIn!.at);
+      } catch (e) {
+        if (!(e instanceof DomainError)) throw e;
+        blocked = [
+          'INVALID_TIME',
+          'OUTSIDE_BOOKING_HOURS',
+          'SLOT_CONFLICT',
+          'RESOURCE_UNAVAILABLE',
+        ].includes(e.code);
+      }
+      ensure(
+        blocked,
+        'SERVICE_STILL_POSSIBLE',
+        'A full session could start when the customer arrived. Start it or cancel as the shop.',
+        409,
+      );
+      const payment = await tx.get<Payment>('payments', b.paymentId);
+      const fee = Math.floor(
+        ((b.quote.total - b.quote.transportFee) *
+          scheduledCancellationBps(b.quote.cancellationPolicy, 0)) /
+          10000,
+      );
+      ensure(
+        fee === 0 ||
+          (payment &&
+            payment.bookingId === b.id &&
+            payment.expiresAt > this.now() &&
+            ['AUTHORIZED', 'METHOD_SAVED'].includes(payment.status) &&
+            fee <= payment.amount),
+        'PAYMENT_REQUIRED',
+        'A valid payment guarantee is required.',
+        402,
+      );
+      await this.closeBooking(tx, b, 'CANCELLED', 'CUSTOMER_LATE_ARRIVAL', fee);
+      return this.save(tx, b, actor, 'LATE_ARRIVAL_CLOSED', data.note);
+    });
+  }
   async event(actor: Actor, bookingId: string, version: number, event: string) {
     this.role(actor, 'STAFF');
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId, version);
+      const inStore = fulfillmentMode(b.quote) === 'IN_STORE';
+      ensure(
+        !inStore || !['EN_ROUTE', 'ARRIVED'].includes(event),
+        'INVALID_TRANSITION',
+        'In-store visits use customer check-in.',
+        409,
+      );
       if (['EN_ROUTE', 'ARRIVED', 'START'].includes(event))
         await requireCurrentQualifications(tx, b.storeId, b.assignedListingId, this.now());
       const next = {
         EN_ROUTE: ['CONFIRMED', 'EN_ROUTE'],
         ARRIVED: ['EN_ROUTE', 'ARRIVED'],
-        START: ['ARRIVED', 'IN_SERVICE'],
+        START: [inStore ? 'CONFIRMED' : 'ARRIVED', 'IN_SERVICE'],
         COMPLETE: ['IN_SERVICE', 'COMPLETED'],
       }[event];
       ensure(
@@ -1539,17 +1932,38 @@ export class Engine {
           'Another visit is still in progress. Finish that visit or ask the shop to arrange assistance before continuing.',
           409,
         );
+      if (event === 'EN_ROUTE')
+        ensure(
+          b.paymentStatus !== 'FAILED',
+          'PAYMENT_REQUIRED',
+          'The customer has not renewed the payment guarantee yet. Do not depart; the shop will follow up.',
+          402,
+        );
       if (event === 'START')
         ensure(
-          this.now() >= b.quote.startAt && b.arrivedAt !== undefined && this.now() >= b.arrivedAt,
+          // Scheduled visits start no earlier than the booked time; an instant visit starts
+          // once the therapist has arrived, and its end is still checked from the actual start.
+          (b.quote.bookingMode === 'INSTANT' || this.now() >= b.quote.startAt) &&
+            (inStore
+              ? !!b.checkIn && this.now() >= b.checkIn.at
+              : b.arrivedAt !== undefined && this.now() >= b.arrivedAt),
           'SERVICE_TOO_EARLY',
           'Service cannot start before the booked time and arrival.',
           409,
         );
+      if (event === 'START' && inStore) {
+        ensure(
+          b.paymentStatus !== 'FAILED',
+          'PAYMENT_REQUIRED',
+          'Renew the payment guarantee first.',
+          402,
+        );
+        await this.ensureInStoreStart(tx, b, this.now());
+      }
       if (event === 'COMPLETE') {
         const eligibleAt = serviceEligibleAt(b);
         ensure(
-          eligibleAt !== undefined && b.startedAt! >= b.quote.startAt && this.now() >= eligibleAt,
+          eligibleAt !== undefined && startedOnTime(b) && this.now() >= eligibleAt,
           'SERVICE_TOO_SHORT',
           'The purchased service duration has not elapsed. Report an exception if service ended early.',
           409,
@@ -1566,6 +1980,44 @@ export class Engine {
         await this.release(tx, b);
         return this.save(tx, b, actor, 'STAFF_COMPLETE');
       }
+      if (event === 'START') {
+        // Reserve the actual full duration too, so a late start cannot sell its remaining time.
+        const actual = {
+          ...b.quote,
+          startAt: this.now(),
+          endAt: this.now() + b.quote.endAt - b.quote.startAt,
+        };
+        const free =
+          (await transitionAvailable(tx, b.assignedStaffId!, actual, this.now(), b.holdId)) &&
+          !(await tx.conflicts(
+            b.assignedStaffId!,
+            this.buffered(actual).startAt,
+            this.buffered(actual).endAt,
+            b.holdId,
+          ));
+        // In store the full session was checked above. At the customer's place the therapist is
+        // already at the door, so the visit starts even when the next booking leaves no room;
+        // that booking then follows the usual delay and reassignment handling.
+        ensure(
+          free || !inStore,
+          'SLOT_CONFLICT',
+          'The full service conflicts with the next appointment.',
+          409,
+        );
+        const h = await tx.get<Hold>('holds', b.holdId);
+        ensure(h?.active, 'HOLD_EXPIRED', 'The reservation is unavailable.', 409);
+        if (free) {
+          h.expiresAt = this.buffered(actual).endAt;
+          await tx.interval({
+            id: h.id,
+            staffId: h.staffId,
+            ...this.buffered(actual),
+            expiresAt: h.expiresAt,
+          });
+          await reserveResource(tx, actual, h);
+          await tx.put('holds', h);
+        }
+      }
       b.status = next[1] as Booking['status'];
       if (event === 'ARRIVED') b.arrivedAt = this.now();
       if (event === 'START') b.startedAt = this.now();
@@ -1580,6 +2032,7 @@ export class Engine {
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId);
       return {
+        autoConfirmationEligible: await autoAcceptanceAllowed(tx, b),
         bookingVersion: b.version,
         serverNow: this.now(),
         eligibleAt: serviceEligibleAt(b),
@@ -1651,7 +2104,7 @@ export class Engine {
         b.completion ??= {
           status: 'DISPUTED',
           eligibleAt: eligibleAt ?? b.quote.endAt,
-          timingInvalid: eligibleAt === undefined || b.startedAt! < b.quote.startAt,
+          timingInvalid: eligibleAt === undefined || !startedOnTime(b),
           endedAt: now,
           requestedAt: now,
           confirmBy: now + completionWindowMs,
@@ -1716,7 +2169,7 @@ export class Engine {
               eligibleAt !== undefined &&
               c.endedAt >= eligibleAt &&
               now >= c.endedAt &&
-              b.startedAt! >= b.quote.startAt,
+              startedOnTime(b),
             'SERVICE_TOO_SHORT',
             'Shortened or invalid service records require exception handling.',
             409,
@@ -1797,6 +2250,78 @@ export class Engine {
       return this.save(tx, b, actor, `COMPLETION_${data.action}`);
     });
   }
+  /**
+   * PRD CP-44: a far-future booking keeps a saved method and is authorized before the visit.
+   * A failed authorization gives the customer a short window to renew it; otherwise the
+   * booking is cancelled free and the time released. Returns true when the booking closed.
+   */
+  private async paymentGuarantee(tx: Records, b: Booking, system: Actor) {
+    if (b.startedAt !== undefined || !['REQUESTED', 'ACCEPTED', 'CONFIRMED'].includes(b.status))
+      return false;
+    const now = this.now(),
+      hour = 60 * minute;
+    if (
+      b.paymentStatus === 'FAILED' &&
+      b.paymentActionBy !== undefined &&
+      now >= b.paymentActionBy
+    ) {
+      await this.closeBooking(tx, b, 'CANCELLED', 'PAYMENT_GUARANTEE_FAILED');
+      b.paymentActionBy = undefined;
+      await this.save(tx, b, system, 'PAYMENT_GUARANTEE_EXPIRED');
+      return true;
+    }
+    if (
+      b.paymentStatus !== 'METHOD_SAVED' ||
+      b.quote.startAt - now > config.preAuthorizeHours * hour
+    )
+      return false;
+    const p = await tx.get<Payment>('payments', b.paymentId);
+    if (!p || p.bookingId !== b.id || p.status !== 'METHOD_SAVED') return false;
+    if (p.demoDecline) {
+      b.paymentStatus = 'FAILED';
+      b.paymentActionBy = Math.min(
+        now + config.paymentUpdateHours * hour,
+        b.quote.startAt - 60 * minute,
+      );
+      await this.save(tx, b, system, 'PAYMENT_GUARANTEE_FAILED');
+      return false;
+    }
+    p.status = 'AUTHORIZED';
+    p.expiresAt = now + config.authorizationDays * 24 * hour;
+    await tx.put('payments', p);
+    b.paymentStatus = 'AUTHORIZED';
+    await this.save(tx, b, system, 'PAYMENT_PREAUTHORIZED');
+    return false;
+  }
+  /** The customer renews a failed pre-visit authorization before its deadline. */
+  async renewPaymentGuarantee(actor: Actor, bookingId: string, input: unknown) {
+    this.role(actor, 'CUSTOMER');
+    const data = z.object({ version: z.number().int().positive() }).strict().parse(input);
+    return this.run(async (tx) => {
+      const b = await this.getBooking(tx, actor, bookingId, data.version);
+      ensure(
+        b.paymentStatus === 'FAILED' &&
+          b.paymentActionBy !== undefined &&
+          this.now() < b.paymentActionBy &&
+          b.startedAt === undefined &&
+          !terminal.has(b.status),
+        'INVALID_STATE',
+        'This booking does not need a payment renewal.',
+        409,
+      );
+      const p = await tx.get<Payment>('payments', b.paymentId);
+      ensure(p && p.bookingId === b.id, 'PAYMENT_REQUIRED', 'Payment is unavailable.', 402);
+      // Demo payments re-authenticate the saved method; a real PSP confirms with 3-D Secure.
+      p.status = 'AUTHORIZED';
+      p.demoDecline = false;
+      p.verified3ds = true;
+      p.expiresAt = this.now() + config.authorizationDays * 24 * 60 * minute;
+      await tx.put('payments', p);
+      b.paymentStatus = 'AUTHORIZED';
+      b.paymentActionBy = undefined;
+      return this.save(tx, b, actor, 'PAYMENT_GUARANTEE_RENEWED');
+    });
+  }
   private async captureCompleted(tx: Records, b: Booking) {
     b.status = 'COMPLETED';
     b.completedAt = this.now();
@@ -1845,11 +2370,20 @@ export class Engine {
   }
   private async release(tx: Records, b: Booking) {
     const h = await tx.get<Hold>('holds', b.holdId);
+    if (h?.active && b.resourceId && b.startedAt !== undefined) {
+      const key = resourceKey(b.storeId, b.resourceId);
+      await tx.put('venueTurnovers', {
+        id: key,
+        startAt: this.now(),
+        endAt: this.now() + (b.quote.venue?.turnoverMinutes ?? 15) * minute,
+      });
+    }
     if (h) {
       h.active = false;
       await tx.put('holds', h);
     }
     await tx.releaseInterval(b.holdId);
+    await tx.releaseInterval(`resource:${b.holdId}`);
     await tx.releaseInterval(`replacement:${b.id}`);
   }
   async noShowAction(actor: Actor, bookingId: string, input: unknown, key: string) {
@@ -1864,7 +2398,7 @@ export class Engine {
     this.role(
       actor,
       ...(data.action === 'CONTACT' || data.action === 'REPORT'
-        ? ['STAFF' as const]
+        ? ['STAFF' as const, 'MERCHANT' as const]
         : ['MERCHANT' as const]),
     );
     ensure(
@@ -1874,6 +2408,9 @@ export class Engine {
     );
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId);
+      const inStore = fulfillmentMode(b.quote) === 'IN_STORE';
+      if (!inStore && ['CONTACT', 'REPORT'].includes(data.action)) this.role(actor, 'STAFF');
+      const arrivalAt = inStore ? b.quote.startAt : b.arrivedAt;
       const requestId = createHash('sha256')
         .update(`${actor.id}:${bookingId}:${key}`)
         .digest('hex');
@@ -1897,7 +2434,9 @@ export class Engine {
         409,
       );
       ensure(
-        b.status === 'ARRIVED' &&
+        (inStore
+          ? b.status === 'CONFIRMED' && !b.checkIn && this.now() >= b.quote.startAt
+          : b.status === 'ARRIVED') &&
           b.staffTaskStatus === 'ACKNOWLEDGED' &&
           b.replacementConsent !== 'PENDING',
         'INVALID_STATE',
@@ -1906,14 +2445,14 @@ export class Engine {
       );
       const policy = b.quote.cancellationPolicy.noShow;
       ensure(
-        policy && b.arrivedAt !== undefined,
+        policy && arrivalAt !== undefined,
         'NO_SHOW_POLICY_REQUIRED',
         'This booking has no agreed no-show policy or recorded arrival.',
         409,
       );
       const now = this.now();
       const response = (await tx.list<Message>('messages')).some(
-        (m) => m.bookingId === b.id && m.role === 'CUSTOMER' && m.createdAt >= b.arrivedAt!,
+        (m) => m.bookingId === b.id && m.role === 'CUSTOMER' && m.createdAt >= arrivalAt!,
       );
       if (data.action !== 'DISMISS')
         ensure(
@@ -1952,14 +2491,14 @@ export class Engine {
           id: messageId,
           bookingId,
           actorId: actor.id,
-          role: 'STAFF',
+          role: actor.role,
           text: data.text,
           createdAt: now,
         });
         b.noShow ??= {
           status: 'CONTACTING',
           startedAt: now,
-          waitUntil: Math.max(now, b.arrivedAt, b.quote.startAt) + policy.waitMinutes * minute,
+          waitUntil: Math.max(now, arrivalAt!, b.quote.startAt) + policy.waitMinutes * minute,
           contacts: [],
         };
         b.noShow.contacts.push({ id: id('contact'), messageId, at: now, actorId: actor.id });
@@ -1995,6 +2534,15 @@ export class Engine {
               b.noShow.status === 'REPORTED',
               'INVALID_STATE',
               'The therapist must submit a report first.',
+              409,
+            );
+            // The shop both reports and confirms an in-store no-show, so the customer is
+            // notified of the report and any reply in this window stops the fee.
+            ensure(
+              !inStore ||
+                now >= (b.noShow.reportedAt ?? now) + IN_STORE_NO_SHOW_REPLY_MINUTES * minute,
+              'NO_SHOW_NOT_READY',
+              'The customer can still reply to this report.',
               409,
             );
             const payment = await tx.get<Payment>('payments', b.paymentId);
@@ -2089,8 +2637,10 @@ export class Engine {
       b.replacementConsent === 'PENDING' ||
       ['DECLINED', 'WITHDRAWN'].includes(b.staffTaskStatus) ||
       lateInstant(b, this.now());
+    // A failed pre-visit authorization lapses into a free cancellation anyway.
     const late =
       !provider &&
+      b.paymentStatus !== 'FAILED' &&
       b.quote.startAt - this.now() < b.quote.cancellationPolicy.freeBeforeMinutes * minute;
     const instant =
       b.quote.bookingMode === 'INSTANT' && b.quote.cancellationPolicy.instantTravelOnly;
@@ -2418,6 +2968,7 @@ export class Engine {
         h.active = false;
         await tx.put('holds', h);
         await tx.releaseInterval(h.id);
+        await tx.releaseInterval(`resource:${h.id}`);
         for (const p of await tx.find<Payment>('payments', { holdId: h.id }))
           if (
             p.holdId === h.id &&
@@ -2430,6 +2981,24 @@ export class Engine {
       }
     for (const b of await tx.find<Booking>('bookings', { status: activeBookingStatuses })) {
       if (terminal.has(b.status)) continue;
+      if (await this.paymentGuarantee(tx, b, system)) continue;
+      if (
+        fulfillmentMode(b.quote) === 'IN_STORE' &&
+        b.status === 'CONFIRMED' &&
+        b.staffTaskStatus === 'ACKNOWLEDGED' &&
+        !b.visitReminderAt &&
+        this.now() >= b.quote.startAt - 24 * 60 * minute
+      ) {
+        b.visitReminderAt = this.now();
+        await this.save(
+          tx,
+          b,
+          system,
+          this.now() < b.quote.startAt
+            ? 'IN_STORE_APPOINTMENT_REMINDER'
+            : 'IN_STORE_ATTENDANCE_REVIEW',
+        );
+      }
       if (b.status === 'AWAITING_COMPLETION' && b.completion) {
         const c = b.completion;
         const p = await tx.get<Payment>('payments', b.paymentId);
@@ -2456,15 +3025,46 @@ export class Engine {
           );
           await this.save(tx, b, system, 'COMPLETION_PAYMENT_REVIEW');
         } else if (c.status === 'PENDING' && c.confirmBy <= this.now()) {
-          c.status = 'TIMED_OUT';
-          c.history.push({ action: 'TIMED_OUT', role: 'ADMIN', at: this.now() });
-          await completionCase(
-            tx,
-            b,
-            this.now(),
-            'Customer completion confirmation timed out. No automatic charge; the shop must follow up with the customer.',
-          );
-          await this.save(tx, b, system, 'COMPLETION_TIMED_OUT');
+          const eligibleAt = serviceEligibleAt(b);
+          // Only an undisputed, full-length visit is accepted by silence; once anyone raised a
+          // problem, the customer must confirm or the shop must close it out.
+          const capturable =
+            (await autoAcceptanceAllowed(tx, b)) &&
+            !c.timingInvalid &&
+            eligibleAt !== undefined &&
+            c.endedAt >= eligibleAt &&
+            startedOnTime(b) &&
+            !c.history.some((h) => h.action === 'DISPUTE' || h.action === 'EXCEPTION') &&
+            !!p &&
+            p.verified3ds &&
+            p.bookingId === b.id &&
+            p.amount >= b.quote.total;
+          if (capturable) {
+            // No dispute within the disclosed window: the visit counts as accepted.
+            c.status = 'CONFIRMED';
+            c.confirmedAt = this.now();
+            c.autoConfirmed = true;
+            c.history.push({ action: 'AUTO_CONFIRMED', role: 'ADMIN', at: this.now() });
+            await this.captureCompleted(tx, b);
+            await completionReceipt(
+              tx,
+              b,
+              system,
+              this.now(),
+              'No dispute within 72 hours after the visit ended; the authorized order amount was captured once.',
+            );
+            await this.save(tx, b, system, 'COMPLETION_AUTO_CONFIRMED');
+          } else {
+            c.status = 'TIMED_OUT';
+            c.history.push({ action: 'TIMED_OUT', role: 'ADMIN', at: this.now() });
+            await completionCase(
+              tx,
+              b,
+              this.now(),
+              'Customer completion confirmation timed out and the record cannot be charged automatically; the shop must follow up.',
+            );
+            await this.save(tx, b, system, 'COMPLETION_TIMED_OUT');
+          }
         }
       }
       const replacementExpired =

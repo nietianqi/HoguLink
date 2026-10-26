@@ -83,6 +83,8 @@ export class AdminService {
         bookings: bookings.map(
           ({
             address: _address,
+            contact: _contact,
+            checkInCode: _checkInCode,
             customerId: _customer,
             paymentId: _payment,
             holdId: _hold,

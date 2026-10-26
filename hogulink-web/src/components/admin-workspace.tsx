@@ -1,4 +1,5 @@
 'use client';
+import { VenueReviews } from './venue-settings';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { SystemDelivery } from './system-delivery';
 import { rt } from '@/lib/runtime-i18n';
@@ -1128,6 +1129,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'review' && (
               <>
+                {canAdmin(actor, 'supply.write') && <VenueReviews locale={l} />}
                 {canAdmin(actor, 'supply.write') && (
                   <OnboardingReview locale={l} onChanged={() => void refresh()} />
                 )}

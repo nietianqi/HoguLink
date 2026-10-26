@@ -3,6 +3,8 @@ import { resolve, join } from 'node:path';
 import { seal, unseal } from './secrets.js';
 import type { Repository } from './repository.js';
 export type StoredEvidence = { id: string; data?: string; storageKey?: string };
+/** Record kinds whose files live in evidence storage under the record id. */
+const fileKinds = new Set(['partnerEvidence', 'venuePhotos']);
 function location(id: string) {
   if (!/^evidence_[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid evidence storage key');
   return join(resolve(process.env.EVIDENCE_DIRECTORY || 'data/private-evidence'), `${id}.enc`);
@@ -50,7 +52,7 @@ export async function migrateEvidence(repo: Repository) {
 export async function bundleEvidence(records: { kind: string; id: string; body: string }[]) {
   const files: { id: string; data: string }[] = [];
   for (const row of records)
-    if (row.kind === 'partnerEvidence') {
+    if (fileKinds.has(row.kind)) {
       const metadata = JSON.parse(row.body) as StoredEvidence;
       if (metadata.storageKey)
         files.push({ id: row.id, data: (await loadEvidence(metadata)).toString('base64') });
@@ -61,9 +63,7 @@ export async function restoreEvidence(
   files: { id: string; data: string }[],
   records: { kind: string; id: string; body: string }[],
 ) {
-  const allowed = new Set(
-    records.filter((row) => row.kind === 'partnerEvidence').map((row) => row.id),
-  );
+  const allowed = new Set(records.filter((row) => fileKinds.has(row.kind)).map((row) => row.id));
   for (const file of files) {
     if (!allowed.has(file.id) || typeof file.data !== 'string')
       throw new Error('Unexpected evidence in backup');
@@ -80,7 +80,7 @@ export async function restoreEvidence(
   }
   for (const row of records)
     if (
-      row.kind === 'partnerEvidence' &&
+      fileKinds.has(row.kind) &&
       JSON.parse(row.body).storageKey &&
       !files.some((file) => file.id === row.id)
     )

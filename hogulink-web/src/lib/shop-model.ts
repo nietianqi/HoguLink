@@ -1,10 +1,15 @@
 import type { Listing, ListingStats, Locale, PublicStore } from '@hogulink/contracts';
 import type { Catalog } from './api';
-import { serviceChoices } from './consumer-model';
+import {
+  browseServiceChoices as serviceChoices,
+  choiceModePrices,
+  type ModePrice,
+} from './consumer-model';
 import type { ShopStatsMap } from './shop-stats';
 import { visitPreferences } from './visit-model';
 
 export type ShopCard = {
+  modePrices?: ModePrice[];
   store: PublicStore;
   /** Published, verified members who can take at least one shown service. */
   members: Listing[];
@@ -29,6 +34,7 @@ export function shopCards(
     area?: string;
     language?: string;
     mode?: string;
+    fulfillmentMode?: string;
     search?: string;
     locale?: Locale;
   } = {},
@@ -41,6 +47,7 @@ export function shopCards(
       area: filters.area,
       language: filters.language,
       mode: filters.mode,
+      fulfillmentMode: filters.fulfillmentMode,
       search: filters.search,
       locale: filters.locale,
     },
@@ -61,6 +68,11 @@ export function shopCards(
       return [
         {
           store,
+          modePrices: choiceModePrices(
+            services.flatMap((s) => s.variants),
+            undefined,
+            true,
+          ),
           members,
           languages: ['ja', 'en', 'zh'].filter((lang) =>
             members.some((m) => m.languages.includes(lang)),
@@ -95,7 +107,7 @@ export function shopPage(cards: ShopCard[], rawPage?: string) {
 export function shopCardHref(
   locale: Locale,
   card: ShopCard,
-  preferences: { area?: string; language?: string; mode?: string } = {},
+  preferences: { area?: string; language?: string; mode?: string; fulfillmentMode?: string } = {},
 ) {
   return `/${locale}/shops/${card.store.slug}?${new URLSearchParams({
     ...visitPreferences(preferences),

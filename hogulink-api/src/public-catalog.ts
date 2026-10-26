@@ -2,8 +2,20 @@ import type { Store, Listing, PublicStore, Offering } from '@hogulink/contracts'
 import { effectiveBookingRules } from './booking-rules.js';
 export function toPublicStore(
   store: Store,
+  mode: 'HOME_VISIT' | 'IN_STORE' = 'HOME_VISIT',
 ): PublicStore & { bookingRules: NonNullable<PublicStore['bookingRules']> } {
-  const rules = effectiveBookingRules(store);
+  const base = effectiveBookingRules(store);
+  const rules =
+    mode === 'IN_STORE' && store.venue
+      ? {
+          ...base,
+          nominationFee: store.venue.nominationFee,
+          cancellationPolicy: store.venue.cancellationPolicy ?? base.cancellationPolicy,
+          areaTransportFees: undefined,
+          timeSurcharges: store.venue.timeSurcharges,
+          businessHours: store.venue.businessHours,
+        }
+      : base;
   return {
     id: store.id,
     slug: store.slug,
@@ -15,7 +27,16 @@ export function toPublicStore(
     acceptanceMode: store.acceptanceMode,
     active: store.active,
     approved: store.approved,
-    areas: store.areas,
+    areas: mode === 'IN_STORE' && store.venue ? [store.venue.area] : store.areas,
+    homeVisitsEnabled: store.homeVisitsEnabled,
+    ...(store.venue?.status === 'APPROVED'
+      ? {
+          venue: (() => {
+            const { resources, reviewedBy: _by, reviewNote: _note, ...publicVenue } = store.venue!;
+            return { ...publicVenue, capacity: resources.filter((r) => r.active).length };
+          })(),
+        }
+      : {}),
     bookingRules: {
       version: rules.version,
       nominationFee: rules.nominationFee,
@@ -25,6 +46,7 @@ export function toPublicStore(
       ...(rules.areaTransportFees && Object.keys(rules.areaTransportFees).length
         ? { areaTransportFees: rules.areaTransportFees }
         : {}),
+      ...(rules.businessHours ? { businessHours: rules.businessHours } : {}),
     },
   };
 }
@@ -48,6 +70,7 @@ export function toPublicListing(x: Listing, onDuty = x.onDuty): Listing {
     offeringIds: x.offeringIds,
     hotelOnly: x.hotelOnly,
     photo: x.photo,
+    fulfillmentModes: x.fulfillmentModes,
   };
 }
 /** Public view of a service: the live promotion is kept, internal price history is not. */

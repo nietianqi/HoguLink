@@ -1,4 +1,4 @@
-import './qa-clock.mjs';
+import { bookable } from './qa-clock.mjs';
 import assert from 'node:assert/strict';
 const origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:3000';
 const apiOrigin = process.env.SMOKE_API_ORIGIN || origin;
@@ -47,7 +47,7 @@ const quoteInput = {
   offeringId: 'store-nagi-60',
   bookingMode: 'SCHEDULED',
   nominationType: 'NOMINATED',
-  startAt: Date.now() + 9 * 24 * 60 * 60_000,
+  startAt: bookable(Date.now() + 9 * 24 * 60 * 60_000),
   area: 'shinjuku',
   requiredLanguage: '',
 };

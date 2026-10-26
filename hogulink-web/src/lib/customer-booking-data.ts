@@ -6,7 +6,7 @@ export async function loadCustomerBookings(bookingId?: string) {
   const orders = bookingId
     ? api<Booking>(`bookings/${encodeURIComponent(bookingId)}`).then((booking) => [booking])
     : api<Booking[]>('bookings');
-  const catalog = api<Catalog>('public/staff-listings').catch(() => undefined);
+  const catalog = api<Catalog>('public/staff-listings?fulfillmentMode=ALL').catch(() => undefined);
   return {
     bookings: await orders,
     catalog,

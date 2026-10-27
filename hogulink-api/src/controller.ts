@@ -461,6 +461,14 @@ export class ApiController {
           offerings: catalog.offerings.filter((x) => x.storeId === store.id),
         });
       }
+      match = path.match(/^public\/shop-assets\/(brand_[0-9a-f-]{36})$/);
+      if (match && method === 'GET') {
+        const viewer = await this.actor(req).catch(() => undefined);
+        const file = await this.engine.storefronts.file(match[1], viewer);
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.send(file.bytes);
+      }
       match = path.match(/^public\/venue-photos\/(evidence_[0-9a-f-]{36})$/);
       if (match && method === 'GET') {
         // Signed-in shops and reviewers may also preview photos that are not yet approved.
@@ -472,6 +480,32 @@ export class ApiController {
           photo.published ? 'public, max-age=300' : 'private, no-store',
         );
         return res.send(photo.bytes);
+      }
+      match = path.match(/^public\/listing-media\/(media_[0-9a-f-]{36})(\/poster)?$/);
+      if (match && method === 'GET') {
+        // Like venue photos: public once approved, otherwise only the people managing it.
+        const viewer = await this.actor(req).catch(() => undefined);
+        const file = await this.engine.media.file(match[1], match[2] ? 'poster' : 'file', viewer);
+        res.setHeader('Content-Type', file.mime);
+        res.setHeader(
+          'Cache-Control',
+          file.published ? 'public, max-age=300' : 'private, no-store',
+        );
+        res.setHeader('Accept-Ranges', 'bytes');
+        // Mobile browsers fetch video in byte ranges and refuse to play without them.
+        const total = file.bytes.length,
+          range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+        if (range && (range[1] || range[2])) {
+          const start = range[1] ? Number(range[1]) : Math.max(0, total - Number(range[2])),
+            end = range[1] && range[2] ? Math.min(Number(range[2]), total - 1) : total - 1;
+          if (start >= total || start > end) {
+            res.setHeader('Content-Range', `bytes */${total}`);
+            return res.status(416).end();
+          }
+          res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+          return res.status(206).send(file.bytes.subarray(start, end + 1));
+        }
+        return res.send(file.bytes);
       }
       match = path.match(/^public\/portraits\/([^/]+)$/);
       if (match && method === 'GET') {
@@ -662,6 +696,26 @@ export class ApiController {
         return res.json(await this.engine.assignmentCandidates(actor, match[1]));
       if (path === 'merchant/workspace' && method === 'GET')
         return res.json(await this.engine.merchant.snapshot(actor));
+      if (path === 'merchant/storefront' && method === 'GET')
+        return res.json(await this.engine.storefronts.workspace(actor));
+      if (path === 'merchant/storefront' && method === 'PUT')
+        return res.json(await this.engine.storefronts.save(actor, body));
+      if (path === 'merchant/storefront/submit' && method === 'POST')
+        return res.json(await this.engine.storefronts.submit(actor, body));
+      if (path === 'merchant/storefront/withdraw' && method === 'POST')
+        return res.json(await this.engine.storefronts.withdraw(actor, body));
+      if (path === 'merchant/storefront/images' && method === 'POST') {
+        await this.engine.limits.check('storefront-upload', actor.id, 20);
+        return res.status(201).json(await this.engine.storefronts.upload(actor, body));
+      }
+      match = path.match(/^merchant\/storefront\/images\/(brand_[0-9a-f-]{36})$/);
+      if (match && method === 'DELETE')
+        return res.json(await this.engine.storefronts.remove(actor, match[1]));
+      if (path === 'admin/storefronts' && method === 'GET')
+        return res.json(await this.engine.storefronts.queue(actor));
+      match = path.match(/^admin\/storefronts\/([^/]+)\/review$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.storefronts.review(actor, match[1], body));
       if (path === 'merchant/venue' && method === 'PUT')
         return res.json(await this.engine.venues.save(actor, body));
       if (path === 'merchant/venue/geocode' && method === 'GET') {
@@ -670,6 +724,47 @@ export class ApiController {
       }
       if (path === 'merchant/venue/photos' && method === 'POST')
         return res.status(201).json(await this.engine.venues.uploadPhoto(actor, body));
+      // Therapist photos and introduction video, shared by the therapist and shop workspaces.
+      const mediaListing =
+        typeof req.query.listingId === 'string' ? req.query.listingId : undefined;
+      if (path === 'media' && method === 'GET')
+        return res.json(await this.engine.media.list(actor, mediaListing));
+      if (path === 'media/photos' && method === 'POST') {
+        await this.engine.limits.check('media-upload', actor.id, 20);
+        return res.status(201).json(await this.engine.media.uploadPhoto(actor, body));
+      }
+      if (path === 'media/videos' && method === 'POST') {
+        await this.engine.limits.check('media-upload', actor.id, 20);
+        return res.status(201).json(await this.engine.media.startVideo(actor, body));
+      }
+      match = path.match(/^media\/videos\/([^/]+)\/(chunks|finish)$/);
+      if (match && method === 'POST')
+        return match[2] === 'chunks'
+          ? res.json(await this.engine.media.videoChunk(actor, match[1], body))
+          : res.status(201).json(await this.engine.media.finishVideo(actor, match[1], body));
+      if (path === 'media/order' && method === 'PUT')
+        return res.json(await this.engine.media.reorder(actor, body, mediaListing));
+      match = path.match(/^media\/([^/]+)\/(authorize|confirm|withdraw|remove|cover)$/);
+      if (match && method === 'POST') {
+        const [, id, action] = match;
+        if (action === 'authorize')
+          return res.json(await this.engine.media.authorize(actor, id, body));
+        if (action === 'confirm') return res.json(await this.engine.media.confirm(actor, id, body));
+        if (action === 'withdraw')
+          return res.json(await this.engine.media.withdraw(actor, id, body));
+        if (action === 'remove') return res.json(await this.engine.media.remove(actor, id, body));
+        return res.json(await this.engine.media.setCover(actor, id, body));
+      }
+      if (path === 'admin/listing-media' && method === 'GET')
+        return res.json(await this.engine.media.reviewQueue(actor));
+      match = path.match(/^admin\/listing-media\/([^/]+)\/review$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.media.review(actor, match[1], body));
+      match = path.match(/^customer\/listing-media\/([^/]+)\/report$/);
+      if (match && method === 'POST') {
+        await this.engine.limits.check('media-report', actor.id, 10);
+        return res.json(await this.engine.media.report(actor, match[1], body));
+      }
       if (path === 'merchant/venue/calendar' && method === 'GET')
         return res.json(await this.engine.venues.calendar(actor, { date: req.query.date }));
       if (path === 'merchant/home-visits' && method === 'PUT')

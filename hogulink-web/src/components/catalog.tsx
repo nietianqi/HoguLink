@@ -29,6 +29,7 @@ export function TherapistCard({
   language,
   nominationFee,
   demo = false,
+  inShop = false,
 }: {
   listing: Listing;
   store: PublicStore;
@@ -41,6 +42,7 @@ export function TherapistCard({
   language?: string;
   nominationFee?: number;
   demo?: boolean;
+  inShop?: boolean;
 }) {
   const selected =
     offering ??
@@ -67,10 +69,15 @@ export function TherapistCard({
         {h5Portrait(listing, demo) !== listing.photo && (
           <span className="portrait-sample">{ht(locale, 'sample')}</span>
         )}
-        <span className={`availability ${listing.onDuty ? 'online' : ''}`}>
+        <span className={`availability ${!inShop && listing.onDuty ? 'online' : ''}`}>
           <i />
-          {t(locale, listing.onDuty ? 'available' : 'byAppointment')}
+          {t(locale, !inShop && listing.onDuty ? 'available' : 'byAppointment')}
         </span>
+        {inShop && listing.media?.some((m) => m.kind === 'VIDEO') && (
+          <span className="storefront-video">
+            ▶ {locale === 'zh-cn' ? '介绍视频' : locale === 'ja' ? '紹介動画' : 'Video'}
+          </span>
+        )}
         <span className="portrait-arrow">
           <ArrowUpRight size={19} />
         </span>
@@ -86,13 +93,15 @@ export function TherapistCard({
               {t(locale, 'verified')}
             </span>
           </div>
-          <Link
-            className="shop-link"
-            href={`/${locale}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences({ area, language, mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}) }), offering: selected.id })}`}
-          >
-            {store.name[locale]}
-            <ArrowUpRight size={12} />
-          </Link>
+          {!inShop && (
+            <Link
+              className="shop-link"
+              href={`/${locale}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences({ area, language, mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}) }), offering: selected.id })}`}
+            >
+              {store.name[locale]}
+              <ArrowUpRight size={12} />
+            </Link>
+          )}
           <p className="card-language">
             <Languages size={14} />
             {listing.languages.map((x) => languageNames[x]).join(' · ')}

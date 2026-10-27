@@ -1,5 +1,7 @@
 'use client';
 import { VenueReviews } from './venue-settings';
+import { MediaReview } from './media-review';
+import { StorefrontReviews } from './storefront-reviews';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { SystemDelivery } from './system-delivery';
 import { rt } from '@/lib/runtime-i18n';
@@ -1150,6 +1152,8 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                   <OnboardingReview locale={l} onChanged={() => void refresh()} />
                 )}
                 {canAdmin(actor, 'supply.write') && <VenueReviews locale={l} />}
+                {canAdmin(actor, 'supply.write') && <MediaReview locale={l} />}
+                {canAdmin(actor, 'supply.write') && <StorefrontReviews key={actor.id} locale={l} />}
                 {canAdmin(actor, 'supply.read') && (
                   <SuspensionImpactPanel locale={l} orderHref={(id) => href('orders', id)} />
                 )}

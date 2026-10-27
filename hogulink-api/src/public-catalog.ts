@@ -1,5 +1,11 @@
 import { venueAvailable } from '@hogulink/contracts';
-import type { Store, Listing, PublicStore, Offering } from '@hogulink/contracts';
+import type {
+  Store,
+  Listing,
+  PublicStore,
+  Offering,
+  PublicListingMedia,
+} from '@hogulink/contracts';
 import { effectiveBookingRules } from './booking-rules.js';
 export function toPublicStore(
   store: Store,
@@ -28,6 +34,7 @@ export function toPublicStore(
     acceptanceMode: store.acceptanceMode,
     active: store.active,
     approved: store.approved,
+    ...(store.storefront ? { storefront: store.storefront } : {}),
     areas: mode === 'IN_STORE' && store.venue ? [store.venue.area] : store.areas,
     homeVisitsEnabled: store.homeVisitsEnabled,
     // Only a venue that can take bookings is shown; paused or disabled venues stay private.
@@ -58,7 +65,11 @@ export function toPublicStore(
     },
   };
 }
-export function toPublicListing(x: Listing, onDuty = x.onDuty): Listing {
+export function toPublicListing(
+  x: Listing,
+  onDuty = x.onDuty,
+  media?: PublicListingMedia[],
+): Listing {
   return {
     id: x.id,
     slug: x.slug,
@@ -79,6 +90,7 @@ export function toPublicListing(x: Listing, onDuty = x.onDuty): Listing {
     hotelOnly: x.hotelOnly,
     photo: x.photo,
     fulfillmentModes: x.fulfillmentModes,
+    ...(media?.length ? { media } : {}),
   };
 }
 /** Public view of a service: the live promotion is kept, internal price history is not. */

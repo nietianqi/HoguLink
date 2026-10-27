@@ -1,4 +1,4 @@
-import type { Listing, ListingStats, Offering, PublicStore } from './index.js';
+import type { Listing, ListingStats, Localized, Offering, PublicStore } from './index.js';
 
 export type MobileBootstrap = {
   version: 1;
@@ -31,6 +31,8 @@ export type MobileTherapist = {
   /** Included in `total` when the shop's time-band surcharge applies at `earliestAt`. */
   timeSurcharge?: number;
   earliestAt: number | null;
+  /** Up to two distinct services this therapist offers, for the card's service line. */
+  serviceNames?: Localized[];
   stats: ListingStats;
   badges: { freeTravel: boolean; instantNow: boolean };
 };

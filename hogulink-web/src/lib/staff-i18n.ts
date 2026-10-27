@@ -242,9 +242,9 @@ const words = {
   service: ['担当サービス', 'Assigned services', '可提供服务'],
   hotelOnly: ['ホテル訪問のみ', 'Hotel visits only', '仅接受酒店上门'],
   profileHelp: [
-    '写真・紹介文・対応条件の変更は所属店へご相談ください。',
-    'Contact your shop to request changes to your photo, bio or service conditions.',
-    '如需更新照片、介绍或接单条件，请联系所属店铺审核。',
+    '写真と紹介動画は下のコーナーから追加できます。紹介文・対応条件の変更は所属店へご相談ください。',
+    'Add photos and an introduction video below. Contact your shop to change your bio or service conditions.',
+    '照片和视频介绍可在下方上传；介绍文字或接单条件的修改，请联系所属店铺审核。',
   ],
   publicPage: ['公開プロフィールを見る', 'View public profile', '查看公开资料'],
   updated: ['最終更新', 'Last refreshed', '上次刷新'],

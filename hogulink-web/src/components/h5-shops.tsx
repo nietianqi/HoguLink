@@ -54,24 +54,42 @@ export function ShopFacts({ locale: l, stats }: { locale: Locale; stats?: Listin
   );
 }
 
-/** A designed shop mark instead of a stock photo: it never implies premises the shop does not have. */
+/** Published brand artwork, with a monogram fallback and an explicit demo caption. */
 export function H5ShopCover({
   store,
   className = '',
   children,
+  locale = 'ja',
+  demo = false,
 }: {
-  store: Pick<PublicStore, 'id' | 'name'>;
+  store: Pick<PublicStore, 'id' | 'name' | 'storefront'>;
   className?: string;
   children?: React.ReactNode;
+  locale?: Locale;
+  demo?: boolean;
 }) {
   return (
     <div className={`h5-shop-cover tone-${shopTone(store.id)} ${className}`}>
-      <span className="h5-shop-cover-letter" aria-hidden="true">
-        {shopMonogram(store)}
-      </span>
-      <span className="h5-shop-cover-line" aria-hidden="true">
-        LOCAL CARE · TOKYO
-      </span>
+      {store.storefront?.cover ? (
+        <>
+          <img
+            className="h5-shop-cover-photo"
+            src={store.storefront.cover.url}
+            alt=""
+            loading="lazy"
+          />
+          {demo && <span className="h5-shop-demo-image">{ht(locale, 'shopImageDemo')}</span>}
+        </>
+      ) : (
+        <>
+          <span className="h5-shop-cover-letter" aria-hidden="true">
+            {shopMonogram(store)}
+          </span>
+          <span className="h5-shop-cover-line" aria-hidden="true">
+            LOCAL CARE · TOKYO
+          </span>
+        </>
+      )}
       {children}
     </div>
   );
@@ -80,7 +98,11 @@ export function H5ShopCover({
 export function H5ShopLogo({ store, size = 'md' }: { store: PublicStore; size?: 'md' | 'lg' }) {
   return (
     <span className={`h5-shop-logo tone-${shopTone(store.id)} is-${size}`} aria-hidden="true">
-      {shopMonogram(store)}
+      {store.storefront?.logo ? (
+        <img src={store.storefront.logo.url} alt="" />
+      ) : (
+        shopMonogram(store)
+      )}
     </span>
   );
 }
@@ -102,7 +124,7 @@ export function H5ShopCard({
     card;
   return (
     <article className={`h5-shop-card is-${layout}`}>
-      <H5ShopCover store={store}>
+      <H5ShopCover store={store} locale={l} demo={demo}>
         <span className="h5-shop-cover-badges">
           <span className="h5-badge is-verified">
             <ShieldCheck size={11} aria-hidden="true" />

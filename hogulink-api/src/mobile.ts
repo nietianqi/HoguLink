@@ -168,9 +168,24 @@ export async function mobileTherapists(engine: Engine, query: unknown): Promise<
     const priced = variants[0];
     if (!priced) return [];
     const { o: offering, p, fee: transportFee } = priced;
+    // The selected duration's service first, then other services this person offers.
+    const serviceNames = [
+      offering,
+      ...catalog.offerings.filter(
+        (o) =>
+          o.storeId === store.id &&
+          listing.offeringIds.includes(o.id) &&
+          listingSupports(listing, fulfillmentMode(o)) &&
+          o.regulatoryCategory === 'RELAXATION',
+      ),
+    ]
+      .map((o) => o.name)
+      .filter((name, i, all) => all.findIndex((x) => x.ja === name.ja) === i)
+      .slice(0, 2);
     return [
       {
         listing,
+        serviceNames,
         store: {
           ...store,
           areas:

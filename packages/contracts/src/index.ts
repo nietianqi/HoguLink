@@ -144,6 +144,7 @@ export type AdminAssignee = Pick<AdminMember, 'id' | 'name' | 'adminRole' | 'tea
   openCases: number;
 };
 export type Store = {
+  storefront?: PublishedStorefront;
   id: string;
   merchantId: string;
   slug: string;
@@ -204,6 +205,7 @@ export type PublicStore = Pick<
   | 'approved'
   | 'areas'
 > & {
+  storefront?: PublishedStorefront;
   venue?: PublicVenue;
   homeVisitsEnabled?: boolean;
   bookingRules?: Pick<
@@ -238,7 +240,14 @@ export type Listing = {
   dutyUpdatedAt: number;
   offeringIds: string[];
   hotelOnly: boolean;
+  /** The main photo shown on cards, at checkout and for recognizing the therapist at the door. */
   photo: string;
+  /** Approved gallery photos and introduction video, in display order (public view only). */
+  media?: PublicListingMedia[];
+  /** The approved gallery photo currently used as the main photo. */
+  coverMediaId?: string;
+  /** The onboarding portrait to restore when the chosen gallery cover is taken down. */
+  basePhoto?: string;
   /** When the therapist works scheduled visits. Unset keeps every business hour bookable. */
   shifts?: StaffShifts;
   /** Safety conditions approved by the shop; enforced as hard filters on new home visits. */
@@ -1283,10 +1292,13 @@ export const venueAvailable = (store: {
   (store.venue.resources
     ? store.venue.resources.some((r) => r.active)
     : store.venue.capacity === undefined || store.venue.capacity > 0);
+/** Home visits also need a real main photo, so the customer can recognize who arrives. */
 export const listingSupports = (
-  listing: Pick<Listing, 'fulfillmentModes'>,
+  listing: Pick<Listing, 'fulfillmentModes' | 'photo'>,
   mode: FulfillmentMode,
-) => (listing.fulfillmentModes ?? ['HOME_VISIT']).includes(mode);
+) =>
+  (listing.fulfillmentModes ?? ['HOME_VISIT']).includes(mode) &&
+  (mode !== 'HOME_VISIT' || hasMainPhoto(listing));
 /** Every minute of service must fall inside one continuous JST opening window. */
 export function withinVenueHours(hours: BusinessHours, startAt: number, endAt: number) {
   if (endAt <= startAt) return false;
@@ -1395,3 +1407,216 @@ export const venuePhotoId = (url: string) => VENUE_PHOTO_PATH.exec(url)?.[1];
 export const IN_STORE_NO_SHOW_REPLY_MINUTES = 30;
 export const offeringSupports = (offering: Offering, mode: FulfillmentMode) =>
   fulfillmentMode(offering) === mode;
+
+// ---- Therapist profile photos and introduction video ----
+/** Photos and the short introduction video customers see on a therapist profile. */
+export type ListingMediaKind = 'PHOTO' | 'VIDEO';
+/**
+ * PENDING_CONSENT: the shop uploaded it; the person shown has not authorized it yet.
+ * PENDING_SHOP: the therapist uploaded and authorized it; the shop has not confirmed it.
+ * PENDING_REVIEW: authorized and confirmed; waiting for the platform.
+ * APPROVED is the only public state. WITHDRAWN (authorization withdrawn), REMOVED (taken down
+ * or replaced) and REJECTED are final.
+ */
+export type ListingMediaStatus =
+  | 'PENDING_CONSENT'
+  | 'PENDING_SHOP'
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'REMOVED';
+export const PENDING_MEDIA: ListingMediaStatus[] = [
+  'PENDING_CONSENT',
+  'PENDING_SHOP',
+  'PENDING_REVIEW',
+];
+export const LISTING_PHOTO_LIMIT = 8;
+/** One introduction video is shown; a replacement may wait for review while it stays up. */
+export const LISTING_VIDEO_LIMIT = 1;
+export const VIDEO_MAX_SECONDS = 60;
+export const VIDEO_MAX_BYTES = 20 * 1024 * 1024;
+/** Raw bytes per upload chunk; base64 keeps each request inside the JSON body limit. */
+export const VIDEO_CHUNK_BYTES = 360_000;
+export const PLACEHOLDER_PORTRAIT = '/portraits/placeholder.svg';
+/** A real, consented main photo: required before a therapist can be booked for home visits. */
+export const hasMainPhoto = (listing: { photo?: string }) =>
+  !!listing.photo && listing.photo !== PLACEHOLDER_PORTRAIT;
+export const listingMediaUrl = (id: string) => `/v1/public/listing-media/${id}`;
+export const listingMediaPosterUrl = (id: string) => `/v1/public/listing-media/${id}/poster`;
+
+/** What customers receive: approved items only, in the order the profile shows them. */
+export type PublicListingMedia = {
+  id: string;
+  kind: ListingMediaKind;
+  url: string;
+  posterUrl?: string;
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
+};
+/** The managed record seen by the therapist, their shop and platform reviewers. */
+export type ListingMedia = PublicListingMedia & {
+  listingId: string;
+  storeId: string;
+  status: ListingMediaStatus;
+  sort: number;
+  uploadedBy: 'STAFF' | 'MERCHANT';
+  consentAt?: number;
+  shopConfirmedAt?: number;
+  reviewedAt?: number;
+  /** Why it was rejected or taken down. */
+  note?: string;
+  /** Set on the main photo shown on cards and at the door. */
+  cover?: boolean;
+  reports?: number;
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+};
+export type ListingMediaReportReason =
+  'NOT_THE_PERSON' | 'INAPPROPRIATE' | 'CONTACT_INFO' | 'OTHER';
+/** Platform review queue: pending items plus approved items customers reported. */
+export type ListingMediaReviewItem = ListingMedia & {
+  listingName: { ja: string; en: string; 'zh-cn': string };
+  storeName: { ja: string; en: string; 'zh-cn': string };
+  reportReasons?: ListingMediaReportReason[];
+};
+
+const base64 = z
+  .string()
+  .min(8)
+  .max(490_000)
+  .regex(/^[A-Za-z0-9+/]+={0,2}$/);
+export const mediaPhotoInput = z
+  .object({
+    listingId: z.string().max(100).optional(),
+    mime: z.enum(['image/jpeg', 'image/png']),
+    data: base64,
+    /** The therapist confirms they are the person shown and allow publication. */
+    consent: z.boolean().optional(),
+  })
+  .strict();
+export const mediaVideoStartInput = z
+  .object({
+    listingId: z.string().max(100).optional(),
+    size: z.number().int().min(1000).max(VIDEO_MAX_BYTES),
+    consent: z.boolean().optional(),
+  })
+  .strict();
+export const mediaVideoChunkInput = z
+  .object({ index: z.number().int().min(0).max(100), data: base64 })
+  .strict();
+export const mediaVideoFinishInput = z
+  .object({
+    /** Read by the browser; used only when the file itself does not record a duration. */
+    durationSeconds: z
+      .number()
+      .min(1)
+      .max(VIDEO_MAX_SECONDS + 1),
+    poster: z.object({ mime: z.enum(['image/jpeg', 'image/png']), data: base64 }).strict(),
+  })
+  .strict();
+export const mediaDecisionInput = z
+  .object({
+    version: z.number().int().positive(),
+    approved: z.boolean(),
+    note: z.string().trim().max(300).optional(),
+  })
+  .strict();
+export const mediaRemoveInput = z
+  .object({ version: z.number().int().positive(), note: z.string().trim().min(4).max(300) })
+  .strict();
+export const mediaVersionInput = z.object({ version: z.number().int().positive() }).strict();
+export const mediaOrderInput = z
+  .object({
+    ids: z
+      .array(z.string().max(100))
+      .min(1)
+      .max(LISTING_PHOTO_LIMIT + 2),
+  })
+  .strict();
+export const mediaReportInput = z
+  .object({
+    reason: z.enum(['NOT_THE_PERSON', 'INAPPROPRIATE', 'CONTACT_INFO', 'OTHER']),
+    detail: z.string().trim().max(300).optional(),
+  })
+  .strict();
+
+/** Brand content is reviewed independently of operational prices, venue facts and qualifications. */
+export const STOREFRONT_PHOTO_LIMIT = 12;
+const storefrontText = (max: number) =>
+  z
+    .object({
+      ja: z.string().trim().max(max),
+      en: z.string().trim().max(max),
+      'zh-cn': z.string().trim().max(max),
+    })
+    .strict();
+const storefrontAssetId = z.string().regex(/^brand_[0-9a-f-]{36}$/);
+export const storefrontContentInput = z
+  .object({
+    tagline: storefrontText(90),
+    about: storefrontText(1800),
+    logoId: storefrontAssetId.nullable().default(null),
+    coverId: storefrontAssetId.nullable().default(null),
+    photoIds: z
+      .array(storefrontAssetId)
+      .max(STOREFRONT_PHOTO_LIMIT)
+      .refine((a) => new Set(a).size === a.length),
+    featuredOfferingIds: z
+      .array(z.string().min(1).max(100))
+      .max(6)
+      .refine((a) => new Set(a).size === a.length),
+    teamListingIds: z
+      .array(z.string().min(1).max(100))
+      .max(30)
+      .refine((a) => new Set(a).size === a.length),
+  })
+  .strict();
+export type StorefrontContent = z.infer<typeof storefrontContentInput>;
+export type StorefrontAsset = { id: string; url: string; createdAt: number };
+export type PublishedStorefront = {
+  version: number;
+  publishedAt: number;
+  tagline: Localized;
+  about: Localized;
+  logo?: StorefrontAsset;
+  cover?: StorefrontAsset;
+  photos: StorefrontAsset[];
+  featuredOfferingIds: string[];
+  teamListingIds: string[];
+};
+export type StorefrontDraft = {
+  id: string;
+  storeId: string;
+  version: number;
+  status: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'CHANGES_REQUESTED';
+  content: StorefrontContent;
+  submittedAt?: number;
+  reviewedAt?: number;
+  note?: string;
+  updatedAt: number;
+};
+export type StorefrontWorkspace = {
+  draft: StorefrontDraft;
+  published?: PublishedStorefront;
+  assets: StorefrontAsset[];
+  store: { id: string; slug: string; name: Localized; plan: Store['plan'] };
+  offerings: {
+    id: string;
+    name: Localized;
+    durationMinutes: number;
+    fulfillmentMode: FulfillmentMode;
+  }[];
+  team: { id: string; name: Localized; photo: string }[];
+  stats: ListingStats;
+};
+export type StorefrontReviewItem = StorefrontDraft & {
+  name: Localized;
+  assets: StorefrontAsset[];
+  published?: PublishedStorefront;
+  offerings: StorefrontWorkspace['offerings'];
+  team: StorefrontWorkspace['team'];
+};
+export const storefrontAssetUrl = (id: string) => `/v1/public/shop-assets/${id}`;

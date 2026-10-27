@@ -1,6 +1,7 @@
 import type { Locale } from '@hogulink/contracts';
 
 const copy = {
+  shopImageDemo: ['合成演示图片', '合成デモ画像', 'Synthetic demo image'],
   home: ['首页', 'ホーム', 'Home'],
   navigation: ['用户导航', 'メインナビゲーション', 'Main navigation'],
   accountNavigation: ['我的账户导航', 'マイページのメニュー', 'Account navigation'],

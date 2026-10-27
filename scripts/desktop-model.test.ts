@@ -329,8 +329,21 @@ test('merchant trends use creation dates in Japan and include closed bookings wi
   );
 });
 test('visit services and language candidates stay inside the selected shop and nomination', () => {
-  const a = { storeId: 'one', offeringIds: ['short'], languages: ['ja'], onDuty: false } as Listing;
-  const b = { storeId: 'one', offeringIds: ['long'], languages: ['en'], onDuty: true } as Listing;
+  const photo = '/portraits/a.jpg';
+  const a = {
+    storeId: 'one',
+    offeringIds: ['short'],
+    languages: ['ja'],
+    onDuty: false,
+    photo,
+  } as Listing;
+  const b = {
+    storeId: 'one',
+    offeringIds: ['long'],
+    languages: ['en'],
+    onDuty: true,
+    photo,
+  } as Listing;
   const outside = { ...b, storeId: 'two' };
   const offerings = [
     {

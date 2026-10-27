@@ -1,12 +1,23 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { seal, unseal } from './secrets.js';
 import type { Repository } from './repository.js';
-export type StoredEvidence = { id: string; data?: string; storageKey?: string };
+export type StoredEvidence = { id: string; data?: string; storageKey?: string; mime?: string };
 /** Record kinds whose files live in evidence storage under the record id. */
-const fileKinds = new Set(['partnerEvidence', 'venuePhotos', 'ticketAttachments']);
+const fileKinds = new Set([
+  'partnerEvidence',
+  'venuePhotos',
+  'ticketAttachments',
+  'mediaFiles',
+  'storefrontFiles',
+]);
+/**
+ * Introduction videos (up to 20 MB each) are too large for the JSON backup; their encrypted
+ * files are backed up with the evidence directory itself (docs/NONPAYMENT_READINESS.md).
+ */
+const inBackup = (metadata: StoredEvidence) => !metadata.mime?.startsWith('video/');
 function location(id: string) {
-  if (!/^evidence_[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid evidence storage key');
+  if (!/^(evidence|brand)_[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid evidence storage key');
   return join(resolve(process.env.EVIDENCE_DIRECTORY || 'data/private-evidence'), `${id}.enc`);
 }
 export async function saveEvidence(id: string, bytes: Buffer) {
@@ -23,6 +34,9 @@ export async function loadEvidence(e: StoredEvidence) {
     return unseal(await readFile(location(e.storageKey), 'utf8'), `evidence:${e.id}`);
   if (e.data) return Buffer.from(e.data, 'base64');
   throw new Error('Evidence content is unavailable');
+}
+export async function removeEvidence(id: string) {
+  await rm(location(id), { force: true });
 }
 export async function migrateEvidence(repo: Repository) {
   let migrated = 0;
@@ -54,7 +68,7 @@ export async function bundleEvidence(records: { kind: string; id: string; body: 
   for (const row of records)
     if (fileKinds.has(row.kind)) {
       const metadata = JSON.parse(row.body) as StoredEvidence;
-      if (metadata.storageKey)
+      if (metadata.storageKey && inBackup(metadata))
         files.push({ id: row.id, data: (await loadEvidence(metadata)).toString('base64') });
     }
   return files;
@@ -82,6 +96,7 @@ export async function restoreEvidence(
     if (
       fileKinds.has(row.kind) &&
       JSON.parse(row.body).storageKey &&
+      inBackup(JSON.parse(row.body)) &&
       !files.some((file) => file.id === row.id)
     )
       throw new Error('Backup is missing evidence content');

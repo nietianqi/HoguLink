@@ -45,6 +45,9 @@ export type AdminTodo = {
   cases?: { unassigned: number; overdue: number; escalated: number; attention: number };
   onboarding?: number;
   venues?: number;
+  /** Therapist photos and videos waiting for review, plus reported public ones. */
+  media?: number;
+  storefronts?: number;
   experience?: number;
   contentReviews?: number;
   aftercare?: number;

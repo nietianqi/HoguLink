@@ -104,6 +104,7 @@ export type PlannerProps = {
   team?: Listing[];
   rules?: BookingRules;
   defaultNomination?: 'NOMINATED' | 'FREE';
+  dock?: boolean;
 };
 export function VisitBackLink({
   locale,
@@ -632,7 +633,7 @@ export function BookingPreview(props: PlannerProps) {
         <ShieldCheck size={14} />
         {vt(l, 'paymentHelp')}
       </p>
-      {v.estimated && (
+      {props.dock !== false && v.estimated && (
         <MobilePriceDock locale={l} quote={v.estimated} note={vt(l, 'estimate')}>
           {v.validStart ? (
             <Link className="button" href={v.href}>

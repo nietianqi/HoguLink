@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PLACEHOLDER_PORTRAIT } from '@hogulink/contracts';
 import type { Booking, Listing, Offering, PublicStore } from '@hogulink/contracts';
 import { withinVenueHours } from '@hogulink/contracts';
 import { catalogForMode, chosenServiceMode } from '../hogulink-web/src/lib/service-mode-model.js';
@@ -51,6 +52,7 @@ const person = {
   publicationStatus: 'PUBLISHED_INDEXABLE',
   offeringIds: ['home', 'store'],
   languages: ['ja'],
+  photo: '/portraits/person.jpg',
   fulfillmentModes: ['HOME_VISIT', 'IN_STORE'],
 } as Listing;
 const home = {
@@ -242,4 +244,15 @@ test('all three locales explain check-in, missed appointments and new capacity f
       'VENUE_HAS_BOOKINGS',
     ] as const)
       assert.ok(sv(l, key).length > 0);
+});
+
+test('without a main photo the same person is offered for in-store visits only', () => {
+  const rows = browseServiceChoices({
+    ...catalog,
+    listings: [{ ...person, photo: PLACEHOLDER_PORTRAIT }],
+  });
+  assert.deepEqual(
+    rows.flatMap((r) => r.modePrices.map((p) => p.mode)),
+    ['IN_STORE'],
+  );
 });

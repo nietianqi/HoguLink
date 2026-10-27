@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-10-27",
+  "generator": "Built-in imagegen",
+  "synthetic": true,
+  "assets": [
+    {
+      "id": "nagi-cover",
+      "file": "hogulink-web/public/images/demo/nagi-cover.jpg",
+      "bytes": 170665,
+      "prompt": "Use case: photorealistic-natural. Asset: a wide 16:9 cover photograph for the fictional Nagi Tokyo relaxation service demo, not a real venue. Create an elegant Japanese wellness brand atmosphere: a softly lit, meticulously arranged treatment room with warm ivory walls, light oak, pale linen on one massage bed, sheer curtains and a restrained deep pine-green accent. Natural afternoon window light, believable contemporary Tokyo interior, editorial architectural photography, no people, no medical equipment, no signs or real brands. Comfortable, professional and understated; avoid extravagant luxury. Image should remain attractive cropped to a wide card. Include a tiny legible 'DEMO' watermark at bottom right. This is a fictional synthetic test image, not documentary evidence of actual premises."
+    },
+    {
+      "id": "therapist-aoi",
+      "file": "hogulink-web/public/images/demo/therapist-aoi.jpg",
+      "bytes": 105700,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: standing three-quarter pose holding neatly folded white towels, warm ivory room. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-woman.png"
+    },
+    {
+      "id": "therapist-ren",
+      "file": "hogulink-web/public/images/demo/therapist-ren.jpg",
+      "bytes": 123092,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: seated at a simple oak consultation desk, friendly professional posture, no other people. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-man.png"
+    },
+    {
+      "id": "therapist-mio",
+      "file": "hogulink-web/public/images/demo/therapist-mio.jpg",
+      "bytes": 126877,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: standing beside a small shelf of neatly arranged linens, natural gentle smile. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-mio.png"
+    },
+    {
+      "id": "therapist-haru",
+      "file": "hogulink-web/public/images/demo/therapist-haru.jpg",
+      "bytes": 75613,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: standing three-quarter pose with hands loosely clasped, soft sage studio background. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-haru.png"
+    },
+    {
+      "id": "therapist-yuki",
+      "file": "hogulink-web/public/images/demo/therapist-yuki.jpg",
+      "bytes": 119433,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: standing beside a bright window, natural calm smile, restrained warm wood background. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-yuki.png"
+    },
+    {
+      "id": "therapist-saki",
+      "file": "hogulink-web/public/images/demo/therapist-saki.jpg",
+      "bytes": 145930,
+      "prompt": "Use case: identity-preserve. Make ONE additional photorealistic professional profile photograph of the SAME fictional adult therapist in the reference image, for a demo gallery. Preserve the person's facial identity, apparent age, facial features, hairstyle, eyewear if any, and the exact modest dark pine-green uniform with white trim. New composition: seated in a bright consultation area with a closed notebook, relaxed professional posture. Natural soft daylight, believable skin texture, fully clothed and dignified, medium portrait framed waist up, clean premium wellness editorial photography. No customers, no medical equipment, no exaggerated glamour, no real brand. Vertical 3:4 composition. Add a tiny legible 'DEMO' watermark bottom right. This is a synthetic fictional demo character. Do not generate a different person.",
+      "reference": "hogulink-web/public/images/h5-therapist-saki.png"
+    },
+    {
+      "id": "sora-cover",
+      "file": "hogulink-web/public/images/demo/sora-cover.jpg",
+      "bytes": 165076,
+      "prompt": "Use case: photorealistic-natural. Create a wide 16:9 brand cover photograph for fictional Sora Wellness, a Japanese relaxation demo service. Airy contemporary Japanese wellness room, soft ivory and pale sage, bright sheer curtains, a neatly dressed massage table and small natural arrangements, calm diffused daylight, inviting tasteful but believable design. Editorial architectural photography. No people, no medical equipment, no real names or signage. Include tiny legible 'DEMO' bottom right. Synthetic atmosphere concept only, not an actual venue. Suitable for an elegant green wellness website."
+    },
+    {
+      "id": "mori-cover",
+      "file": "hogulink-web/public/images/demo/mori-cover.jpg",
+      "bytes": 178674,
+      "prompt": "Use case: photorealistic-natural. Wide 16:9 brand cover photograph for fictional Mori Tokyo relaxation demo. A calm contemporary Japanese wellness room with restrained walnut wood, deep forest-green wall detail, ivory linen massage table, one leafy indoor plant, warm indirect lighting and soft window light. Meticulously clean, understated high quality, realistic small Tokyo business scale, architectural editorial photography. No people, no medical equipment, no real signs or brands. Tiny legible 'DEMO' watermark bottom right. Fictional synthetic brand atmosphere, not documentary premises."
+    },
+    {
+      "id": "nagi-detail",
+      "file": "hogulink-web/public/images/demo/nagi-detail.jpg",
+      "bytes": 150114,
+      "prompt": "Use case: photorealistic-natural. Wide 4:3 editorial wellness brand detail photograph for a fictional Nagi Tokyo demo. Neatly folded ivory towels with deep green fabric ribbon, an unbranded small amber bottle, a simple ceramic bowl and a few green leaves on a light oak preparation cabinet; blurred cream curtains and soft afternoon daylight. Professional Japanese relaxation atmosphere, realistic tactile textures, no people, no readable product labels, no medical claims. Understated, bright and meticulously clean. Tiny legible 'DEMO' at bottom right. Synthetic illustrative test asset, not actual premises."
+    },
+    {
+      "id": "sora-detail",
+      "file": "hogulink-web/public/images/demo/sora-detail.jpg",
+      "bytes": 219542,
+      "prompt": "Use case: photorealistic-natural. Wide 4:3 editorial photograph for fictional Sora Wellness demo: a bright quiet welcome corner, ivory armchair, pale sage cushion, small pale oak side table with ceramic tea cups and a neatly folded linen towel, sheer curtains and a restrained branch arrangement. Contemporary Japanese minimalism, soft morning light, realistic modest wellness studio scale. No people, no real logos, no text except tiny legible 'DEMO' watermark bottom right. Synthetic brand mood photo for a sample service, not documentary evidence of a real venue."
+    },
+    {
+      "id": "mori-detail",
+      "file": "hogulink-web/public/images/demo/mori-detail.jpg",
+      "bytes": 199290,
+      "prompt": "Use case: photorealistic-natural. Wide 4:3 detail photograph for fictional Mori Tokyo wellness demo. Warm walnut shelf with neatly rolled cream towels, small matte ceramic vase holding a maple branch, a discreet dark green linen basket and gently glowing indirect light. Rich forest-green wall, warm daylight, believable Japanese relaxation service brand photography, dignified and understated. No people, no real brand labels, no medical equipment or claims. Tiny legible 'DEMO' watermark bottom right. Synthetic illustrative test asset, not real premises."
+    }
+  ]
+}

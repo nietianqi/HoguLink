@@ -79,6 +79,8 @@ import { InvoicingService } from './invoicing.js';
 import { ReportingService } from './reporting.js';
 import { FulfillmentService, lateInstant, sweepFulfillment } from './fulfillment.js';
 import { OnboardingService, requireCurrentQualifications, sweepOnboarding } from './onboarding.js';
+import { ListingMediaService, approvedMedia, sweepMediaUploads } from './media.js';
+import { StorefrontService } from './storefront.js';
 import {
   completionCase,
   autoAcceptanceAllowed,
@@ -142,6 +144,8 @@ function rememberReads(tx: Records): Records {
 }
 export class Engine {
   readonly venues: VenueService;
+  readonly media: ListingMediaService;
+  readonly storefronts: StorefrontService;
   readonly customers: CustomerAuth;
   readonly notifications: NotificationWorker;
   readonly limits: RateLimiter;
@@ -171,6 +175,16 @@ export class Engine {
     public now = () => Date.now(),
   ) {
     this.venues = new VenueService(
+      (fn) => this.run(fn),
+      now,
+      (fn) => this.read(fn),
+    );
+    this.media = new ListingMediaService(
+      (fn) => this.run(fn),
+      now,
+      (fn) => this.read(fn),
+    );
+    this.storefronts = new StorefrontService(
       (fn) => this.run(fn),
       now,
       (fn) => this.read(fn),
@@ -560,11 +574,13 @@ export class Engine {
       const visibleStores = stores.filter(
         (s) => !managedStores.has(s.id) || listings.some((l) => l.storeId === s.id),
       );
+      const media = await approvedMedia(tx, listings);
       return {
         listings: listings.map((x) =>
           toPublicListing(
             x,
             x.onDuty && !serving.has(x.staffId) && this.now() - x.dutyUpdatedAt < 4 * 60 * minute,
+            media.get(x.id),
           ),
         ),
         stores: visibleStores.map((store) => toPublicStore(store, selectedMode)),
@@ -1462,6 +1478,8 @@ export class Engine {
         todo.venues = (await tx.list<Store>('stores')).filter(
           (s) => (s.venueDraft ?? s.venue)?.status === 'PENDING',
         ).length;
+        todo.media = await this.media.pendingCount(tx);
+        todo.storefronts = await tx.count('storefrontDrafts', { status: 'PENDING' });
         // Same queue as the review moderation page: new reviews, replies and open appeals.
         const reviews = await tx.list<ExperienceReview>('experienceReviews'),
           replies = await tx.list<ExperienceReply>('experienceReplies'),
@@ -3085,6 +3103,7 @@ export class Engine {
   }
   async sweep(tx: Records) {
     await sweepOnboarding(tx, this.now());
+    await sweepMediaUploads(tx, this.now());
     await sweepSubscriptions(tx, this.now());
     const stores = await tx.list<Store>('stores'),
       listings = await tx.list<Listing>('listings');

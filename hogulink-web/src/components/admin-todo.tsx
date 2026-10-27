@@ -86,6 +86,20 @@ export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] 
     });
   if (todo.venues !== undefined)
     cards.push({ key: 'todoVenues', count: todo.venues, href: links.review, Icon: Store });
+  if (todo.storefronts !== undefined)
+    cards.push({
+      key: 'todoStorefronts',
+      count: todo.storefronts,
+      href: `${links.review}#storefront-review`,
+      Icon: Store,
+    });
+  if (todo.media !== undefined)
+    cards.push({
+      key: 'todoMedia',
+      count: todo.media,
+      href: `${links.review}#media-review`,
+      Icon: UserCheck,
+    });
   if (todo.aftercare !== undefined)
     cards.push({ key: 'todoAftercare', count: todo.aftercare, href: links.review, Icon: Store });
   if (todo.experience !== undefined)

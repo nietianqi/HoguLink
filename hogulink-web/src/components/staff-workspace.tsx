@@ -64,6 +64,7 @@ import { WorkdayTools } from './workday-tools';
 import { CompletionPanel } from './completion-panel';
 import { PartnerOrderFlow } from './partner-order-flow';
 import { pf } from '@/lib/partner-flow-i18n';
+import { MediaManager } from './media-manager';
 
 type Block = {
   id: string;
@@ -1397,6 +1398,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   </section>
                   {dutyCard()}
                 </div>
+                <MediaManager locale={l} role="STAFF" />
               </div>
             )}
             <p className="workday-income-note">

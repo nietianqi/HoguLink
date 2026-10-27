@@ -130,7 +130,7 @@ export function authorizeAdminRoute(actor: Actor, path: string, method: string) 
     permission = method === 'GET' ? 'cases.read' : 'cases.write';
   else if (path === 'admin/reviews' || path === 'admin/enforcement-actions')
     permission = 'supply.write';
-  else if (path.startsWith('admin/venues'))
+  else if (path.startsWith('admin/venues') || path.startsWith('admin/storefronts'))
     permission = method === 'GET' ? 'supply.read' : 'supply.write';
   else if (path === 'admin/shop-quality' || path === 'admin/suspension-impact')
     permission = 'supply.read';

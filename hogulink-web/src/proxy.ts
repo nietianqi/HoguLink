@@ -8,6 +8,8 @@ export function proxy(request: NextRequest) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
+    // Introduction videos are served by the API; blob: lets the uploader read a chosen file locally.
+    "media-src 'self' blob:",
     "font-src 'self'",
     "connect-src 'self'",
     "object-src 'none'",

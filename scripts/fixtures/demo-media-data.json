@@ -1,0 +1,110 @@
+{
+  "version": "demo-media-20261027-v1",
+  "synthetic": true,
+  "stores": [
+    {
+      "id": "store-nagi",
+      "slug": "nagi-tokyo",
+      "cover": "/images/demo/nagi-cover.jpg",
+      "photos": [
+        "/images/demo/nagi-cover.jpg",
+        "/images/demo/nagi-detail.jpg",
+        "/images/h5-service-90.png"
+      ],
+      "tagline": {
+        "ja": "一日の終わりに、静かなひと息を。",
+        "en": "A quiet pause at the end of your day.",
+        "zh-cn": "忙碌一天后，留一段安静的放松时光。"
+      },
+      "about": {
+        "ja": "凪は、落ち着いた対話とわかりやすいご案内を大切にする架空のデモ店舗です。60・90・120分のメニューからお選びいただけます。指名、またはお店による担当者の手配に対応。\n写真はAIで生成したブランドイメージで、実在する店舗や人物の営業実績を示しません。来店可能な店舗の有無はサービス方式の選択画面でご確認ください。",
+        "en": "Nagi is a fictional demo shop built around calm communication and clear guidance. Explore 60, 90 and 120 minute relaxation sessions, choose a therapist or let the shop arrange one.\nImages are synthetic brand illustrations, not evidence of real premises or staff credentials. Check the booking options for actual service modes.",
+        "zh-cn": "凪是一家虚构的演示店铺，强调安静舒适的体验和清楚的服务说明。提供60、90、120分钟等放松项目，可以指名技师，也可以由店铺安排。\n照片为AI合成的品牌氛围示意，不代表真实门店、人员资质或经营实绩。是否可到店，请以预约区可选择的服务方式为准。"
+      }
+    },
+    {
+      "id": "store-sora",
+      "slug": "sora-wellness",
+      "cover": "/images/demo/sora-cover.jpg",
+      "photos": [
+        "/images/demo/sora-cover.jpg",
+        "/images/demo/sora-detail.jpg",
+        "/images/h5-treatment.png"
+      ],
+      "tagline": {
+        "ja": "旅の合間にも、心地よい休息を。",
+        "en": "Make room for a lighter, calmer day.",
+        "zh-cn": "在旅途与日常之间，找回轻松的节奏。"
+      },
+      "about": {
+        "ja": "そらは、日常や旅の合間にゆっくり休むための架空のデモ店舗です。ご希望の時間、言語、サービス内容を確認してから予約できます。受付内容を確認後、お店がご案内します。\n写真は合成されたデモ素材です。実際の来店施設を示すものではなく、来店予約は承認された施設がある場合のみ選べます。",
+        "en": "Sora is a fictional demo shop for an unhurried break during everyday life or travel. Review the duration, language and service before booking. The shop checks each request and explains the next step.\nPhotos are synthetic demo assets and do not identify real premises. In-store bookings are available only when an approved venue is offered.",
+        "zh-cn": "空是一家虚构的演示店铺，希望为旅行和日常生活留出一段从容的休息。预约前可以查看项目时长、服务语言与费用，由店铺确认具体安排。\n照片为合成测试素材，不表示真实经营场所。只有审核通过并开放预约的门店，才会提供到店服务选项。"
+      }
+    },
+    {
+      "id": "store-mori",
+      "slug": "mori-tokyo",
+      "cover": "/images/demo/mori-cover.jpg",
+      "photos": [
+        "/images/demo/mori-cover.jpg",
+        "/images/demo/mori-detail.jpg",
+        "/images/h5-service-120.png"
+      ],
+      "tagline": {
+        "ja": "木漏れ日のような、穏やかな時間。",
+        "en": "A little more calm, naturally.",
+        "zh-cn": "像林间的光一样，温和而从容。"
+      },
+      "about": {
+        "ja": "森は、首肩・脚・全身などのリラクゼーションメニューを紹介する架空のデモ店舗です。お店が内容とご希望を確認し、担当者を手配します。日時とサービス方式ごとの料金を確認してから予約へお進みください。\n室内写真と人物写真はデモ用の合成素材です。実在する施設や技師の資格を保証するものではありません。",
+        "en": "Mori is a fictional demo shop featuring neck, shoulder, leg and full-body relaxation. The shop reviews your request and arranges a therapist. Check prices for your preferred time and service mode before continuing.\nInterior and staff imagery is synthetic demonstration material, not a guarantee of real premises or professional credentials.",
+        "zh-cn": "森是一家虚构的演示店铺，展示肩颈、腿部与全身等放松项目。由店铺核对需求并安排技师，预约前明确展示不同服务方式及时间对应的费用。\n室内和人物图片均为合成演示素材，不代表真实场所或人员资质。"
+      }
+    }
+  ],
+  "therapists": [
+    {
+      "id": "listing-aoi",
+      "slug": "aoi-tokyo",
+      "staffId": "staff-aoi",
+      "storeId": "store-nagi",
+      "photo": "/images/demo/therapist-aoi.jpg"
+    },
+    {
+      "id": "listing-ren",
+      "slug": "ren-tokyo",
+      "staffId": "staff-ren",
+      "storeId": "store-nagi",
+      "photo": "/images/demo/therapist-ren.jpg"
+    },
+    {
+      "id": "listing-mio",
+      "slug": "mio-tokyo",
+      "staffId": "staff-mio",
+      "storeId": "store-nagi",
+      "photo": "/images/demo/therapist-mio.jpg"
+    },
+    {
+      "id": "listing-haru",
+      "slug": "haru-tokyo",
+      "staffId": "staff-haru",
+      "storeId": "store-sora",
+      "photo": "/images/demo/therapist-haru.jpg"
+    },
+    {
+      "id": "listing-yuki",
+      "slug": "yuki-tokyo",
+      "staffId": "staff-yuki",
+      "storeId": "store-mori",
+      "photo": "/images/demo/therapist-yuki.jpg"
+    },
+    {
+      "id": "listing-saki",
+      "slug": "saki-tokyo",
+      "staffId": "staff-saki",
+      "storeId": "store-mori",
+      "photo": "/images/demo/therapist-saki.jpg"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import {
   Info,
   LocateFixed,
   MapPin,
+  Play,
   Search,
   Store,
   X,
@@ -32,12 +33,14 @@ import {
   directoryTime,
   therapistSelection,
 } from '@/lib/therapist-directory-model';
-import { H5AreaPicker, H5PortraitPreview } from './h5-overlays';
+import { H5AreaPicker } from './h5-overlays';
 import { MobileSheet } from './mobile-ui';
 import { H5Badges, H5Price, H5Stats, useDeviceLocation } from './h5-business';
 import { PriceLines } from './catalog';
 import { visitPreferences } from '@/lib/visit-model';
 import { TherapistFacts } from './therapist-facts';
+import { h5Portrait } from '@/lib/h5-media';
+import { clock, md } from '@/lib/media-i18n';
 
 export function H5TherapistDirectory({
   locale: l,
@@ -313,36 +316,54 @@ export function H5TherapistDirectory({
         {data.items.map((item) => {
           const { listing, store, offering, total, earliestAt, stats, badges } = item;
           const selection = therapistSelection(q, item);
+          const detail = `/${l}/therapists/${listing.slug}?${selection}`;
+          const video = listing.media?.find((m) => m.kind === 'VIDEO');
+          const portrait = h5Portrait(listing, bootstrap.demo);
           return (
-            <article className="h5-therapist-card" key={listing.id}>
-              <H5PortraitPreview
-                locale={l}
-                listing={listing}
-                demo={bootstrap.demo}
-                available={!!earliestAt}
-              />
+            <article className="h5-therapist-card hl-person-card" key={listing.id}>
+              {/* Photo and name open the profile; the play badge is its own target. */}
+              <div className="hl-person-photo">
+                <Link href={detail} tabIndex={-1} aria-label={listing.name[l]}>
+                  <img src={portrait} alt="" width={84} height={112} loading="lazy" />
+                </Link>
+                {video && (
+                  <Link
+                    className="hl-person-play"
+                    href={`${detail}#therapist-video`}
+                    aria-label={`${md(l, 'playIntro')} · ${listing.name[l]}`}
+                  >
+                    <Play size={10} fill="currentColor" aria-hidden="true" />
+                    {clock(video.durationSeconds)}
+                  </Link>
+                )}
+              </div>
               <div className="h5-therapist-copy">
                 <div className="h5-therapist-heading">
                   <h2>
-                    <Link href={`/${l}/therapists/${listing.slug}?${selection}`}>
-                      {listing.name[l]}
-                    </Link>
+                    <Link href={detail}>{listing.name[l]}</Link>
                   </h2>
                   <H5Badges
                     locale={l}
                     verified={bootstrap.demo ? ht(l, 'sample') : t(l, 'verified')}
                   />
                 </div>
-                <H5Stats locale={l} stats={stats} compact showReviews={false} />
-                <Link
-                  className="h5-shop-name"
-                  href={`/${l}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences(q), offering: offering.id })}`}
-                >
-                  <Store size={11} aria-hidden="true" />
-                  <span>{store.name[l]}</span>
-                  <ChevronRight size={11} aria-hidden="true" />
-                </Link>
-                <p>{listing.languages.map((lang) => languageNames[lang]).join(' · ')}</p>
+                <p className="hl-person-meta">
+                  <Link
+                    className="h5-shop-name"
+                    href={`/${l}/shops/${store.slug}?${new URLSearchParams({ ...visitPreferences(q), offering: offering.id })}`}
+                  >
+                    <Store size={11} aria-hidden="true" />
+                    <span>{store.name[l]}</span>
+                    <ChevronRight size={11} aria-hidden="true" />
+                  </Link>
+                  <span>{listing.languages.map((lang) => languageNames[lang]).join(' · ')}</span>
+                </p>
+                {!!item.serviceNames?.length && (
+                  <p className="hl-person-services">
+                    <span className="sr-only">{md(l, 'services')}: </span>
+                    {item.serviceNames.map((n) => n[l]).join(' · ')}
+                  </p>
+                )}
                 <H5Badges
                   locale={l}
                   promotion={!!item.promotionEndsAt}
@@ -369,45 +390,49 @@ export function H5TherapistDirectory({
                   />
                   <Info size={11} />
                 </button>
-                <TherapistFacts
-                  locale={l}
-                  name={listing.name[l]}
-                  stats={stats}
-                  point={location.point}
-                  areas={store.areas}
-                  locating={location.state === 'locating'}
-                  disabled={pending}
-                  onLocate={() => void locateDistance()}
-                />
-              </div>
-              <div className="h5-therapist-action">
-                <small>
-                  {earliestAt ? (
-                    <>
-                      <Clock3 size={10} />
-                      <span>
-                        {sv(
-                          l,
-                          offering.fulfillmentMode === 'IN_STORE'
-                            ? 'storeEarliest'
-                            : 'homeEarliest',
-                        )}
-                        <br />
-                        <time dateTime={new Date(earliestAt).toISOString()}>
-                          {directoryTime(l, earliestAt, data.checkedAt, ht(l, 'today'))}
-                        </time>
-                      </span>
-                    </>
-                  ) : (
-                    ht(l, 'noSlots')
-                  )}
-                </small>
-                <Link
-                  className="h5-primary"
-                  href={`/${l}/${earliestAt ? 'book' : 'therapists'}/${listing.slug}?${selection}`}
-                >
-                  {ht(l, earliestAt ? 'reserve' : 'chooseTime')}
-                </Link>
+                <div className="hl-person-aux">
+                  <H5Stats locale={l} stats={stats} compact />
+                  <TherapistFacts
+                    locale={l}
+                    name={listing.name[l]}
+                    stats={stats}
+                    point={location.point}
+                    areas={store.areas}
+                    locating={location.state === 'locating'}
+                    disabled={pending}
+                    onLocate={() => void locateDistance()}
+                    counts={false}
+                  />
+                </div>
+                <div className="h5-therapist-action">
+                  <small>
+                    {earliestAt ? (
+                      <>
+                        <Clock3 size={10} />
+                        <span>
+                          {sv(
+                            l,
+                            offering.fulfillmentMode === 'IN_STORE'
+                              ? 'storeEarliest'
+                              : 'homeEarliest',
+                          )}
+                          <br />
+                          <time dateTime={new Date(earliestAt).toISOString()}>
+                            {directoryTime(l, earliestAt, data.checkedAt, ht(l, 'today'))}
+                          </time>
+                        </span>
+                      </>
+                    ) : (
+                      ht(l, 'noSlots')
+                    )}
+                  </small>
+                  <Link
+                    className="h5-primary"
+                    href={`/${l}/${earliestAt ? 'book' : 'therapists'}/${listing.slug}?${selection}`}
+                  >
+                    {earliestAt ? md(l, 'bookThis') : ht(l, 'chooseTime')}
+                  </Link>
+                </div>
               </div>
             </article>
           );

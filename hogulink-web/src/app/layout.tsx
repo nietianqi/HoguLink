@@ -28,6 +28,8 @@ import './business.css';
 import './shops.css';
 import './h5-home.css';
 import './service-mode.css';
+import './therapist-media.css';
+import './storefront.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

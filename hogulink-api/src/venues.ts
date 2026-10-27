@@ -12,6 +12,7 @@ import {
   timeSurchargesInput,
   makeCancellationPolicy,
   fulfillmentMode,
+  hasMainPhoto,
   type Actor,
   type Store,
   type Offering,
@@ -534,6 +535,11 @@ export class VenueService {
         409,
       );
       const modes: FulfillmentMode[] = [...new Set(d.modes)];
+      ensure(
+        !modes.includes('HOME_VISIT') || hasMainPhoto(listing),
+        'MAIN_PHOTO_REQUIRED',
+        'Home visits need an approved main photo so the customer can recognize the therapist.',
+      );
       const offerings = await tx.find<Offering>('offerings', { storeId: store.id });
       const next = {
         ...listing,

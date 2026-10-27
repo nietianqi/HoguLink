@@ -1,5 +1,45 @@
 # API 开发基线
 
+## 店铺品牌主页（2026-10-27）
+
+| 方法 | 路径（省略 /v1） | 说明 |
+| --- | --- | --- |
+| GET | /merchant/storefront | 本店草稿、公开版、图片库、可选项目与团队、真实收藏/评价/近90天完成数 |
+| PUT | /merchant/storefront | `{version, content}` 保存本店草稿；待审内容须先撤回 |
+| POST | /merchant/storefront/images | `{mime, data}` 上传 JPEG/PNG，350 KB以内；服务端重编码、去元数据、加密保存 |
+| DELETE | /merchant/storefront/images/{id} | 删除本店未使用图片；草稿、待审稿或当前公开版引用时409，不允许破坏在用素材 |
+| POST | /merchant/storefront/submit | `{version}` 提交审核；三语介绍各至少8字符 |
+| POST | /merchant/storefront/withdraw | `{version}` 撤回当前待审稿，原公开版继续展示 |
+| GET | /admin/storefronts | supply.read；待审内容、引用图片、项目和团队资料 |
+| POST | /admin/storefronts/{storeId}/review | supply.write；`{version, approved, note}`；意见至少4字符 |
+| GET | /public/shop-assets/{id} | 当前公开版引用的品牌图片；其余仅本店及有审核权限的员工可预览，未授权404 |
+
+`content` 包括三语 `tagline/about`，`logoId/coverId`，最多12张 `photoIds`，最多6项 `featuredOfferingIds` 和最多30人的 `teamListingIds`。引用必须属于本店，提交与通过时重新校验公开资格。图片库最多50张；本轮不增加套餐收费或付费排序。公开 `PublicStore.storefront` 只包含审核通过的发布快照，不含草稿、审核意见、内部存储信息。待审期间保留原公开版；版本冲突409，非法跨店引用400，角色无权403。发布品牌内容不改变交易规则版本，不使已有报价/保留失效。产品边界见 [店铺主页方案](SHOP_STOREFRONT_PLAN.md)。
+
+## 技师照片与介绍视频（2026-10-27）
+
+公开资料 `public/staff-listings` 的技师新增 `media`（已公开的相册照片与介绍视频，按展示顺序，不含已设为主照片的那张）；H5 列表 `public/h5/therapists` 每项新增 `serviceNames`（最多两项主要项目）。上门服务要求真实主照片：没有时 `listingSupports(listing, 'HOME_VISIT')` 为假，上门报价返回 `INVALID_OFFERING`，店铺开启上门返回 `MAIN_PHOTO_REQUIRED`。
+
+| 方法 | 路径                                      | 角色                | 说明                                                                                                 |
+| ---- | ----------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| GET  | `media?listingId=`                        | 技师 / 店铺         | 本人或本店技师的照片与视频（含状态、原因、是否主照片、举报数）；店铺不传 `listingId` 时返回全店      |
+| POST | `media/photos`                            | 技师 / 店铺         | `{listingId?, mime, data, consent?}`；技师须 `consent: true`，结果为待店铺确认；店铺代传为待本人授权 |
+| POST | `media/videos`                            | 技师 / 店铺         | 开始分段上传 `{listingId?, size, consent?}`，返回 `uploadId`、`chunkBytes`、`chunks`；30 分钟内有效  |
+| POST | `media/videos/{uploadId}/chunks`          | 上传者本人          | `{index, data}`，每段原始 360,000 字节（末段为剩余）                                                 |
+| POST | `media/videos/{uploadId}/finish`          | 上传者本人          | `{durationSeconds, poster:{mime,data}}`；校验 MP4/H.264、60 秒内，清除元数据后保存                   |
+| POST | `media/{id}/authorize`                    | 技师                | 本人授权店铺代传的内容 `{version}`                                                                   |
+| POST | `media/{id}/confirm`                      | 店铺                | `{version, approved, note?}`；退回须写原因（≥4 字）                                                  |
+| POST | `media/{id}/withdraw`                     | 技师                | 撤回授权并立即下架 `{version}`                                                                       |
+| POST | `media/{id}/remove`                       | 店铺 / 平台         | 下架 `{version, note}`                                                                               |
+| POST | `media/{id}/cover`                        | 技师 / 店铺         | 把已公开照片设为主照片 `{version}`                                                                   |
+| PUT  | `media/order?listingId=`                  | 技师 / 店铺         | `{ids}`：全部已公开内容的新顺序                                                                      |
+| GET  | `admin/listing-media`                     | 平台 `supply.read`  | 待审核内容与被举报的公开内容                                                                         |
+| POST | `admin/listing-media/{id}/review`         | 平台 `supply.write` | `{version, approved, note?}`：待审核→公开/退回；被举报→继续展示/下架；否决须写原因                   |
+| POST | `customer/listing-media/{id}/report`      | 顾客                | `{reason, detail?}`，同一顾客对同一内容只计一次                                                      |
+| GET  | `public/listing-media/{id}`、`.../poster` | 公开（已公开时）    | 文件或视频封面；视频支持 `Range` 分段读取（206）；审核前仅本人、店铺和平台可读，其他人 404           |
+
+错误码：`CONSENT_REQUIRED`、`MEDIA_LIMIT`（照片 8 张 / 视频审核中 1 条）、`INVALID_PHOTO`、`INVALID_VIDEO`、`VIDEO_CODEC`、`VIDEO_TOO_LONG`、`UPLOAD_EXPIRED`、`INVALID_UPLOAD`、`NOTE_REQUIRED`、`INVALID_ORDER`、`INVALID_STATE`、`VERSION_CONFLICT`。业务规则见 [业务逻辑 3.4](BUSINESS_LOGIC.md#34-技师照片与介绍视频)。
+
 ## 平台端与技师端完善（2026-10-26）
 
 新增 SOS 位置共享与平台紧急查看服务地点、技师出勤班次与安全接单条件、技师到店核销、平台暂停门店、店铺履约质量与停用善后清单、工单证据照片、门店地址检索，以及平台员工登录二次验证（`activate`/`login` 新增 `code`）。接口、权限与错误码见 [上线准备](LAUNCH_READINESS.md#5-新增接口)。

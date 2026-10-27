@@ -1,0 +1,837 @@
+/* Therapist cards: portrait photo on the left, facts and one booking action on the right. */
+.h5-directory-v2 .h5-therapist-card.hl-person-card {
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+}
+.hl-person-photo {
+  position: relative;
+  width: 84px;
+}
+.hl-person-photo > a:not(.hl-person-play) {
+  display: block;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--h5-canvas, #f3f6f8);
+}
+.hl-person-photo img {
+  display: block;
+  width: 84px;
+  height: 112px;
+  object-fit: cover;
+  object-position: center top;
+}
+.hl-person-photo > .hl-person-play {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(16, 32, 26, 0.8);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.hl-person-photo > .hl-person-play:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+.h5-directory-v2 .hl-person-card .h5-therapist-copy > p.hl-person-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px 8px;
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.h5-directory-v2 .hl-person-card .hl-person-meta .h5-shop-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  margin: 0;
+}
+.h5-directory-v2 .hl-person-card .h5-therapist-copy > p.hl-person-services {
+  margin: 3px 0;
+  color: var(--h5-ink, #182d25);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.hl-person-aux {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+}
+.h5-directory-v2 .hl-person-card .hl-person-aux .h5-stats,
+.h5-directory-v2 .hl-person-card .hl-person-aux .h5-directory-facts {
+  margin: 0;
+  min-height: 24px;
+}
+.h5-directory-v2 .hl-person-card .h5-therapist-action {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 0;
+  align-self: auto;
+}
+.h5-directory-v2 .hl-person-card .h5-therapist-action > small {
+  text-align: start;
+}
+.h5-directory-v2 .hl-person-card .h5-therapist-action .h5-primary {
+  width: auto;
+  min-width: 112px;
+  min-height: 40px;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+@media (min-width: 761px) {
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-card.hl-person-card {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px;
+  }
+  body:has(.customer-header) .hl-person-photo,
+  body:has(.customer-header) .hl-person-photo img {
+    width: 104px;
+  }
+  body:has(.customer-header) .hl-person-photo img {
+    height: 138px;
+  }
+  body:has(.customer-header) .h5-directory-v2 .hl-person-card .h5-therapist-copy > p.hl-person-meta,
+  body:has(.customer-header)
+    .h5-directory-v2
+    .hl-person-card
+    .h5-therapist-copy
+    > p.hl-person-services {
+    font-size: 13px;
+  }
+}
+@media (min-width: 1440px) {
+  body:has(.customer-header) .h5-directory-v2 .h5-therapist-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Profile media: one swipeable stage for the main photo, the video and other photos. */
+.therapist-media {
+  min-width: 0;
+}
+.therapist-media-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #e9efec;
+}
+.therapist-media-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.therapist-media-track::-webkit-scrollbar {
+  display: none;
+}
+.therapist-media-slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: min(118vw, 520px);
+  scroll-snap-align: start;
+}
+.therapist-media-photo,
+.therapist-media-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.therapist-media-poster {
+  cursor: pointer;
+  background: #10201a;
+}
+.therapist-media-photo img,
+.therapist-media-poster img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.therapist-media-slide video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+.therapist-media-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: auto;
+  border-radius: 50%;
+  background: rgba(16, 32, 26, 0.72);
+  color: #fff;
+}
+.therapist-media-duration,
+.therapist-media-count,
+.therapist-media-sample {
+  position: absolute;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 32, 26, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.therapist-media-duration {
+  left: 12px;
+  bottom: 12px;
+}
+.therapist-media-count {
+  top: 12px;
+  right: 12px;
+}
+.therapist-media-sample {
+  top: 12px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--h5-muted, #536b63);
+}
+.therapist-media-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 30px;
+  height: 30px;
+  padding: 7px;
+  border-radius: 50%;
+  background: rgba(16, 32, 26, 0.55);
+  color: #fff;
+}
+.therapist-media-arrow {
+  position: absolute;
+  top: 50%;
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--h5-ink, #182d25);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.therapist-media-arrow:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+.therapist-media-arrow.is-prev {
+  left: 12px;
+}
+.therapist-media-arrow.is-next {
+  right: 12px;
+}
+.therapist-media-thumbs {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.therapist-media-thumbs button {
+  position: relative;
+  flex: 0 0 56px;
+  height: 70px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: #e9efec;
+  cursor: pointer;
+}
+.therapist-media-thumbs button.is-active {
+  border-color: var(--h5-primary, #00865b);
+}
+.therapist-media-thumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.therapist-media-thumbs span {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(16, 32, 26, 0.78);
+  color: #fff;
+  font-size: 10px;
+}
+.therapist-media-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.therapist-media-video-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--h5-mint, #e5f8ef);
+  color: var(--h5-primary-ink, #006b49);
+  font-size: 13px;
+  cursor: pointer;
+}
+.therapist-media-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-left: auto;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--h5-muted, #536b63);
+  font-size: 12px;
+  cursor: pointer;
+}
+.therapist-media-large img {
+  display: block;
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  background: #10201a;
+  border-radius: 10px;
+}
+.therapist-media-large-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.therapist-media-report-sheet form,
+.therapist-media-report-sheet fieldset {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.therapist-media-reason {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+}
+.therapist-media-reason-detail {
+  display: grid;
+  gap: 4px;
+}
+@media (min-width: 761px) {
+  .therapist-media-slide {
+    height: 460px;
+  }
+  .therapist-media-photo img {
+    object-fit: contain;
+    object-position: center;
+  }
+  .therapist-media-arrow {
+    display: grid;
+  }
+}
+
+/* Basic facts directly under the media, before services and booking. */
+.therapist-basics {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 18px;
+  border-radius: 16px;
+}
+.therapist-basics .therapist-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.therapist-basics h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+}
+/* The old dark profile hero styled these for light-on-dark text; the new sections are light. */
+.therapist-detail-page .therapist-basics .therapist-identity {
+  grid-area: auto;
+}
+.therapist-detail-page .therapist-basics .therapist-identity h1 {
+  margin: 0;
+  color: var(--h5-ink, #182d25);
+  font: 700 26px/1.3 var(--font-sans);
+}
+.therapist-detail-page .therapist-basics .detail-verified {
+  color: var(--h5-primary-ink, #006b49);
+  background: var(--h5-mint, #e5f8ef);
+  border: 0;
+}
+.therapist-detail-page .therapist-profile .profile-description {
+  margin: 0;
+  color: var(--h5-ink, #182d25);
+  font-size: 14px;
+  line-height: 1.9;
+}
+.therapist-detail-page .therapist-profile .detail-facts > div {
+  border-color: var(--h5-line, #dce9e3);
+}
+.therapist-detail-page .therapist-profile .detail-facts dt {
+  color: var(--h5-muted, #536b63);
+}
+.therapist-detail-page .therapist-profile .detail-facts dd {
+  color: var(--h5-ink, #182d25);
+}
+.therapist-basics-shop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--h5-canvas, #f3f6f8);
+  color: var(--h5-ink, #182d25);
+}
+.therapist-basics-shop > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.therapist-basics-shop small {
+  color: var(--h5-muted, #536b63);
+  font-weight: 400;
+  font-size: 12px;
+}
+.therapist-basics-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.therapist-basics-facts > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 8px;
+}
+.therapist-basics-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--h5-muted, #536b63);
+  font-size: 13px;
+}
+.therapist-basics-facts dd {
+  margin: 0;
+  font-size: 13px;
+}
+.therapist-basics .h5-detail-stats {
+  margin: 0;
+}
+.therapist-basics-secondary {
+  display: flex;
+  justify-content: flex-end;
+}
+.therapist-profile,
+.therapist-shop {
+  display: grid;
+  gap: 12px;
+}
+.therapist-reserve-bar {
+  display: none;
+}
+@media (max-width: 760px) {
+  .therapist-detail-page {
+    padding-bottom: 86px;
+  }
+  .therapist-detail-page .detail-main > .therapist-media {
+    order: 0;
+  }
+  .therapist-detail-page .detail-main > .therapist-basics {
+    order: 1;
+    margin-top: 0;
+  }
+  .therapist-detail-page .detail-main > .detail-anchor-nav {
+    order: 2;
+  }
+  .therapist-detail-page .detail-main > #services {
+    order: 3;
+  }
+  .therapist-detail-page .detail-booking-sidebar {
+    order: 4;
+  }
+  .therapist-detail-page .detail-main > #reviews {
+    order: 5;
+  }
+  .therapist-detail-page .detail-main > #profile {
+    order: 6;
+  }
+  .therapist-detail-page .detail-main > #shop-info {
+    order: 7;
+  }
+  .therapist-detail-page .therapist-basics .therapist-identity h1 {
+    font-size: 22px;
+  }
+  .therapist-basics-facts > div {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+  .therapist-reserve-bar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--h5-line, #dce9e3);
+    background: rgba(255, 255, 255, 0.97);
+  }
+  .therapist-reserve-bar > span {
+    display: grid;
+    line-height: 1.3;
+  }
+  .therapist-reserve-bar small {
+    color: var(--h5-muted, #536b63);
+    font-size: 11px;
+  }
+  .therapist-reserve-bar strong {
+    color: var(--h5-price, #bd4626);
+    font-size: 18px;
+  }
+  .therapist-reserve-bar .button {
+    flex: 0 1 200px;
+    min-height: 46px;
+    justify-content: center;
+    background: var(--h5-primary, #00865b);
+    border-color: var(--h5-primary, #00865b);
+  }
+}
+
+/* Therapist and shop workspaces: upload, status and actions for each item. */
+.media-manager {
+  display: grid;
+  gap: 12px;
+  grid-column: 1 / -1;
+  padding: 18px;
+  border: 1px solid var(--line, #e8e3d9);
+  border-radius: 14px;
+  background: #fff;
+}
+.media-manager-head h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.media-manager-head h2 small {
+  font-size: 14px;
+  font-weight: 400;
+}
+.media-manager-head p,
+.media-manager-hint,
+.media-manager-limits,
+.media-manager-empty {
+  margin: 0;
+  color: var(--muted, #5d6661);
+  font-size: 13px;
+}
+.media-manager-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4e5;
+  color: #7a4a00;
+  font-size: 13px;
+}
+.media-manager-rules summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+.media-manager-rules p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.media-manager-upload {
+  display: grid;
+  gap: 8px;
+}
+.media-manager-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.media-manager-consent input {
+  flex: 0 0 auto;
+  width: auto;
+  margin-top: 3px;
+}
+.media-manager-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.media-manager-buttons button small {
+  color: var(--muted, #5d6661);
+}
+.media-manager-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.media-manager-progress progress {
+  flex: 1;
+}
+.media-manager-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.media-item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line, #e8e3d9);
+  border-radius: 12px;
+}
+.media-item.is-rejected,
+.media-item.is-withdrawn,
+.media-item.is-removed {
+  background: #faf9f6;
+}
+.media-item-preview {
+  position: relative;
+  display: block;
+  width: 76px;
+  height: 100px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e9efec;
+}
+.media-item-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.media-item-preview > span,
+.media-item-preview > b {
+  position: absolute;
+  left: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.media-item-preview > span {
+  bottom: 3px;
+  background: rgba(16, 32, 26, 0.78);
+  color: #fff;
+}
+.media-item-preview > b {
+  top: 3px;
+  background: #fff;
+  color: #7a5a14;
+  font-weight: 600;
+}
+.media-item-body {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+.media-item-body strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.media-item-body small {
+  color: var(--muted, #5d6661);
+  font-size: 12px;
+}
+.media-status {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef1ef;
+  color: #3f4a45;
+  font-size: 11px;
+  font-weight: 500;
+}
+.media-status.is-approved {
+  background: #e5f8ef;
+  color: #006b49;
+}
+.media-status.is-pending_consent,
+.media-status.is-pending_shop,
+.media-status.is-pending_review {
+  background: #fff4e5;
+  color: #7a4a00;
+}
+.media-status.is-rejected,
+.media-status.is-removed {
+  background: #fdecea;
+  color: #8a2a24;
+}
+.media-item-note {
+  margin: 0;
+  color: #8a2a24;
+  font-size: 12px;
+}
+.media-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 4px;
+}
+.media-item-actions .danger {
+  color: #8a2a24;
+}
+.media-item-reason {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.media-item-reason label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.media-item-reason > div {
+  display: flex;
+  gap: 10px;
+}
+.merchant-media {
+  margin-top: 8px;
+}
+.merchant-media > summary {
+  cursor: pointer;
+  min-height: 36px;
+  font-weight: 600;
+}
+.merchant-media .media-manager {
+  margin-top: 8px;
+  padding: 12px;
+}
+.merchant-media-pending {
+  margin: 0 0 12px;
+}
+
+/* Platform review: preview large enough to judge, checks before approving. */
+/* Count beside the queue title. */
+.media-review .admin-count {
+  display: inline-block;
+  min-width: 22px;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #fff4e5;
+  color: #7a4a00;
+  font-size: 13px;
+  text-align: center;
+  vertical-align: middle;
+}
+.media-review-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.media-review-item {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--line, #e8e3d9);
+  border-radius: 12px;
+}
+.media-review-preview img,
+.media-review-preview video {
+  display: block;
+  width: 180px;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #10201a;
+}
+.media-review-body {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+.media-review-body small {
+  color: var(--muted, #5d6661);
+}
+.media-review-reports {
+  margin: 0;
+  color: #8a2a24;
+  font-size: 13px;
+}
+.media-review-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+}
+.media-review-note {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.media-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 760px) {
+  .media-review-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .media-review-preview img,
+  .media-review-preview video {
+    width: 100%;
+    height: auto;
+    max-height: 360px;
+    object-fit: contain;
+  }
+}

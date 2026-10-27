@@ -15,6 +15,7 @@ export function TherapistFacts({
   locating,
   disabled = false,
   onLocate,
+  counts = true,
 }: {
   locale: Locale;
   name: string;
@@ -24,6 +25,8 @@ export function TherapistFacts({
   locating: boolean;
   disabled?: boolean;
   onLocate: () => void;
+  /** Off where the card already shows rating and review count, so only distance remains. */
+  counts?: boolean;
 }) {
   const distance = directoryDistance(point, areas);
   const distanceLabel = distance
@@ -33,28 +36,32 @@ export function TherapistFacts({
     : ht(l, 'distanceUnavailable');
   return (
     <div className="h5-directory-facts">
-      <span
-        title={
-          stats
-            ? ht(l, 'favoritesCount').replace('{n}', String(stats.favorites))
-            : ht(l, 'statsUnavailable')
-        }
-      >
-        <Heart size={12} aria-hidden="true" />
-        <span className="sr-only">{ht(l, 'statFavorites')} </span>
-        {stats?.favorites ?? '—'}
-      </span>
-      <span
-        title={
-          stats
-            ? ht(l, 'reviews').replace('{n}', String(stats.reviewCount))
-            : ht(l, 'statsUnavailable')
-        }
-      >
-        <MessageCircle size={12} aria-hidden="true" />
-        <span className="sr-only">{ht(l, 'statReviews')} </span>
-        {stats?.reviewCount ?? '—'}
-      </span>
+      {counts && (
+        <>
+          <span
+            title={
+              stats
+                ? ht(l, 'favoritesCount').replace('{n}', String(stats.favorites))
+                : ht(l, 'statsUnavailable')
+            }
+          >
+            <Heart size={12} aria-hidden="true" />
+            <span className="sr-only">{ht(l, 'statFavorites')} </span>
+            {stats?.favorites ?? '—'}
+          </span>
+          <span
+            title={
+              stats
+                ? ht(l, 'reviews').replace('{n}', String(stats.reviewCount))
+                : ht(l, 'statsUnavailable')
+            }
+          >
+            <MessageCircle size={12} aria-hidden="true" />
+            <span className="sr-only">{ht(l, 'statReviews')} </span>
+            {stats?.reviewCount ?? '—'}
+          </span>
+        </>
+      )}
       {distance ? (
         <span className="h5-directory-distance" title={distanceLabel}>
           <Navigation size={12} aria-hidden="true" />

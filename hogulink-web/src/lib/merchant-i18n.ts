@@ -12,6 +12,7 @@ const words = {
   schedule: ['チームカレンダー', 'Team calendar', '团队日历'],
   team: ['チーム', 'Team', '技师团队'],
   services: ['サービス', 'Services', '服务项目'],
+  storefront: ['店舗ホームページ', 'Shop homepage', '店铺主页'],
   finance: ['売上・手数料', 'Finance', '财务与计费'],
   settings: ['店舗設定', 'Shop settings', '店铺设置'],
   support: ['相談・安全', 'Support & safety', '售后与安全'],
@@ -152,13 +153,21 @@ export function st(locale: Locale, key: keyof typeof words): string {
   return words[key][locale === 'ja' ? 0 : locale === 'en' ? 1 : 2];
 }
 export type MerchantTab =
-  'overview' | 'bookings' | 'schedule' | 'team' | 'services' | 'finance' | 'settings';
+  | 'overview'
+  | 'bookings'
+  | 'schedule'
+  | 'team'
+  | 'services'
+  | 'storefront'
+  | 'finance'
+  | 'settings';
 export const merchantTabs: MerchantTab[] = [
   'overview',
   'bookings',
   'schedule',
   'team',
   'services',
+  'storefront',
   'finance',
   'settings',
 ];

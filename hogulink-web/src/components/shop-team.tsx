@@ -54,6 +54,7 @@ export function ShopTeam({
       <div className="shop-team-grid">
         {filtered.map((listing) => (
           <TherapistCard
+            inShop
             key={listing.id}
             demo={demo}
             locale={l}

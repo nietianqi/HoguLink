@@ -2,7 +2,7 @@ import { sv } from '@/lib/service-mode-i18n';
 import { browseServiceChoices, choiceModePrices } from '@/lib/consumer-model';
 import { ModePrices } from '@/components/service-mode';
 import { VenueInfo } from '@/components/service-mode';
-import { travelFeeFor } from '@hogulink/contracts';
+import { fulfillmentMode, travelFeeFor } from '@hogulink/contracts';
 import { cache, Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -11,9 +11,9 @@ import {
   BadgeCheck,
   Languages,
   MapPin,
-  Clock3,
   ShieldCheck,
   ArrowRight,
+  Store,
 } from 'lucide-react';
 import { loadListingStats, type ListingStatsMap } from '@/lib/shop-stats';
 import { ShopStatsNotice } from '@/components/shop-stats-notice';
@@ -38,6 +38,8 @@ import { RememberProfile } from '@/components/consumer-journey';
 import { H5Badges, H5Price } from '@/components/h5-business';
 import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
+import { md } from '@/lib/media-i18n';
+import { TherapistMedia } from '@/components/therapist-media';
 const listingData = cache(async (slug: string) => {
   const catalog = await serverApi<Catalog>('public/staff-listings?fulfillmentMode=ALL');
   const listing = catalog.listings.find((x) => x.slug === slug);
@@ -117,12 +119,14 @@ export default async function Page({
       : false;
   const bookHref = (offering?: string) =>
     `/${l}/book/${listing.slug}?${new URLSearchParams({ ...carry, ...(offering ? { offering } : {}) })}`;
+  const portrait = h5Portrait(listing, catalog.demo);
+  const modes = (['HOME_VISIT', 'IN_STORE'] as const).filter((mode) =>
+    priced.some((x) => fulfillmentMode(x.o) === mode),
+  );
+  const fromTotal = priced.length ? Math.min(...priced.map((x) => x.total)) : undefined;
   return (
     <main id="main" className="wrap page-section detail-page therapist-detail-page">
       <RememberProfile id={listing.id} />
-      {store.venue?.status === 'APPROVED' && store.venue.enabled && (
-        <VenueInfo locale={l} venue={store.venue} />
-      )}
       <DetailBreadcrumb
         locale={l}
         name={listing.name[l]}
@@ -131,105 +135,94 @@ export default async function Page({
       />
       <div className="detail-columns">
         <div className="detail-main">
-          <section className="therapist-intro detail-panel" id="about">
-            <div className="detail-portrait">
-              <picture>
-                <source media="(max-width: 760px)" srcSet={h5Portrait(listing, catalog.demo)} />
-                <img
-                  src={h5Portrait(listing, catalog.demo)}
-                  alt={listing.name[l]}
-                  width="600"
-                  height="440"
-                />
-              </picture>
-              {h5Portrait(listing, catalog.demo) !== listing.photo && (
-                <span>{ht(l, 'samplePhoto')}</span>
-              )}
+          {/* Customer decision order: see the person, who they are, what it costs, book, then read more. */}
+          <TherapistMedia
+            locale={l}
+            name={listing.name[l]}
+            photo={portrait}
+            sample={portrait !== listing.photo}
+            media={listing.media}
+          />
+          <section className="therapist-basics detail-panel" id="about">
+            <div className="therapist-identity">
+              <h1>{listing.name[l]}</h1>
+              <span className="detail-verified">
+                <BadgeCheck size={17} />
+                {t(l, 'verified')}
+              </span>
             </div>
-            <div className="therapist-about">
-              <div className="therapist-identity">
-                <span className="eyebrow small">THERAPIST / TOKYO</span>
-                <h1>{listing.name[l]}</h1>
-                <div className="profile-identity-actions">
-                  <span className="detail-verified">
-                    <BadgeCheck size={17} />
-                    {t(l, 'verified')}
-                  </span>
-                  <FavoriteToggle locale={l} listingId={listing.id} />
-                </div>
+            <Link className="therapist-basics-shop" href={shopHref}>
+              <Store size={15} aria-hidden="true" />
+              <span>
+                {store.name[l]}
+                <small>{store.legalName}</small>
+              </span>
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Link>
+            <dl className="therapist-basics-facts">
+              <div>
+                <dt>
+                  <Languages size={15} />
+                  {t(l, 'language')}
+                </dt>
+                <dd>{listing.languages.map((x) => languageNames[x]).join(' · ')}</dd>
               </div>
-              <H5Badges
-                locale={l}
-                promotion={priced.some((x) => x.promotionEndsAt)}
-                instantNow={instantNow}
-                freeTravel={offerings.some((o) => travel(o) === 0)}
-              />
-              <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
-                <div>
-                  <dt>{ht(l, 'statRating')}</dt>
-                  <dd>{stats?.rating == null ? '—' : stats.rating.toFixed(1)}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statReviews')}</dt>
-                  <dd>{stats?.reviewCount ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statCompleted')}</dt>
-                  <dd>{stats?.completed90d ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>{ht(l, 'statFavorites')}</dt>
-                  <dd>{stats?.favorites ?? '—'}</dd>
-                </div>
-              </dl>
-              {!stats && <ShopStatsNotice locale={l} message={ht(l, 'statsUnavailable')} />}
-              <p className="profile-description">{listing.description[l]}</p>
-              <dl className="detail-facts">
+              {modes.length > 0 && (
                 <div>
                   <dt>
-                    <Languages size={16} />
-                    {t(l, 'language')}
+                    <MapPin size={15} />
+                    {sv(l, 'mode')}
                   </dt>
-                  <dd>{listing.languages.map((x) => languageNames[x]).join(' · ')}</dd>
+                  <dd>{modes.map((mode) => sv(l, mode)).join(' · ')}</dd>
                 </div>
-                <div>
-                  <dt>
-                    <MapPin size={16} />
-                    {t(l, 'addressType')}
-                  </dt>
-                  <dd>{vt(l, listing.hotelOnly ? 'hotelHelp' : 'homeHelp')}</dd>
-                </div>
-                <div>
-                  <dt>
-                    <Clock3 size={16} />
-                    {t(l, 'mode')}
-                  </dt>
-                  <dd>{t(l, instantNow ? 'available' : 'byAppointment')}</dd>
-                </div>
-              </dl>
+              )}
+              <div>
+                <dt>
+                  <ShieldCheck size={15} />
+                  {md(l, 'checks')}
+                </dt>
+                <dd>{md(l, 'verifiedFacts')}</dd>
+              </div>
+            </dl>
+            <H5Badges
+              locale={l}
+              promotion={priced.some((x) => x.promotionEndsAt)}
+              instantNow={instantNow}
+              freeTravel={offerings.some((o) => travel(o) === 0)}
+            />
+            <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
+              <div>
+                <dt>{ht(l, 'statRating')}</dt>
+                <dd>{stats?.rating == null ? '—' : stats.rating.toFixed(1)}</dd>
+              </div>
+              <div>
+                <dt>{ht(l, 'statReviews')}</dt>
+                <dd>{stats?.reviewCount ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{ht(l, 'statCompleted')}</dt>
+                <dd>{stats?.completed90d ?? '—'}</dd>
+              </div>
+              <div>
+                <dt>{ht(l, 'statFavorites')}</dt>
+                <dd>{stats?.favorites ?? '—'}</dd>
+              </div>
+            </dl>
+            {!stats && <ShopStatsNotice locale={l} message={ht(l, 'statsUnavailable')} />}
+            <div className="therapist-basics-secondary">
+              <FavoriteToggle locale={l} listingId={listing.id} />
             </div>
           </section>
           <nav className="detail-anchor-nav" aria-label={t(l, 'profile')}>
-            <a href="#about">{vt(l, 'about')}</a>
-            <a href="#services">{vt(l, 'serviceMenu')}</a>
-            <a href="#visit-info">{vt(l, 'visitInfo')}</a>
-            <a href="#reserve">
-              {t(l, 'book')}
-              <ArrowUpRight size={14} />
-            </a>
+            <a href="#services">{md(l, 'serviceTitle')}</a>
+            <a href="#reserve">{t(l, 'book')}</a>
+            <a href="#reviews">{ht(l, 'statReviews')}</a>
+            <a href="#profile">{vt(l, 'about')}</a>
+            <a href="#shop-info">{vt(l, 'business')}</a>
           </nav>
-          <Link className="affiliated-shop detail-panel" href={shopHref}>
-            <span className="affiliated-monogram">{store.name.en.slice(0, 1)}</span>
-            <div>
-              <small>{vt(l, 'business')}</small>
-              <h3>{store.name[l]}</h3>
-              <p>{store.legalName}</p>
-            </div>
-            <ArrowUpRight size={20} />
-          </Link>
           <section className="detail-section" id="services">
             <span className="eyebrow small">THE SERVICE MENU</span>
-            <h2>{vt(l, 'serviceMenu')}</h2>
+            <h2>{md(l, 'serviceTitle')}</h2>
             <p className="detail-muted">{vt(l, 'totalNote')}</p>
             {!!store.bookingRules?.timeSurcharges?.length && (
               <p className="detail-muted">{surchargeNote(l, store.bookingRules.timeSurcharges)}</p>
@@ -262,19 +255,51 @@ export default async function Page({
               ))}
             </div>
           </section>
-          <PublicReviews locale={l} listingId={listing.id} />
-          <VisitNotes
-            inStore={serviceMode === 'IN_STORE'}
-            locale={l}
-            store={store}
-            hotelOnly={listing.hotelOnly}
-            rules={catalog.bookingRules}
-          />
-          <p className="detail-nonmedical">
-            <ShieldCheck size={17} />
-            {t(l, 'nonMedical')}
-          </p>
-          <p className="h5-footnote h5-detail-footnote">{ht(l, 'realStats')}</p>
+          <div className="therapist-reviews" id="reviews">
+            <PublicReviews locale={l} listingId={listing.id} />
+          </div>
+          <section className="detail-section therapist-profile" id="profile">
+            <span className="eyebrow small">ABOUT</span>
+            <h2>{md(l, 'profileTitle')}</h2>
+            <p className="profile-description">{listing.description[l]}</p>
+            <dl className="detail-facts">
+              <div>
+                <dt>
+                  <MapPin size={16} />
+                  {t(l, 'addressType')}
+                </dt>
+                <dd>{vt(l, listing.hotelOnly ? 'hotelHelp' : 'homeHelp')}</dd>
+              </div>
+            </dl>
+          </section>
+          <section className="detail-section therapist-shop" id="shop-info">
+            <span className="eyebrow small">THE SHOP</span>
+            <h2>{md(l, 'shopTitle')}</h2>
+            <Link className="affiliated-shop detail-panel" href={shopHref}>
+              <span className="affiliated-monogram">{store.name.en.slice(0, 1)}</span>
+              <div>
+                <small>{vt(l, 'business')}</small>
+                <h3>{store.name[l]}</h3>
+                <p>{store.legalName}</p>
+              </div>
+              <ArrowUpRight size={20} />
+            </Link>
+            {store.venue?.status === 'APPROVED' && store.venue.enabled && (
+              <VenueInfo locale={l} venue={store.venue} />
+            )}
+            <VisitNotes
+              inStore={serviceMode === 'IN_STORE'}
+              locale={l}
+              store={store}
+              hotelOnly={listing.hotelOnly}
+              rules={catalog.bookingRules}
+            />
+            <p className="detail-nonmedical">
+              <ShieldCheck size={17} />
+              {t(l, 'nonMedical')}
+            </p>
+            <p className="h5-footnote h5-detail-footnote">{ht(l, 'realStats')}</p>
+          </section>
         </div>
         <aside className="detail-booking-sidebar">
           <Suspense fallback={<div className="booking-preview">{t(l, 'waiting')}</div>}>
@@ -327,6 +352,21 @@ export default async function Page({
           </div>
         </section>
       )}
+      {/* Phones: one clear way to book; the booking panel handles mode, time and fee. */}
+      <div className="therapist-reserve-bar">
+        {fromTotal !== undefined && (
+          <span>
+            <small>{md(l, 'fromPrice')}</small>
+            <strong>
+              {money(l, fromTotal)}
+              {l === 'ja' ? '〜' : l === 'en' ? '+' : ' 起'}
+            </strong>
+          </span>
+        )}
+        <a className="button" href="#reserve">
+          {md(l, 'bookThis')}
+        </a>
+      </div>
     </main>
   );
 }

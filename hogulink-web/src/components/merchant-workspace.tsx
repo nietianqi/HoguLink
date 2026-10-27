@@ -49,6 +49,7 @@ import type {
 } from '@hogulink/contracts';
 import { ft } from '@/lib/staff-i18n';
 import { api, ClientError } from '@/lib/api';
+import { MediaDisclosure, MediaPendingNotice } from './media-manager';
 import { ShiftEditor } from './shift-editor';
 import { sh } from '@/lib/shift-i18n';
 import { areaName, dateTime, errorText, languageNames, money, statusText, t } from '@/lib/i18n';
@@ -72,6 +73,8 @@ import { merchantWorkday } from '@/lib/workday-model';
 import { wt } from '@/lib/workday-i18n';
 import { WorkdayTools } from './workday-tools';
 import { MerchantPromotion } from './merchant-promotion';
+import { StorefrontEditor } from './storefront-editor';
+import { sf } from '@/lib/storefront-i18n';
 
 type Block = {
   id: string;
@@ -103,6 +106,7 @@ const icons = {
   schedule: CalendarDays,
   team: UsersRound,
   services: SlidersHorizontal,
+  storefront: StoreIcon,
   finance: ReceiptText,
   settings: Settings2,
 };
@@ -383,11 +387,13 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                     ? st(l, 'serviceHelp')
                     : tab === 'team'
                       ? st(l, 'teamHelp')
-                      : tab === 'finance'
-                        ? st(l, 'financeHelp')
-                        : tab === 'settings'
-                          ? st(l, 'rulesHelp')
-                          : st(l, 'bookingsHelp')}
+                      : tab === 'storefront'
+                        ? sf(l, 'editorHelp')
+                        : tab === 'finance'
+                          ? st(l, 'financeHelp')
+                          : tab === 'settings'
+                            ? st(l, 'rulesHelp')
+                            : st(l, 'bookingsHelp')}
             </p>
           </div>
           <div className="merchant-heading-actions">
@@ -828,6 +834,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                 </section>
               </>
             )}
+            {tab === 'team' && <MediaPendingNotice locale={l} />}
             {tab === 'team' && (
               <div className="merchant-team-grid">
                 {data.listings.map((x) => {
@@ -871,7 +878,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                       <p className="merchant-team-services">
                         {data.offerings
                           .filter((o) => x.offeringIds.includes(o.id))
-                          .map((o) => `${o.durationMinutes} ${t(l, 'minutes')}`)
+                          .map((o) => `${o.name[l]} ${o.durationMinutes}${t(l, 'minutes')}`)
                           .join(' / ')}
                       </p>
                       {(x.safetyConditions || x.safetyRequest) && (
@@ -901,6 +908,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                           )}
                         </div>
                       )}
+                      <MediaDisclosure locale={l} listingId={x.id} />
                       <details className="merchant-shifts">
                         <summary>
                           {sh(l, 'title')} · {x.shifts ? `v${x.shifts.version}` : sh(l, 'notSet')}
@@ -972,6 +980,9 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                   ))}
                 </div>
               </section>
+            )}
+            {tab === 'storefront' && actor && (
+              <StorefrontEditor key={`${actor.id}:${actor.storeId}`} locale={l} />
             )}
             {tab === 'finance' && (
               <>

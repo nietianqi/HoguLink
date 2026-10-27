@@ -1,5 +1,6 @@
 import { canAdmin, type Actor, type AdminPermission, type Locale } from '@hogulink/contracts';
 const words = {
+  todoStorefronts: ['店舗ホームページ', 'Shop homepages', '店铺主页审核'],
   VERSION_CONFLICT: [
     '記録が更新されました。最新状態を再確認してください。',
     'This record changed. Review the refreshed state before trying again.',
@@ -42,6 +43,7 @@ const words = {
   todoUnassigned: ['担当未定の相談', 'Unassigned cases', '待认领工单'],
   todoOnboarding: ['入店・資格の審査', 'Onboarding & qualifications', '入驻与资质审核'],
   todoVenues: ['来店店舗の審査', 'Venue reviews', '到店门店审核'],
+  todoMedia: ['スタッフ写真・動画の審査', 'Therapist photo and video reviews', '技师照片/视频审核'],
   todoAftercare: ['停止後の予約フォロー', 'Bookings after a suspension', '停用后的预约善后'],
   todoExperience: ['口コミ・返信・申立て', 'Reviews, replies & appeals', '评价/回复/申诉审核'],
   todoContent: ['ブロックしたメッセージ', 'Blocked messages', '消息拦截复核'],

@@ -33,6 +33,7 @@ if (
     'completion',
     'in-store',
     'h5',
+    'storefront',
   ].includes(only)
 )
   throw new Error('Unknown isolated smoke suite.');
@@ -169,6 +170,7 @@ try {
       'completion',
       'in-store',
       'h5',
+      'storefront',
     ];
     // Handling, employee and engagement checks intentionally reuse prior bookings.
     // Give the staff capacity checks a fresh fixture so the preceding completed

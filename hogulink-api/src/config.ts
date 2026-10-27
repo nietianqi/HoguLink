@@ -59,6 +59,9 @@ export function assertDemoRuntime() {
       throw new Error('Invalid DATA_ENCRYPTION_KEY');
     if ((process.env.EMAIL_PROVIDER || 'disabled') === 'disabled')
       throw new Error('Staging requires a configured email provider');
+    // SOS, safety and overdue alerts reach the platform team through this mailbox.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.OPS_NOTIFICATION_EMAIL ?? ''))
+      throw new Error('Staging requires OPS_NOTIFICATION_EMAIL for safety alerts');
     return;
   }
   if (

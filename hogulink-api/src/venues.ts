@@ -143,7 +143,6 @@ export class VenueService {
           ...store,
           venue: submitted,
           venueDraft: undefined,
-          ruleVersion: store.ruleVersion + 1,
         });
         await this.audit(tx, actor, 'VENUE_SUBMITTED', store.id);
         return submitted;
@@ -181,7 +180,6 @@ export class VenueService {
         ...store,
         venue: nextLive,
         venueDraft: nextDraft,
-        ruleVersion: operating ? store.ruleVersion + 1 : store.ruleVersion,
       });
       await this.audit(
         tx,
@@ -436,7 +434,6 @@ export class VenueService {
           ...store,
           venue,
           venueDraft: undefined,
-          ruleVersion: store.ruleVersion + 1,
         });
         await this.audit(tx, actor, 'VENUE_APPROVED', store.id);
         return venue;
@@ -448,8 +445,65 @@ export class VenueService {
         reviewNote: d.note,
         version: d.version + 1,
       };
-      await tx.put('stores', { ...store, venue, ruleVersion: store.ruleVersion + 1 });
+      await tx.put('stores', { ...store, venue });
       await this.audit(tx, actor, `VENUE_${d.decision}`, store.id);
+      return venue;
+    });
+  }
+  /**
+   * Address search for shops placing their venue, via the free GSI (国土地理院) service. The
+   * shop confirms the result; customers' positions are never sent anywhere.
+   */
+  async geocode(actor: Actor, input: unknown) {
+    const { q } = z.object({ q: z.string().trim().min(3).max(200) }).parse(input);
+    await this.run((tx) => this.shop(tx, actor));
+    let rows: { geometry?: { coordinates?: number[] }; properties?: { title?: string } }[];
+    try {
+      const response = await fetch(
+        `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(q)}`,
+        { signal: AbortSignal.timeout(5000) },
+      );
+      ensure(response.ok, 'GEOCODE_UNAVAILABLE', 'Address search is unavailable.', 503);
+      rows = await response.json();
+    } catch {
+      ensure(
+        false,
+        'GEOCODE_UNAVAILABLE',
+        'Address search is unavailable. Enter coordinates.',
+        503,
+      );
+    }
+    return rows
+      .flatMap((row) => {
+        const [longitude, latitude] = row.geometry?.coordinates ?? [];
+        // Japan only; anything else is a mismatch.
+        return Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          latitude >= 20 &&
+          latitude <= 46 &&
+          longitude >= 122 &&
+          longitude <= 154
+          ? [{ latitude, longitude, label: String(row.properties?.title ?? q).slice(0, 200) }]
+          : [];
+      })
+      .slice(0, 5);
+  }
+  /** Platform action: pause or resume new in-store bookings without touching existing ones. */
+  async suspend(actor: Actor, id: string, input: unknown) {
+    const d = z
+      .object({ suspended: z.boolean(), note: z.string().trim().min(10).max(500) })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'supply.write');
+      const store = await tx.get<Store>('stores', id);
+      ensure(store?.venue?.status === 'APPROVED', 'NOT_FOUND', 'Approved venue not found.', 404);
+      const venue: Venue = d.suspended
+        ? { ...store.venue, suspension: { at: this.now(), by: actor.id, note: d.note } }
+        : { ...store.venue, suspension: undefined };
+      await tx.put('stores', { ...store, venue });
+      await this.audit(tx, actor, d.suspended ? 'VENUE_SUSPENDED' : 'VENUE_RESTORED', store.id);
       return venue;
     });
   }

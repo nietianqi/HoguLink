@@ -42,6 +42,7 @@ const indexedFields = [
   'assignedListingId',
   'replacementConsent',
   'proposedListingId',
+  'ticketId',
   'listingId',
   'bookingId',
   'holdId',

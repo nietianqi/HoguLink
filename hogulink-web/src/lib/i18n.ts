@@ -379,6 +379,22 @@ const words = {
     'Authenticate a payment method first.',
     '请先完成有效的支付认证。',
   ],
+  INVALID_PHOTO: [
+    'JPEG または PNG の写真（350KB 以下に自動調整）を選んでください。',
+    'Choose a JPEG or PNG photo.',
+    '请选择 JPEG 或 PNG 照片。',
+  ],
+  PHOTO_LIMIT: ['写真の上限に達しました。', 'The photo limit has been reached.', '照片已达上限。'],
+  SHIFT_HAS_BOOKINGS: [
+    'このシフトでは既存の予約が時間外になります。先に店舗へ調整を依頼してください。',
+    'An existing booking would fall outside these shifts. Ask the shop to rearrange it first.',
+    '已有预约会落在班次之外，请先请店铺调整。',
+  ],
+  STAFF_CONDITIONS: [
+    'この担当者は深夜の出張をこの店舗の利用経験があるお客様に限っています。別の時間か担当者をお選びください。',
+    'This therapist takes late-night home visits only from returning customers of this shop. Choose another time or therapist.',
+    '该技师深夜上门只接本店老顾客，请选择其他时间或技师。',
+  ],
   OUTSIDE_BOOKING_HOURS: [
     'この店舗の受付時間外です。表示されている時間からお選びください。',
     'That start time is outside this shop’s business hours. Choose one of the listed times.',

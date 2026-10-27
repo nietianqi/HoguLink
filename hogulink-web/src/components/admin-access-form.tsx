@@ -23,6 +23,8 @@ export function AdminAccessForm({
     [password, setPassword] = useState(''),
     [confirm, setConfirm] = useState(''),
     [name, setName] = useState(''),
+    [code, setCode] = useState(''),
+    [setup, setSetup] = useState<{ secret: string; uri: string }>(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(activated ? et(l, 'activated') : '');
@@ -46,11 +48,15 @@ export function AdminAccessForm({
       return;
     }
     let canceled = false;
-    api<{ name: string; email: string }>('auth/employee/invitation', { token })
+    api<{ name: string; email: string; totp: { secret: string; uri: string } }>(
+      'auth/employee/invitation',
+      { token },
+    )
       .then((d) => {
         if (!canceled) {
           setName(d.name);
           setEmail(d.email);
+          setSetup(d.totp);
         }
       })
       .catch((e) => {
@@ -74,18 +80,32 @@ export function AdminAccessForm({
     setBusy(true);
     try {
       if (token) {
-        await api('auth/employee/activate', { token, password });
+        await api('auth/employee/activate', { token, password, code: code.trim() });
         setPassword('');
         setConfirm('');
         setNotice(et(l, 'activated'));
         router.replace(`/${l}/admin/login?activated=1`);
       } else {
-        await api('auth/employee/login', { email, password });
+        await api('auth/employee/login', {
+          email,
+          password,
+          ...(code.trim() ? { code: code.trim() } : {}),
+        });
         router.replace(`/${l}/admin`);
         router.refresh();
       }
     } catch (e) {
-      setError(memberError(l, e instanceof ClientError ? e.code : ''));
+      const value = e instanceof ClientError ? e.code : '';
+      // Accounts activated before authenticators were required enrol now, with their password.
+      if (value === 'MFA_ENROLLMENT_REQUIRED')
+        await api<{ secret: string; uri: string }>('auth/employee/mfa-enrollment', {
+          email,
+          password,
+        })
+          .then(setSetup)
+          .catch(() => {});
+      setCode('');
+      setError(memberError(l, value));
     } finally {
       setBusy(false);
     }
@@ -158,6 +178,30 @@ export function AdminAccessForm({
                 </label>
               </>
             )}
+            {setup && (
+              <div className="notice mfa-setup">
+                <strong>{et(l, 'mfaSetup')}</strong>
+                <p>{et(l, 'mfaSetupHelp')}</p>
+                <code className="mfa-secret">{setup.secret.match(/.{1,4}/g)?.join(' ')}</code>
+                <a className="text-button" href={setup.uri}>
+                  {et(l, 'openAuthenticator')}
+                </a>
+              </div>
+            )}
+            <label className="field">
+              {et(l, 'code')}
+              <input
+                aria-label={et(l, 'code')}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required={activating || !!setup}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <p className="muted">{et(l, 'codeHelp')}</p>
             <button className="button full" disabled={busy}>
               {et(l, activating ? 'setPassword' : 'signIn')}
               <ArrowRight size={16} />

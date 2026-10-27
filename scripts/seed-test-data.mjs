@@ -1,6 +1,6 @@
 // Creates login accounts and realistic test orders through the real API.
 // Usage: see scripts/seed-test-data.sh (stops the main API, runs fixtures/seed-server.mts).
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 const base = process.env.SEED_API_ORIGIN,
   origin = process.env.SEED_WEB_ORIGIN,
@@ -12,6 +12,26 @@ const H = 3600000,
 const log = (...a) => console.log(...a);
 const summary = { accounts: [], bookings: [], errors: [] };
 
+// RFC 6238 codes, matching the server's authenticator check.
+function totp(secret, at) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0,
+    value = 0;
+  const bytes = [];
+  for (const char of secret) {
+    value = (value << 5) | alphabet.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const mac = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
+  const offset = mac[mac.length - 1] & 15;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+}
 async function call(cookie, path, body, method = body === undefined ? 'GET' : 'POST', key) {
   const r = await fetch(`${base}/v1/${path}`, {
     method,
@@ -19,7 +39,9 @@ async function call(cookie, path, body, method = body === undefined ? 'GET' : 'P
       Origin: origin,
       ...(cookie ? { Cookie: cookie } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(key || (method === 'POST' && body !== undefined) ? { 'Idempotency-Key': key || randomUUID() } : {}),
+      ...(key || (method === 'POST' && body !== undefined)
+        ? { 'Idempotency-Key': key || randomUUID() }
+        : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -71,11 +93,41 @@ for (const s of staffIds) staff[`listing-${s}`] = await demo('STAFF', { staffId:
 
 // ---------- customer accounts ----------
 const customerSpecs = [
-  { email: 'zhang.wei@hogulink.test', name: '张伟', locale: 'zh-cn', area: 'shinjuku', hotel: '新宿华盛顿酒店' },
-  { email: 'li.na@hogulink.test', name: '李娜', locale: 'zh-cn', area: 'shibuya', hotel: '涩谷东急卓越大酒店' },
-  { email: 'tanaka.yuto@hogulink.test', name: '田中 悠斗', locale: 'ja', area: 'minato', hotel: 'ホテル赤坂テスト' },
-  { email: 'sato.hana@hogulink.test', name: '佐藤 花', locale: 'ja', area: 'chuo', hotel: '銀座テストホテル' },
-  { email: 'emily.clark@hogulink.test', name: 'Emily Clark', locale: 'en', area: 'shinjuku', hotel: 'Shinjuku Test Hotel' },
+  {
+    email: 'zhang.wei@hogulink.test',
+    name: '张伟',
+    locale: 'zh-cn',
+    area: 'shinjuku',
+    hotel: '新宿华盛顿酒店',
+  },
+  {
+    email: 'li.na@hogulink.test',
+    name: '李娜',
+    locale: 'zh-cn',
+    area: 'shibuya',
+    hotel: '涩谷东急卓越大酒店',
+  },
+  {
+    email: 'tanaka.yuto@hogulink.test',
+    name: '田中 悠斗',
+    locale: 'ja',
+    area: 'minato',
+    hotel: 'ホテル赤坂テスト',
+  },
+  {
+    email: 'sato.hana@hogulink.test',
+    name: '佐藤 花',
+    locale: 'ja',
+    area: 'chuo',
+    hotel: '銀座テストホテル',
+  },
+  {
+    email: 'emily.clark@hogulink.test',
+    name: 'Emily Clark',
+    locale: 'en',
+    area: 'shinjuku',
+    hotel: 'Shinjuku Test Hotel',
+  },
 ];
 log('Creating customer accounts…');
 const customers = [];
@@ -91,15 +143,26 @@ for (const c of customerSpecs) {
     const mail = (await seedApi('outbox'))
       .filter((m) => m.to === c.email && m.type === 'CUSTOMER_VERIFY')
       .sort((a, b) => b.createdAt - a.createdAt)[0];
-    const verifyToken = mail && new URLSearchParams(new URL(mail.text.match(/https?:\/\/\S+/)[0]).hash.slice(1)).get('token');
+    const verifyToken =
+      mail &&
+      new URLSearchParams(new URL(mail.text.match(/https?:\/\/\S+/)[0]).hash.slice(1)).get('token');
     if (verifyToken) await call('', 'auth/customer/verify-email', { token: verifyToken });
-    const { cookie } = await call('', 'auth/customer/login', { email: c.email, password: PASSWORD });
+    const { cookie } = await call('', 'auth/customer/login', {
+      email: c.email,
+      password: PASSWORD,
+    });
     let book = await call(cookie, 'customer/addresses');
     book = await call(cookie, 'customer/addresses', {
       version: book.version,
       label: c.locale === 'en' ? 'Hotel' : c.locale === 'ja' ? 'ホテル' : '酒店',
       setDefault: true,
-      address: { name: c.name, area: c.area, type: 'HOTEL', detail: `${c.hotel} 1-2-3`, hotelName: c.hotel },
+      address: {
+        name: c.name,
+        area: c.area,
+        type: 'HOTEL',
+        detail: `${c.hotel} 1-2-3`,
+        hotelName: c.hotel,
+      },
     });
     customers.push({ ...c, cookie });
     summary.accounts.push({ type: '顾客', login: c.email, password: PASSWORD, name: c.name });
@@ -109,7 +172,14 @@ for (const c of customerSpecs) {
 const demoCustomer = await demo('CUSTOMER');
 const buyers = [
   ...customers,
-  { email: '(演示顾客按钮)', name: '演示顾客', locale: 'zh-cn', area: 'shinjuku', hotel: '演示酒店', cookie: demoCustomer },
+  {
+    email: '(演示顾客按钮)',
+    name: '演示顾客',
+    locale: 'zh-cn',
+    area: 'shinjuku',
+    hotel: '演示酒店',
+    cookie: demoCustomer,
+  },
 ];
 
 // ---------- booking helpers ----------
@@ -123,10 +193,19 @@ const menus = [
   ['listing-aoi', 'store-nagi-90'],
   ['listing-haru', 'store-sora-90'],
 ];
-const storeOf = (listingId) => (listingId.match(/aoi|ren|mio/) ? 'store-nagi' : listingId.includes('haru') ? 'store-sora' : 'store-mori');
+const storeOf = (listingId) =>
+  listingId.match(/aoi|ren|mio/)
+    ? 'store-nagi'
+    : listingId.includes('haru')
+      ? 'store-sora'
+      : 'store-mori';
 const areaFor = (buyer, listingId) => {
   const store = storeOf(listingId);
-  const allowed = { 'store-nagi': ['shinjuku', 'shibuya', 'minato', 'chuo', 'taito'], 'store-sora': ['shibuya', 'minato', 'shinjuku'], 'store-mori': ['shinjuku', 'chuo', 'taito'] }[store];
+  const allowed = {
+    'store-nagi': ['shinjuku', 'shibuya', 'minato', 'chuo', 'taito'],
+    'store-sora': ['shibuya', 'minato', 'shinjuku'],
+    'store-mori': ['shinjuku', 'chuo', 'taito'],
+  }[store];
   return allowed.includes(buyer.area) ? buyer.area : allowed[0];
 };
 async function book(buyer, [listingId, offeringId], startAt) {
@@ -134,27 +213,49 @@ async function book(buyer, [listingId, offeringId], startAt) {
   let q;
   for (let tries = 0; !q; tries++) {
     try {
-      q = await call(buyer.cookie, 'quotes', { listingId, offeringId, bookingMode: 'SCHEDULED', nominationType: 'NOMINATED', startAt, area });
+      q = await call(buyer.cookie, 'quotes', {
+        listingId,
+        offeringId,
+        bookingMode: 'SCHEDULED',
+        nominationType: 'NOMINATED',
+        startAt,
+        area,
+      });
     } catch (e) {
       if (tries >= 8 || !e.message.includes('SLOT_CONFLICT')) throw e;
       startAt += 2 * H; // Staff busy: try a later slot.
     }
   }
   const h = await call(buyer.cookie, 'booking-holds', { quoteId: q.id });
-  const p = await call(buyer.cookie, 'payments/demo-authorizations', { holdId: h.id, challengePassed: true });
+  const p = await call(buyer.cookie, 'payments/demo-authorizations', {
+    holdId: h.id,
+    challengePassed: true,
+  });
   return call(buyer.cookie, 'bookings', {
     quoteId: q.id,
     holdId: h.id,
     paymentId: p.id,
     termsAccepted: true,
     policyVersion: q.cancellationPolicy.version,
-    address: { name: buyer.name, type: 'HOTEL', area, detail: `${buyer.hotel} 1-2-3`, hotelName: buyer.hotel, room: `${1000 + Math.floor(Math.random() * 800)}`, hotelPermission: true },
+    address: {
+      name: buyer.name,
+      type: 'HOTEL',
+      area,
+      detail: `${buyer.hotel} 1-2-3`,
+      hotelName: buyer.hotel,
+      room: `${1000 + Math.floor(Math.random() * 800)}`,
+      hotelPermission: true,
+    },
   });
 }
 async function confirmAndAck(b) {
   const store = b.storeId;
-  if (b.status === 'REQUESTED') b = await call(shops[store], `merchant/bookings/${b.id}/accept`, { version: b.version });
-  if (b.staffTaskStatus !== 'ACKNOWLEDGED') b = await call(staff[b.assignedListingId || b.quote.listingId], `staff/tasks/${b.id}/ack`, { version: b.version });
+  if (b.status === 'REQUESTED')
+    b = await call(shops[store], `merchant/bookings/${b.id}/accept`, { version: b.version });
+  if (b.staffTaskStatus !== 'ACKNOWLEDGED')
+    b = await call(staff[b.assignedListingId || b.quote.listingId], `staff/tasks/${b.id}/ack`, {
+      version: b.version,
+    });
   return b;
 }
 async function serve(b) {
@@ -163,7 +264,8 @@ async function serve(b) {
     if (event === 'EN_ROUTE') await setClock(b.quote.startAt - 40 * 60000);
     if (event === 'ARRIVED') await setClock(b.quote.startAt - 5 * 60000);
     if (event === 'START') await setClock(b.quote.startAt + 60000);
-    if (event === 'COMPLETE') await setClock(b.startedAt + (b.quote.endAt - b.quote.startAt) + 2 * 60000);
+    if (event === 'COMPLETE')
+      await setClock(b.startedAt + (b.quote.endAt - b.quote.startAt) + 2 * 60000);
     b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event });
   }
   return b;
@@ -172,17 +274,46 @@ async function confirmCompletion(buyer, b) {
   await setClock(b.quote.endAt + 20 * 60000);
   b = await call(buyer.cookie, `bookings/${b.id}`);
   if (b.completion?.status === 'PAYMENT_REVIEW')
-    b = await call(buyer.cookie, `bookings/${b.id}/completion`, { version: b.version, action: 'REAUTHORIZE', expectedAmount: b.quote.total });
-  return call(buyer.cookie, `bookings/${b.id}/completion`, { version: b.version, action: 'CONFIRM', expectedAmount: b.quote.total });
+    b = await call(buyer.cookie, `bookings/${b.id}/completion`, {
+      version: b.version,
+      action: 'REAUTHORIZE',
+      expectedAmount: b.quote.total,
+    });
+  return call(buyer.cookie, `bookings/${b.id}/completion`, {
+    version: b.version,
+    action: 'CONFIRM',
+    expectedAmount: b.quote.total,
+  });
 }
 const reviewTexts = {
-  'zh-cn': ['准时到达，沟通很耐心，服务前把流程讲得很清楚。', '服务认真细致，整体体验很放松，下次还会预约。', '提前联系确认，用品整洁，很满意。'],
-  ja: ['時間通りに到着し、説明も丁寧でした。とてもリラックスできました。', '事前の確認がしっかりしていて安心できました。また利用します。', '清潔感があり、コミュニケーションも心地よかったです。'],
-  en: ['Arrived on time and explained everything clearly. Very relaxing.', 'Friendly communication and a tidy setup. Would book again.', 'Great attention to detail and very professional.'],
+  'zh-cn': [
+    '准时到达，沟通很耐心，服务前把流程讲得很清楚。',
+    '服务认真细致，整体体验很放松，下次还会预约。',
+    '提前联系确认，用品整洁，很满意。',
+  ],
+  ja: [
+    '時間通りに到着し、説明も丁寧でした。とてもリラックスできました。',
+    '事前の確認がしっかりしていて安心できました。また利用します。',
+    '清潔感があり、コミュニケーションも心地よかったです。',
+  ],
+  en: [
+    'Arrived on time and explained everything clearly. Very relaxing.',
+    'Friendly communication and a tidy setup. Would book again.',
+    'Great attention to detail and very professional.',
+  ],
 };
 const record = (buyer, b, label) => {
-  summary.bookings.push({ customer: buyer.email, id: b.id, status: b.status, label, listing: b.quote.listingId, startAt: new Date(b.quote.startAt).toISOString() });
-  log(`  ✓ ${label.padEnd(16)} ${buyer.name} · ${b.quote.listingId} · ${new Date(b.quote.startAt + 9 * H).toISOString().slice(0, 16)} JST · ${b.status}`);
+  summary.bookings.push({
+    customer: buyer.email,
+    id: b.id,
+    status: b.status,
+    label,
+    listing: b.quote.listingId,
+    startAt: new Date(b.quote.startAt).toISOString(),
+  });
+  log(
+    `  ✓ ${label.padEnd(16)} ${buyer.name} · ${b.quote.listingId} · ${new Date(b.quote.startAt + 9 * H).toISOString().slice(0, 16)} JST · ${b.status}`,
+  );
 };
 
 // ---------- past history (clock starts ~28 days ago) ----------
@@ -199,9 +330,20 @@ for (const buyer of pastPlan) {
     b = await serve(b);
     b = await confirmCompletion(buyer, b);
     if (i % 3 !== 0) {
-      const scores = { punctuality: 5, communication: 4 + (i % 2), explanation: 5, cleanliness: 5, overall: 4 + (i % 2) };
+      const scores = {
+        punctuality: 5,
+        communication: 4 + (i % 2),
+        explanation: 5,
+        cleanliness: 5,
+        overall: 4 + (i % 2),
+      };
       const texts = reviewTexts[buyer.locale];
-      const r = await call(buyer.cookie, `customer/bookings/${b.id}/review`, { version: 0, scores, text: texts[i % texts.length] }, 'PUT');
+      const r = await call(
+        buyer.cookie,
+        `customer/bookings/${b.id}/review`,
+        { version: 0, scores, text: texts[i % texts.length] },
+        'PUT',
+      );
       reviews.push(r);
     }
     record(buyer, b, '已完成');
@@ -317,9 +459,25 @@ for (const [name, email, adminRole, teams] of employees)
   await attempt(`employee ${email}`, async () => {
     const created = await call(admin, 'admin/members', { name, email, adminRole, teams });
     const inviteToken = created.token ?? created.invitation?.token;
-    await call('', 'auth/employee/activate', { token: inviteToken, password: PASSWORD });
-    await call('', 'auth/employee/login', { email, password: PASSWORD });
-    summary.accounts.push({ type: `平台员工(${adminRole})`, login: email, password: PASSWORD, name });
+    // Platform staff sign in with an authenticator code; testers add this key to their app.
+    const { totp: setup } = await call('', 'auth/employee/invitation', { token: inviteToken });
+    await call('', 'auth/employee/activate', {
+      token: inviteToken,
+      password: PASSWORD,
+      code: totp(setup.secret, Date.now()),
+    });
+    await call('', 'auth/employee/login', {
+      email,
+      password: PASSWORD,
+      code: totp(setup.secret, Date.now() + 30000),
+    });
+    summary.accounts.push({
+      type: `平台员工(${adminRole})`,
+      login: email,
+      password: PASSWORD,
+      authenticatorKey: setup.secret,
+      name,
+    });
     log(`  ✓ ${email}`);
   });
 
@@ -331,10 +489,17 @@ for (const [role, email, name] of [
 ])
   await attempt(`partner ${email}`, async () => {
     await call('', 'auth/partner/register', { role, email, password: PASSWORD, name });
-    summary.accounts.push({ type: role === 'MERCHANT' ? '入驻商户(待提交资料)' : '入驻技师(待提交资料)', login: email, password: PASSWORD, name });
+    summary.accounts.push({
+      type: role === 'MERCHANT' ? '入驻商户(待提交资料)' : '入驻技师(待提交资料)',
+      login: email,
+      password: PASSWORD,
+      name,
+    });
     log(`  ✓ ${email}`);
   });
 
 await setClock(Date.now());
 if (out) writeFileSync(out, JSON.stringify(summary, null, 2));
-log(`\nDone: ${summary.accounts.length} accounts, ${summary.bookings.length} orders, ${summary.errors.length} errors`);
+log(
+  `\nDone: ${summary.accounts.length} accounts, ${summary.bookings.length} orders, ${summary.errors.length} errors`,
+);

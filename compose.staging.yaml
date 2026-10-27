@@ -37,7 +37,7 @@ services:
       EMAIL_PROVIDER: resend
       EMAIL_FROM: ${EMAIL_FROM:?Set EMAIL_FROM}
       RESEND_API_KEY_FILE: /run/secrets/resend_api_key
-      OPS_NOTIFICATION_EMAIL: ${OPS_NOTIFICATION_EMAIL:-}
+      OPS_NOTIFICATION_EMAIL: ${OPS_NOTIFICATION_EMAIL:?Set OPS_NOTIFICATION_EMAIL for safety alerts}
       EVIDENCE_DIRECTORY: /app/hogulink-api/data/private-evidence
       BACKUP_DIRECTORY: /app/backups
       BACKUP_REQUIRED: '1'

@@ -45,8 +45,10 @@ export type Venue = {
   cancellationTemplateId?: 'FLEXIBLE_2H' | 'STANDARD_24H';
   reviewedBy?: string;
   reviewNote?: string;
+  /** Set by the platform: no new in-store bookings while present; existing ones continue. */
+  suspension?: { at: number; by: string; note: string };
 };
-export type PublicVenue = Omit<Venue, 'resources' | 'reviewedBy' | 'reviewNote'> & {
+export type PublicVenue = Omit<Venue, 'resources' | 'reviewedBy' | 'reviewNote' | 'suspension'> & {
   capacity: number;
 };
 export type VenueSnapshot = Pick<

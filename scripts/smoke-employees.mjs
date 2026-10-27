@@ -1,5 +1,6 @@
 import './qa-clock.mjs';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 const origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:3000',
   apiOrigin = process.env.SMOKE_API_ORIGIN;
 if (!apiOrigin) throw new Error('Use npm run smoke:isolated for employee account checks.');
@@ -23,6 +24,41 @@ async function call(cookie, path, method = 'GET', body, status = 200, key) {
   assert.equal(r.status, status, `${method} ${path}: ${JSON.stringify(d)}`);
   checks++;
   return d;
+}
+// RFC 6238 codes, matching the server's authenticator check.
+function totp(secret, at) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0,
+    value = 0;
+  const bytes = [];
+  for (const char of secret) {
+    value = (value << 5) | alphabet.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const mac = createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
+  const offset = mac[mac.length - 1] & 15;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, '0');
+}
+const secrets = new Map(),
+  lastStep = new Map();
+/** The next unused code: the server allows one step of drift and never accepts a step twice. */
+async function nextCode(email) {
+  const step = Math.max(Math.floor(Date.now() / 30000), (lastStep.get(email) ?? -1) + 1);
+  while (step > Math.floor(Date.now() / 30000) + 1) await new Promise((r) => setTimeout(r, 1000));
+  lastStep.set(email, step);
+  return totp(secrets.get(email), step * 30000);
+}
+async function enroll(token, email) {
+  const invitation = await call('', 'auth/employee/invitation', 'POST', { token });
+  check(/^otpauth:\/\/totp\//.test(invitation.totp.uri), 'activation shows authenticator setup');
+  secrets.set(email, invitation.totp.secret);
+  lastStep.delete(email);
 }
 async function signIn(path, body) {
   const r = await fetch(`${apiOrigin}/v1/${path}`, {
@@ -71,7 +107,7 @@ check(
   'invitation secret not in directory',
 );
 for (const invitation of invitations) {
-  await call('', 'auth/employee/invitation', 'POST', { token: invitation.token });
+  await enroll(invitation.token, invitation.member.email);
   await call(
     '',
     'auth/employee/activate',
@@ -82,15 +118,24 @@ for (const invitation of invitations) {
   await call('', 'auth/employee/activate', 'POST', {
     token: invitation.token,
     password: 'Sample-password-2026!',
+    code: await nextCode(invitation.member.email),
   });
   await call(
     '',
     'auth/employee/activate',
     'POST',
-    { token: invitation.token, password: 'Sample-password-2026!' },
+    { token: invitation.token, password: 'Sample-password-2026!', code: '000000' },
     410,
   );
 }
+// A password alone never signs platform staff in.
+await call(
+  '',
+  'auth/employee/login',
+  'POST',
+  { email: i.member.email, password: 'Sample-password-2026!' },
+  401,
+);
 await call(
   '',
   'auth/employee/login',
@@ -101,14 +146,17 @@ await call(
 const support = await signIn('auth/employee/login', {
     email: i.member.email,
     password: 'Sample-password-2026!',
+    code: await nextCode(i.member.email),
   }),
   finance = await signIn('auth/employee/login', {
     email: invitations[1].member.email,
     password: 'Sample-password-2026!',
+    code: await nextCode(invitations[1].member.email),
   }),
   trust = await signIn('auth/employee/login', {
     email: invitations[2].member.email,
     password: 'Sample-password-2026!',
+    code: await nextCode(invitations[2].member.email),
   });
 for (const employee of [support, finance, trust]) {
   await call(employee.cookie, 'admin/members', 'GET', undefined, 403);
@@ -246,13 +294,17 @@ const reset = await call(root, `admin/members/${member.id}/invitation`, 'POST', 
   reason,
 });
 await call('', 'auth/employee/invitation', 'POST', { token: i.token }, 410);
+// A new link resets the authenticator too.
+await enroll(reset.token, member.email);
 await call('', 'auth/employee/activate', 'POST', {
   token: reset.token,
   password: 'Replacement-password-2026!',
+  code: await nextCode(member.email),
 });
 const restored = await signIn('auth/employee/login', {
   email: member.email,
   password: 'Replacement-password-2026!',
+  code: await nextCode(member.email),
 });
 member = (await call(root, 'admin/members')).members.find((m) => m.id === member.id);
 await call(root, `admin/members/${member.id}`, 'PUT', update({ adminRole: 'FINANCE', teams: [] }));
@@ -260,6 +312,7 @@ await call(restored.cookie, 'auth/session', 'GET', undefined, 401);
 const changed = await signIn('auth/employee/login', {
   email: member.email,
   password: 'Replacement-password-2026!',
+  code: await nextCode(member.email),
 });
 check(changed.actor.adminRole === 'FINANCE', 'new login uses updated role');
 await call(changed.cookie, 'support-tickets', 'GET', undefined, 403);

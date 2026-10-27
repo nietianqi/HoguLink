@@ -15,6 +15,7 @@ import { ensure } from './errors.js';
 import { bootstrapMember, currentAdmin, requireAdmin } from './admin-access.js';
 import { recordTicketHandling } from './ticket-handling.js';
 import { enqueueEmail, invitationEmail } from './notifications.js';
+import { generateTotpSecret, totpStep, totpUri } from './totp.js';
 
 type Credentials = {
   id: string;
@@ -22,7 +23,17 @@ type Credentials = {
   hash?: string;
   inviteHash?: string;
   inviteExpiresAt?: number;
+  /** Authenticator secret once enrolled; required at every password sign-in. */
+  totpSecret?: string;
+  /** Secret shown during enrolment, confirmed by the first valid code. */
+  pendingTotp?: string;
+  /** Last accepted time step, so a code cannot be used twice. */
+  lastTotpStep?: number;
 };
+const codeInput = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/);
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 const passwordInput = z.string().min(12).max(128);
 const emailInput = z
@@ -277,6 +288,10 @@ export class EmployeeService {
       if (oldCredentials) {
         delete oldCredentials.hash;
         delete oldCredentials.salt;
+        // A new link also resets the authenticator, e.g. after a lost phone.
+        delete oldCredentials.totpSecret;
+        delete oldCredentials.pendingTotp;
+        delete oldCredentials.lastTotpStep;
         await tx.put('adminCredentials', oldCredentials);
       }
       m.version++;
@@ -307,19 +322,84 @@ export class EmployeeService {
       .strict()
       .parse(input);
     return this.run(async (tx) => {
-      const { member } = await this.invitation(tx, d.token);
-      return { name: member.name, email: member.email, expiresAt: member.inviteExpiresAt };
+      const { credentials, member } = await this.invitation(tx, d.token);
+      credentials.pendingTotp ??= generateTotpSecret();
+      await tx.put('adminCredentials', credentials);
+      return {
+        name: member.name,
+        email: member.email,
+        expiresAt: member.inviteExpiresAt,
+        totp: {
+          secret: credentials.pendingTotp,
+          uri: totpUri(credentials.pendingTotp, member.email),
+        },
+      };
     });
+  }
+  /** Active staff without an authenticator confirm their password to start enrolling. */
+  async enrollment(input: unknown) {
+    const d = z
+      .object({ email: emailInput, password: z.string().min(1).max(128) })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const { credentials, member } = await this.verifyPassword(tx, d.email, d.password);
+      ensure(!credentials.totpSecret, 'MFA_ALREADY_ENROLLED', 'Sign in with your code.', 409);
+      credentials.pendingTotp ??= generateTotpSecret();
+      await tx.put('adminCredentials', credentials);
+      return {
+        secret: credentials.pendingTotp,
+        uri: totpUri(credentials.pendingTotp, member.email),
+      };
+    });
+  }
+  private async verifyPassword(tx: Records, email: string, password: string) {
+    const m = (await tx.list<AdminMember>('adminMembers')).find((m) => m.email === email),
+      credentials = m && (await tx.get<Credentials>('adminCredentials', m.id));
+    const actual = await derive(password, credentials?.salt ?? 'hogulink-dummy-login-salt');
+    ensure(
+      m?.status === 'ACTIVE' &&
+        credentials?.hash &&
+        timingSafeEqual(actual, Buffer.from(credentials.hash, 'hex')),
+      'INVALID_CREDENTIALS',
+      'Email or password is incorrect.',
+      401,
+    );
+    return { credentials, member: m };
+  }
+  /** Accepts a fresh code for the enrolled or pending secret, never the same step twice. */
+  private acceptCode(credentials: Credentials, code: string | undefined, secret?: string) {
+    const step = secret && code ? totpStep(secret, code, this.now()) : undefined;
+    ensure(
+      step !== undefined && step > (credentials.lastTotpStep ?? -1),
+      'INVALID_CREDENTIALS',
+      'Email, password or authenticator code is incorrect.',
+      401,
+    );
+    credentials.lastTotpStep = step;
   }
   async activate(input: unknown) {
     const d = z
-        .object({ token: z.string().regex(/^[a-f0-9]{64}$/), password: passwordInput })
+        .object({
+          token: z.string().regex(/^[a-f0-9]{64}$/),
+          password: passwordInput,
+          code: codeInput,
+        })
         .strict()
         .parse(input),
       salt = randomBytes(16).toString('hex'),
       hash = (await derive(d.password, salt)).toString('hex');
     return this.run(async (tx) => {
       const { credentials, member: m } = await this.invitation(tx, d.token);
+      ensure(
+        credentials.pendingTotp,
+        'MFA_REQUIRED',
+        'Open the invitation to set up your code.',
+        409,
+      );
+      this.acceptCode(credentials, d.code, credentials.pendingTotp);
+      credentials.totpSecret = credentials.pendingTotp;
+      delete credentials.pendingTotp;
       credentials.salt = salt;
       credentials.hash = hash;
       delete credentials.inviteHash;
@@ -337,21 +417,28 @@ export class EmployeeService {
   }
   async login(input: unknown): Promise<Actor> {
     const d = z
-      .object({ email: emailInput, password: z.string().min(1).max(128) })
+      .object({
+        email: emailInput,
+        password: z.string().min(1).max(128),
+        code: codeInput.optional(),
+      })
       .strict()
       .parse(input);
     return this.run(async (tx) => {
-      const m = (await tx.list<AdminMember>('adminMembers')).find((m) => m.email === d.email),
-        credentials = m && (await tx.get<Credentials>('adminCredentials', m.id));
-      const actual = await derive(d.password, credentials?.salt ?? 'hogulink-dummy-login-salt');
+      const { credentials, member: m } = await this.verifyPassword(tx, d.email, d.password);
+      // Platform staff can read finance and case data, so a password alone never signs in.
       ensure(
-        m?.status === 'ACTIVE' &&
-          credentials?.hash &&
-          timingSafeEqual(actual, Buffer.from(credentials.hash, 'hex')),
-        'INVALID_CREDENTIALS',
-        'Email or password is incorrect.',
-        401,
+        credentials.totpSecret || credentials.pendingTotp,
+        'MFA_ENROLLMENT_REQUIRED',
+        'Set up an authenticator app to continue.',
+        403,
       );
+      this.acceptCode(credentials, d.code, credentials.totpSecret ?? credentials.pendingTotp);
+      if (!credentials.totpSecret) {
+        credentials.totpSecret = credentials.pendingTotp;
+        delete credentials.pendingTotp;
+      }
+      await tx.put('adminCredentials', credentials);
       m.lastLoginAt = this.now();
       await tx.put('adminMembers', m);
       return {

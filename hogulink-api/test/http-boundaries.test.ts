@@ -10,6 +10,7 @@ import { Engine } from '../src/engine.js';
 import { Repository } from '../src/repository.js';
 import { seed } from '../src/seed.js';
 import { bootstrapAdmin } from '../src/employees.js';
+import { totpCode } from '../src/totp.js';
 
 test('FULL-HTTP authentication, permissions, validation and membership revocation through a real server', async (t) => {
   const repo = new Repository(undefined, ':memory:');
@@ -190,13 +191,17 @@ test('FULL-HTTP authentication, permissions, validation and membership revocatio
           teams,
         },
       );
+      const { totp } = await e.employees.inspect({ token: invitation.token });
       await e.employees.activate({
         token: invitation.token,
         password: 'Regression-password-2026!',
+        code: totpCode(totp.secret, e.now()),
       });
+      // Sign-in needs the next code: the one used for activation cannot be replayed.
       const login = await request('auth/employee/login', {
         email: invitation.member.email,
         password: 'Regression-password-2026!',
+        code: totpCode(totp.secret, e.now() + 30_000),
       });
       assert.equal(login.status, 200);
       employees[role] = { cookie: login.cookie, actor: login.body };

@@ -12,6 +12,8 @@ import {
   timeSurchargeAt,
   travelFeeFor,
   withinBusinessHours,
+  withinShifts,
+  lateNight,
   fulfillmentMode,
   venueAvailable,
   venueSnapshot,
@@ -30,9 +32,18 @@ import {
   type SafetyEvent,
   type Store,
   type TimeOffRequest,
+  canAdmin,
+  type AdminTodo,
+  type SupportTicket,
+  type TicketHandling,
+  type ExperienceReview,
+  type ExperienceReply,
+  type ExperienceAppeal,
+  type InvoiceRequest,
 } from '@hogulink/contracts';
 import { config } from './config.js';
 import { VenueService } from './venues.js';
+import { QualityService } from './quality.js';
 import {
   availableResources,
   reserveResource,
@@ -53,7 +64,7 @@ import { StaffService } from './staff.js';
 import { AdminService } from './admin.js';
 import { TicketHandlingService } from './ticket-handling.js';
 import { EmployeeService } from './employees.js';
-import { requireAdmin } from './admin-access.js';
+import { adminCaseVisible, currentAdmin, requireAdmin } from './admin-access.js';
 import { staffBookingAccess } from './staff-access.js';
 import { ExperienceService } from './experience.js';
 import { EngagementService } from './engagement.js';
@@ -110,6 +121,25 @@ const id = (prefix: string) => `${prefix}_${randomUUID()}`;
 const startedOnTime = (b: Booking) =>
   b.startedAt !== undefined &&
   (b.quote.bookingMode === 'INSTANT' || b.startedAt >= b.quote.startAt);
+/** Days of times a scheduled list may cover; quotes themselves accept up to 30 days. */
+export const MAX_AVAILABILITY_DAYS = 14;
+/** Remembers record lookups for one read-only scan, so a multi-day time list reads each once. */
+function rememberReads(tx: Records): Records {
+  const seen = new Map<string, Promise<unknown>>();
+  const remember =
+    (name: 'get' | 'find' | 'list') =>
+    (...args: unknown[]) => {
+      const key = `${name}:${JSON.stringify(args)}`;
+      if (!seen.has(key))
+        seen.set(key, (tx[name] as (...a: unknown[]) => Promise<unknown>)(...args));
+      return seen.get(key);
+    };
+  return Object.assign(Object.create(tx), {
+    get: remember('get'),
+    find: remember('find'),
+    list: remember('list'),
+  });
+}
 export class Engine {
   readonly venues: VenueService;
   readonly customers: CustomerAuth;
@@ -120,6 +150,7 @@ export class Engine {
   readonly merchant: MerchantService;
   readonly staff: StaffService;
   readonly admin: AdminService;
+  readonly quality: QualityService;
   readonly handling: TicketHandlingService;
   readonly employees: EmployeeService;
   readonly onboarding: OnboardingService;
@@ -152,6 +183,7 @@ export class Engine {
     this.merchant = new MerchantService((fn) => this.run(fn), now);
     this.staff = new StaffService((fn) => this.run(fn), now);
     this.admin = new AdminService((fn) => this.run(fn), now);
+    this.quality = new QualityService((fn) => this.read(fn), now);
     this.handling = new TicketHandlingService((fn) => this.run(fn), now);
     this.employees = new EmployeeService((fn) => this.run(fn), now);
     this.onboarding = new OnboardingService((fn) => this.run(fn), now);
@@ -303,12 +335,14 @@ export class Engine {
       'Shop booking rules changed. Request a new quote.',
       409,
     );
-    ensure(
-      (quote.bookingRulesVersion ?? 0) === effectiveBookingRules(store).version,
-      'SHOP_RULES_CHANGED',
-      'Shop prices or cancellation policy changed. Request a new quote.',
-      409,
-    );
+    // In-store prices and policy come from the venue, checked above by its version.
+    if (fulfillmentMode(quote) === 'HOME_VISIT')
+      ensure(
+        (quote.bookingRulesVersion ?? 0) === effectiveBookingRules(store).version,
+        'SHOP_RULES_CHANGED',
+        'Shop prices or cancellation policy changed. Request a new quote.',
+        409,
+      );
   }
   private async getBooking(tx: Records, actor: Actor, bookingId: string, version?: number) {
     const booking = await tx.get<Booking>('bookings', bookingId);
@@ -354,6 +388,24 @@ export class Engine {
       quote.startAt - (lead > 1440 && !replacement ? 720 : 15) * minute,
     );
   }
+  /** Therapist safety conditions the shop approved, checked against this customer. */
+  private async conditionsAllow(
+    tx: Records,
+    listing: Listing,
+    customerId: string,
+    quote: Pick<Quote, 'startAt' | 'fulfillmentMode'>,
+  ) {
+    if (
+      !listing.safetyConditions?.noFirstLateNight ||
+      fulfillmentMode(quote) !== 'HOME_VISIT' ||
+      !lateNight(quote.startAt)
+    )
+      return true;
+    return (await tx.find<Booking>('bookings', { customerId, status: 'COMPLETED' })).some(
+      (b) =>
+        b.customerId === customerId && b.storeId === listing.storeId && b.status === 'COMPLETED',
+    );
+  }
   private buffered(quote: Quote) {
     if (fulfillmentMode(quote) === 'IN_STORE')
       return {
@@ -393,12 +445,14 @@ export class Engine {
         (!quote.requiredLanguage || x.languages.includes(quote.requiredLanguage)) &&
         listingSupports(x, fulfillmentMode(quote)) &&
         (quote.nominationType === 'FREE' || x.id === quote.listingId) &&
-        (quote.bookingMode !== 'INSTANT' ||
-          (x.onDuty && this.now() - x.dutyUpdatedAt < 4 * 60 * minute)),
+        (quote.bookingMode !== 'INSTANT'
+          ? withinShifts(x.shifts, quote.startAt, quote.endAt)
+          : x.onDuty && this.now() - x.dutyUpdatedAt < 4 * 60 * minute),
     );
     const available: Listing[] = [];
     for (const candidate of candidates)
       if (
+        (await this.conditionsAllow(tx, candidate, quote.customerId, quote)) &&
         (await transitionAvailable(tx, candidate.staffId, quote, this.now(), exceptId)) &&
         !(await tx.conflicts(
           candidate.staffId,
@@ -540,8 +594,12 @@ export class Engine {
     mode = 'SCHEDULED',
     area = '',
     serviceMode: FulfillmentMode = 'HOME_VISIT',
+    days = 3,
+    customerId = '',
   ) {
-    return this.read(async (tx) => {
+    const horizonDays = Math.min(MAX_AVAILABILITY_DAYS, Math.max(1, Math.floor(days) || 3));
+    return this.read(async (source) => {
+      const tx = rememberReads(source);
       const { listing, store } = await this.listing(tx, listingId);
       ensure(
         serviceMode === 'IN_STORE' || store.homeVisitsEnabled !== false,
@@ -610,7 +668,7 @@ export class Engine {
           Math.ceil((this.now() + 60 * minute) / ((instant ? 15 : 30) * minute)) *
           (instant ? 15 : 30) *
           minute;
-        value < this.now() + (instant ? 76 * minute : 72 * 60 * minute);
+        value < this.now() + (instant ? 76 * minute : horizonDays * 24 * 60 * minute);
         value += 30 * minute
       ) {
         const slotQuote = {
@@ -653,6 +711,9 @@ export class Engine {
                 candidate.id,
                 await this.dailyAutomaticCount(tx, store.id, value),
               ) === 'ELIGIBLE') &&
+            (instant || withinShifts(candidate.shifts, slotQuote.startAt, slotQuote.endAt)) &&
+            // Same safety conditions as the quote: hidden unless this viewer may book them.
+            (await this.conditionsAllow(tx, candidate, customerId, slotQuote)) &&
             (await transitionAvailable(tx, candidate.staffId, slotQuote, this.now())) &&
             !(await tx.conflicts(
               candidate.staffId,
@@ -780,6 +841,13 @@ export class Engine {
           (await availableResources(tx, store, q, this.now())).length,
           'RESOURCE_UNAVAILABLE',
           'No reception resource is available.',
+          409,
+        );
+      if (q.nominationType === 'NOMINATED')
+        ensure(
+          await this.conditionsAllow(tx, listing, q.customerId, q),
+          'STAFF_CONDITIONS',
+          'This therapist takes late-night home visits only from returning customers of this shop.',
           409,
         );
       const availableStaff = await this.freeStaff(tx, q);
@@ -1004,6 +1072,7 @@ export class Engine {
         hold.active = false;
         await tx.put('holds', hold);
         await tx.releaseInterval(hold.id);
+        await tx.releaseInterval(`resource:${hold.id}`);
         for (const p of await tx.find<Payment>('payments', { holdId: hold.id }))
           if (
             p.holdId === hold.id &&
@@ -1341,6 +1410,94 @@ export class Engine {
         b.replacementConsent !== 'PENDING');
     return visible ? b : { ...b, address: undefined, contact: undefined };
   }
+  /** Pending work for the platform team, counted with each queue's own rules and permissions. */
+  async adminTodo(actor: Actor): Promise<AdminTodo> {
+    this.role(actor, 'ADMIN');
+    const viewer = await this.repo.read((tx) => currentAdmin(tx, actor));
+    requireAdmin(viewer, 'overview.read');
+    const todo: AdminTodo = {};
+    if (canAdmin(viewer, 'orders.read')) {
+      const open = (await this.governance.monitor(actor)).alerts.filter(
+        (a) => a.state !== 'RESOLVED',
+      );
+      todo.orderAlerts = {
+        open: open.length,
+        high: open.filter((a) => a.severity === 'HIGH').length,
+      };
+    }
+    if (canAdmin(viewer, 'supply.read'))
+      todo.aftercare = (await this.quality.suspensionImpact(actor)).reduce(
+        (n, x) => n + x.bookings.length,
+        0,
+      );
+    await this.read(async (tx) => {
+      const now = this.now();
+      if (canAdmin(viewer, 'safety.write')) {
+        todo.safetyEvents = (await tx.list<SafetyEvent>('safety')).filter(
+          (s) => s.status === 'OPEN',
+        ).length;
+        todo.contentReviews = (await tx.list<{ status: string }>('contentReviews')).filter(
+          (x) => x.status === 'PENDING',
+        ).length;
+      }
+      if (canAdmin(viewer, 'cases.read')) {
+        const cases = { unassigned: 0, overdue: 0, escalated: 0, attention: 0 };
+        for (const t of await tx.list<SupportTicket>('supportTickets')) {
+          if (['RESOLVED', 'CLOSED'].includes(t.status) || !(await adminCaseVisible(tx, viewer, t)))
+            continue;
+          const unassigned = !(await tx.get<TicketHandling>('ticketHandling', t.id))?.ownerId,
+            overdue = t.dueAt < now,
+            escalated = t.status === 'PLATFORM_ESCALATED';
+          cases.unassigned += Number(unassigned);
+          cases.overdue += Number(overdue);
+          cases.escalated += Number(escalated);
+          cases.attention += Number(unassigned || overdue || escalated);
+        }
+        todo.cases = cases;
+      }
+      if (canAdmin(viewer, 'supply.write')) {
+        todo.onboarding = (await tx.list<{ status: string }>('partnerApplications')).filter(
+          (a) => a.status === 'SUBMITTED',
+        ).length;
+        todo.venues = (await tx.list<Store>('stores')).filter(
+          (s) => (s.venueDraft ?? s.venue)?.status === 'PENDING',
+        ).length;
+        // Same queue as the review moderation page: new reviews, replies and open appeals.
+        const reviews = await tx.list<ExperienceReview>('experienceReviews'),
+          replies = await tx.list<ExperienceReply>('experienceReplies'),
+          appeals = await tx.list<ExperienceAppeal>('experienceAppeals');
+        todo.experience = reviews.reduce((n, r) => {
+          const reply = replies.find((x) => x.reviewId === r.id);
+          return (
+            n +
+            Number(r.status === 'PENDING') +
+            Number(
+              r.status === 'APPROVED' &&
+                reply?.status === 'PENDING' &&
+                reply.reviewRevision === r.revision,
+            ) +
+            appeals.filter(
+              (a) => a.reviewId === r.id && a.reviewRevision === r.revision && a.status === 'OPEN',
+            ).length
+          );
+        }, 0);
+      }
+      if (canAdmin(viewer, 'finance.read')) {
+        let unmatched = 0;
+        for (const s of await tx.list<Store>('stores'))
+          unmatched += (await this.finance.rows(tx, s.id)).filter(
+            (e) => !e.recordedBatchId && e.report?.status !== 'MATCHED',
+          ).length;
+        todo.finance = {
+          unmatched,
+          invoices: (await tx.list<InvoiceRequest>('invoiceRequests')).filter(
+            (r) => r.state === 'SUBMITTED' || r.state === 'REVIEWED',
+          ).length,
+        };
+      }
+    });
+    return todo;
+  }
   async booking(actor: Actor, bookingId: string) {
     return this.run(async (tx) => this.redact(await this.getBooking(tx, actor, bookingId), actor));
   }
@@ -1459,6 +1616,13 @@ export class Engine {
     });
   }
   private async assignmentEligible(tx: Records, b: Booking, listing: Listing) {
+    if (!(await this.conditionsAllow(tx, listing, b.customerId, b.quote))) return false;
+    // A replacement must also be working at the booked time.
+    if (
+      b.quote.bookingMode !== 'INSTANT' &&
+      !withinShifts(listing.shifts, b.quote.startAt, b.quote.endAt)
+    )
+      return false;
     const store = await tx.get<Store>('stores', b.storeId);
     if (
       !store?.active ||
@@ -1738,8 +1902,9 @@ export class Engine {
       return this.save(tx, b, actor, 'STAFF_UNAVAILABLE', reason.slice(0, 300));
     });
   }
+  /** The shop desk, or the assigned therapist in shops without one, confirms the customer's code. */
   async checkIn(actor: Actor, bookingId: string, input: unknown) {
-    this.role(actor, 'MERCHANT');
+    this.role(actor, 'MERCHANT', 'STAFF');
     const data = z
       .object({
         version: z.number().int().positive(),
@@ -1752,6 +1917,12 @@ export class Engine {
       .parse(input);
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId, data.version);
+      ensure(
+        actor.role !== 'STAFF' || b.assignedStaffId === actor.staffId,
+        'FORBIDDEN',
+        'Only the assigned therapist can check in this customer.',
+        403,
+      );
       ensure(
         fulfillmentMode(b.quote) === 'IN_STORE' &&
           b.status === 'CONFIRMED' &&

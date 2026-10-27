@@ -34,6 +34,22 @@ export type OrderAlert = {
   followUpAt?: number;
   note?: string;
 };
+/**
+ * Pending platform work, counted with each queue's own rules. A field is present only when
+ * the viewer may work that queue, so absent means "not yours", never "zero".
+ */
+export type AdminTodo = {
+  safetyEvents?: number;
+  orderAlerts?: { open: number; high: number };
+  /** `attention` counts each case once, however many of the other conditions it meets. */
+  cases?: { unassigned: number; overdue: number; escalated: number; attention: number };
+  onboarding?: number;
+  venues?: number;
+  experience?: number;
+  contentReviews?: number;
+  aftercare?: number;
+  finance?: { unmatched: number; invoices: number };
+};
 export type OrderMonitor = {
   now: number;
   alerts: OrderAlert[];

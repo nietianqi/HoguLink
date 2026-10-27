@@ -2676,3 +2676,103 @@ form > .handling-help {
     font-size: 20px;
   }
 }
+/* Platform to-do board: urgent first, clear queues muted. */
+.admin-todo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.admin-todo-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'icon count arrow' 'label label label' 'note note note';
+  align-items: center;
+  gap: 4px 8px;
+  padding: 12px;
+  border: 1px solid var(--hl-line);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  background: #fff;
+}
+.admin-todo-card > svg:first-child {
+  grid-area: icon;
+}
+.admin-todo-card strong {
+  grid-area: count;
+  font-size: 24px;
+  line-height: 1;
+}
+.admin-todo-card > span {
+  grid-area: label;
+  font-size: 13px;
+}
+.admin-todo-card > small {
+  grid-area: note;
+  color: var(--hl-muted);
+}
+.admin-todo-card > svg:last-child {
+  grid-area: arrow;
+  opacity: 0.6;
+}
+.admin-todo-card em {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #974e43;
+  color: #fff;
+}
+.admin-todo-card.urgent {
+  border-color: #d9b2ab;
+  background: #fbf3f1;
+}
+.admin-todo-card.waiting {
+  border-color: var(--hl-gold);
+  background: var(--hl-gold-100);
+}
+.admin-todo-card.clear {
+  opacity: 0.62;
+}
+.admin-todo-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--hl-pine-700);
+}
+.admin-section-title {
+  margin: 22px 0 10px;
+  font-size: 17px;
+}
+.admin-overview-single {
+  grid-template-columns: 1fr !important;
+}
+.admin-sidebar-bottom > small {
+  opacity: 0.7;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.admin-mobile-tabs b,
+.admin-sidebar-bottom b {
+  margin-left: 6px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #974e43;
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+}
+@media (max-width: 520px) {
+  .admin-todo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .admin-todo-card {
+    padding: 10px;
+  }
+  .admin-todo-card strong {
+    font-size: 20px;
+  }
+}

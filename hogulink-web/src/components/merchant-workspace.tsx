@@ -49,6 +49,8 @@ import type {
 } from '@hogulink/contracts';
 import { ft } from '@/lib/staff-i18n';
 import { api, ClientError } from '@/lib/api';
+import { ShiftEditor } from './shift-editor';
+import { sh } from '@/lib/shift-i18n';
 import { areaName, dateTime, errorText, languageNames, money, statusText, t } from '@/lib/i18n';
 import { acceptanceHelp, acceptanceLabel } from '@/lib/visit-i18n';
 import { st, merchantTabs, type MerchantTab } from '@/lib/merchant-i18n';
@@ -872,6 +874,47 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                           .map((o) => `${o.durationMinutes} ${t(l, 'minutes')}`)
                           .join(' / ')}
                       </p>
+                      {(x.safetyConditions || x.safetyRequest) && (
+                        <div className="merchant-safety-conditions">
+                          <strong>{sh(l, 'conditions')}</strong>
+                          <p>
+                            {sh(l, 'noFirstLateNight')} ·{' '}
+                            {sh(l, x.safetyRequest?.status ?? 'APPROVED')}
+                          </p>
+                          {x.safetyRequest?.status === 'PENDING' && (
+                            <div className="button-row">
+                              {[true, false].map((approve) => (
+                                <button
+                                  key={String(approve)}
+                                  className={`button small ${approve ? '' : 'secondary'}`}
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void mutate(() =>
+                                      api(`merchant/team/${x.id}/safety-conditions`, { approve }),
+                                    )
+                                  }
+                                >
+                                  {sh(l, approve ? 'approve' : 'reject')}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <details className="merchant-shifts">
+                        <summary>
+                          {sh(l, 'title')} · {x.shifts ? `v${x.shifts.version}` : sh(l, 'notSet')}
+                        </summary>
+                        <ShiftEditor
+                          key={x.shifts?.version ?? 0}
+                          locale={l}
+                          shifts={x.shifts}
+                          onSave={async (input) => {
+                            await api(`merchant/team/${x.id}/shifts`, input, 'PUT');
+                            await refresh();
+                          }}
+                        />
+                      </details>
                       <Link
                         className="button secondary full"
                         href={`${href('schedule')}&member=${encodeURIComponent(x.id)}`}

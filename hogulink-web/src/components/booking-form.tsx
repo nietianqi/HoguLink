@@ -207,6 +207,8 @@ function useVisit(props: PlannerProps) {
       mode,
       area,
       fulfillmentMode: serviceMode,
+      // Two weeks of times; the shop's own hours and closures decide which days appear.
+      days: '14',
     });
     const path =
       nomination === 'FREE'
@@ -497,7 +499,7 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
         <>
           <div
             className="visit-day-picker"
-            style={{ gridTemplateColumns: `repeat(${days.length},minmax(0,1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${days.length},minmax(64px,1fr))` }}
             role="group"
             aria-label={vt(l, 'selectTime')}
           >

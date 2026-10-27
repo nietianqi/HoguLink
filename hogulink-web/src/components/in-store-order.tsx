@@ -97,8 +97,8 @@ export function InStoreOrder({
                 <p>{sv(l, 'checkInHelp')}</p>
               </div>
             )}
-            {role === 'STAFF' && <p>{sv(l, 'waitCheckIn')}</p>}
-            {role === 'MERCHANT' &&
+            {role === 'STAFF' && <p>{sv(l, 'staffCheckIn')}</p>}
+            {(role === 'MERCHANT' || role === 'STAFF') &&
               b.status === 'CONFIRMED' &&
               b.staffTaskStatus === 'ACKNOWLEDGED' &&
               b.replacementConsent !== 'PENDING' && (
@@ -109,10 +109,15 @@ export function InStoreOrder({
                     setBusy(true);
                     setError('');
                     try {
-                      await api(`merchant/bookings/${b.id}/check-in`, {
-                        version: b.version,
-                        code: code.trim().toUpperCase(),
-                      });
+                      await api(
+                        role === 'STAFF'
+                          ? `staff/tasks/${b.id}/check-in`
+                          : `merchant/bookings/${b.id}/check-in`,
+                        {
+                          version: b.version,
+                          code: code.trim().toUpperCase(),
+                        },
+                      );
                       setCode('');
                       await onUpdated();
                     } catch (e) {

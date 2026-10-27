@@ -20,6 +20,30 @@ const quote = (e: Parameters<Parameters<typeof fixture>[0]>[0], startAt: number)
     requiredLanguage: '',
   });
 
+test('the time list can offer two weeks ahead and never more', () =>
+  fixture(async (e) => {
+    const list = async (days?: number) =>
+      (
+        await e.availability(
+          'listing-aoi',
+          'store-nagi-60',
+          false,
+          '',
+          'SCHEDULED',
+          'shinjuku',
+          'HOME_VISIT',
+          days,
+        )
+      ).slots;
+    const dayOf = (slot: number) => Math.floor((slot - e.now()) / (24 * 60 * minute));
+    assert.ok(Math.max(...(await list()).map(dayOf)) < 3, 'the default list stays at three days');
+    const twoWeeks = await list(14);
+    assert.equal(Math.max(...twoWeeks.map(dayOf)), 13, 'the last listed day is two weeks out');
+    assert.deepEqual(await list(60), twoWeeks, 'longer requests are capped at two weeks');
+    const far = twoWeeks.find((slot) => dayOf(slot) === 10)!;
+    assert.equal((await quote(e, far)).startAt, far, 'a listed far time can be quoted');
+  }));
+
 test('by default scheduled quotes use the same 09:00-22:00 start hours the list shows', () =>
   fixture(async (e) => {
     await assert.rejects(quote(e, jst(19, 2)), code('OUTSIDE_BOOKING_HOURS'), '02:00 next day');

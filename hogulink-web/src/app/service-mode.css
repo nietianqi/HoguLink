@@ -205,3 +205,10 @@
     width: 100%;
   }
 }
+.mfa-secret {
+  display: block;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  margin: 6px 0;
+}

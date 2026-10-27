@@ -1,4 +1,4 @@
-import { advanceVisit, confirmVisit } from './qa-clock.mjs';
+import { advanceVisit, bookable, confirmVisit } from './qa-clock.mjs';
 import assert from 'node:assert/strict';
 const origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:3000';
 const apiBase = `${process.env.SMOKE_API_ORIGIN || origin}/v1`;
@@ -51,7 +51,7 @@ check(
 await login('CUSTOMER');
 const customerCookie = cookie;
 await request('quotes', { merchantId: 'forged' }, 'POST', 422);
-const startAt = Date.now() + 5 * 24 * 60 * 60_000;
+const startAt = bookable(Date.now() + 5 * 24 * 60 * 60_000);
 const quote = await request(
   'quotes',
   {

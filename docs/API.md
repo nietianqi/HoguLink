@@ -1,5 +1,9 @@
 # API 开发基线
 
+## 平台端与技师端完善（2026-10-26）
+
+新增 SOS 位置共享与平台紧急查看服务地点、技师出勤班次与安全接单条件、技师到店核销、平台暂停门店、店铺履约质量与停用善后清单、工单证据照片、门店地址检索，以及平台员工登录二次验证（`activate`/`login` 新增 `code`）。接口、权限与错误码见 [上线准备](LAUNCH_READINESS.md#5-新增接口)。
+
 ## 上门与到店预约（2026-10-26）
 
 新增独立 `fulfillmentMode`，旧值缺省为 `HOME_VISIT`，到店为 `IN_STORE`。到店使用审核后的门店、独立价目和人员/接待资源保留，提交联系人而非上门地址；核销后从 `CONFIRMED` 开始服务。新增门店提交/审核、人员服务方式、到店价目、核销和关闭新上门预约等接口，详见 [接口及验证说明](DUAL_SERVICE_MODE_IMPLEMENTATION.md#4-新增与扩展接口)。
@@ -117,39 +121,39 @@ SOLO 一键受理在写入确认前复用当前派单资格检查，包括有效
 
 所有写请求要求 `Origin` 为配置的 Web 来源。身份来自 HttpOnly 演示会话，忽略前端自称的角色/商户字段。通过 Web 的 `/v1` 同源代理访问即可；原始 API 默认只监听 127.0.0.1:4000。
 
-| 方法       | 路径（省略 /v1）                                            | 说明                                                                                      |
-| ---------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| GET        | /health                                                     | 运行模式与生产就绪状态                                                                    |
-| POST       | /auth/demo                                                  | role、可选 storeId/staffId；本地演示身份                                                  |
-| GET / POST | /auth/session / /auth/logout                                | 会话查询 / 注销                                                                           |
-| GET        | /public/staff-listings                                      | area、language、mode 筛选                                                                 |
-| GET        | /public/staff-listings/{slug}                               | 展示资料、所属店铺、SKU                                                                   |
-| GET        | /public/staff-listings/{id}/availability                    | 可选 offeringId；包含服务时长和路程缓冲                                                   |
-| GET        | /public/stores/{slug}                                       | 店铺公开主体和服务                                                                        |
-| GET        | /public/stores/{slug}/free-availability                     | offeringId、language；同店可用产能                                                        |
-| POST       | /quotes                                                     | listingId、offeringId、bookingMode、nominationType、startAt、area、requiredLanguage       |
-| POST       | /booking-holds                                              | quoteId；L1、TTL、配额、全局冲突                                                          |
-| GET        | /booking-holds/{holdId}                                     | 本人结算快照和已有支付认证恢复                                                            |
-| POST       | /payments/demo-authorizations                               | holdId、challengePassed；不接受卡号                                                       |
-| POST       | /bookings                                                   | holdId、quoteId、paymentId、address、termsAccepted、policyVersion；必须有 Idempotency-Key |
-| GET        | /bookings、/bookings/{id}                                   | 当前角色可访问订单；地址按角色/阶段脱敏                                                   |
-| POST       | /customer/bookings/{id}/cancel                              | version；使用冻结政策                                                                     |
-| POST       | /customer/bookings/{id}/payment-guarantee                   | version；预授权失败后在截止前重新认证                                                     |
-| POST       | /customer/bookings/{id}/replacement-consent                 | version、approved                                                                         |
-| GET / POST | /customer/bookings/{id}/messages                            | 读取 / 发送 text                                                                          |
-| POST       | /merchant/bookings/{id}/accept、/reject、/cancel            | version；SOLO 原子确认                                                                    |
-| POST       | /merchant/bookings/{id}/assignments、/replacement-proposals | version、listingId                                                                        |
-| POST       | /merchant/bookings/{id}/refunds                             | version、amount，JPY 整数                                                                 |
-| GET / POST | /merchant/bookings/{id}/messages                            | 本店订单沟通                                                                              |
-| POST       | /merchant/billing/plan-changes                              | plan（演示切换，未收费）                                                                  |
-| POST       | /staff/tasks/{id}/ack                                       | version、即时 arrivalMinutes                                                              |
-| POST       | /staff/tasks/{id}/decline、/withdraw                        | version、reason                                                                           |
-| POST       | /staff/tasks/{id}/events                                    | version、event：EN_ROUTE / ARRIVED / START / COMPLETE                                     |
-| GET / POST | /staff/tasks/{id}/messages                                  | 仅已确认且进行中的本人任务                                                                |
-| PUT        | /staff/duty-status                                          | onDuty、可选 expectedAt（上次 dutyUpdatedAt）；4 小时待机失效，开始需资格有效             |
-| POST       | /staff/safety-alerts                                        | bookingId、version、type：SOS / SAFETY_TERMINATION                                        |
-| POST       | /admin/enforcement-actions                                  | listingId、suspend、reason；演示内容暂停/恢复                                             |
-| GET        | /dashboard                                                  | 本店账务/事件或平台审计/安全/待投递数                                                     |
+| 方法       | 路径（省略 /v1）                                            | 说明                                                                                       |
+| ---------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET        | /health                                                     | 运行模式与生产就绪状态                                                                     |
+| POST       | /auth/demo                                                  | role、可选 storeId/staffId；本地演示身份                                                   |
+| GET / POST | /auth/session / /auth/logout                                | 会话查询 / 注销                                                                            |
+| GET        | /public/staff-listings                                      | area、language、mode 筛选                                                                  |
+| GET        | /public/staff-listings/{slug}                               | 展示资料、所属店铺、SKU                                                                    |
+| GET        | /public/staff-listings/{id}/availability                    | 可选 offeringId；包含服务时长和路程缓冲；`days` 1–14（默认 3）；已登录顾客按其安全条件过滤 |
+| GET        | /public/stores/{slug}                                       | 店铺公开主体和服务                                                                         |
+| GET        | /public/stores/{slug}/free-availability                     | offeringId、language；同店可用产能；`days` 与上行相同                                      |
+| POST       | /quotes                                                     | listingId、offeringId、bookingMode、nominationType、startAt、area、requiredLanguage        |
+| POST       | /booking-holds                                              | quoteId；L1、TTL、配额、全局冲突                                                           |
+| GET        | /booking-holds/{holdId}                                     | 本人结算快照和已有支付认证恢复                                                             |
+| POST       | /payments/demo-authorizations                               | holdId、challengePassed；不接受卡号                                                        |
+| POST       | /bookings                                                   | holdId、quoteId、paymentId、address、termsAccepted、policyVersion；必须有 Idempotency-Key  |
+| GET        | /bookings、/bookings/{id}                                   | 当前角色可访问订单；地址按角色/阶段脱敏                                                    |
+| POST       | /customer/bookings/{id}/cancel                              | version；使用冻结政策                                                                      |
+| POST       | /customer/bookings/{id}/payment-guarantee                   | version；预授权失败后在截止前重新认证                                                      |
+| POST       | /customer/bookings/{id}/replacement-consent                 | version、approved                                                                          |
+| GET / POST | /customer/bookings/{id}/messages                            | 读取 / 发送 text                                                                           |
+| POST       | /merchant/bookings/{id}/accept、/reject、/cancel            | version；SOLO 原子确认                                                                     |
+| POST       | /merchant/bookings/{id}/assignments、/replacement-proposals | version、listingId                                                                         |
+| POST       | /merchant/bookings/{id}/refunds                             | version、amount，JPY 整数                                                                  |
+| GET / POST | /merchant/bookings/{id}/messages                            | 本店订单沟通                                                                               |
+| POST       | /merchant/billing/plan-changes                              | plan（演示切换，未收费）                                                                   |
+| POST       | /staff/tasks/{id}/ack                                       | version、即时 arrivalMinutes                                                               |
+| POST       | /staff/tasks/{id}/decline、/withdraw                        | version、reason                                                                            |
+| POST       | /staff/tasks/{id}/events                                    | version、event：EN_ROUTE / ARRIVED / START / COMPLETE                                      |
+| GET / POST | /staff/tasks/{id}/messages                                  | 仅已确认且进行中的本人任务                                                                 |
+| PUT        | /staff/duty-status                                          | onDuty、可选 expectedAt（上次 dutyUpdatedAt）；4 小时待机失效，开始需资格有效              |
+| POST       | /staff/safety-alerts                                        | bookingId、version、type：SOS / SAFETY_TERMINATION                                         |
+| POST       | /admin/enforcement-actions                                  | listingId、suspend、reason；演示内容暂停/恢复                                              |
+| GET        | /dashboard                                                  | 本店账务/事件或平台审计/安全/待投递数                                                      |
 
 写操作的订单 `version` 不一致返回 409；无身份 401；无权限 403，资源隔离通常返回 404；时段冲突 409；支付保障缺失/失败 402；输入格式 422；频控 429。错误体统一为 `error.code`、`error.message` 和 `requestId`。业务实体使用当前共享 TypeScript 契约中的 camelCase；完整 OpenAPI 生成、snake_case 传输映射和兼容策略尚待固化。
 

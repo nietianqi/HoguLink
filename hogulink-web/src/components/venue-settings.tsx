@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   editableVenue,
   fulfillmentMode,
@@ -38,7 +38,39 @@ export function VenueSettings({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
-    [photos, setPhotos] = useState<string[]>(venue?.photos ?? []);
+    [photos, setPhotos] = useState<string[]>(venue?.photos ?? []),
+    [matched, setMatched] = useState('');
+  const form = useRef<HTMLFormElement>(null);
+  const field = (name: string) => form.current?.elements.namedItem(name) as HTMLInputElement | null;
+  async function locate() {
+    const address = field('address')?.value.trim() ?? '';
+    if (address.length < 3) return;
+    setBusy(true);
+    setError('');
+    setMatched('');
+    try {
+      const [first] = await api<{ latitude: number; longitude: number; label: string }[]>(
+        `merchant/venue/geocode?q=${encodeURIComponent(address)}`,
+      );
+      if (!first) setError(sv(l, 'noMatch'));
+      else {
+        field('latitude')!.value = String(first.latitude);
+        field('longitude')!.value = String(first.longitude);
+        setMatched(first.label);
+      }
+    } catch (e) {
+      const code = e instanceof ClientError ? e.code : undefined;
+      setError(serviceModeError(l, code) ?? errorText(l, code));
+    } finally {
+      setBusy(false);
+    }
+  }
+  function checkOnMap() {
+    const lat = Number(field('latitude')?.value),
+      lng = Number(field('longitude')?.value);
+    if (Number.isFinite(lat) && Number.isFinite(lng))
+      window.open(`https://maps.gsi.go.jp/#17/${lat}/${lng}/`, '_blank', 'noopener');
+  }
   useEffect(() => setPhotos(venue?.photos ?? []), [store.id, venue?.version]);
   async function addPhotos(files: File[]) {
     setBusy(true);
@@ -111,7 +143,13 @@ export function VenueSettings({
       {store.venueDraft && store.venue?.status === 'APPROVED' && (
         <p className="flow-muted">{sv(l, 'liveWhileReview')}</p>
       )}
+      {store.venue?.suspension && (
+        <p className="error-message" role="status">
+          {sv(l, 'venueSuspended')} · {store.venue.suspension.note}
+        </p>
+      )}
       <form
+        ref={form}
         key={`${store.id}:${venue?.version ?? 0}`}
         onSubmit={(e) => {
           e.preventDefault();
@@ -211,6 +249,20 @@ export function VenueSettings({
               />
             </label>
           </div>
+          <div className="button-row">
+            <button type="button" className="button secondary small" onClick={() => void locate()}>
+              {sv(l, 'findCoordinates')}
+            </button>
+            <button type="button" className="text-button" onClick={checkOnMap}>
+              {sv(l, 'checkOnMap')} ↗
+            </button>
+          </div>
+          {matched && (
+            <p className="quality-note">
+              {sv(l, 'matched')}: {matched}
+            </p>
+          )}
+          <small className="flow-muted">{sv(l, 'geocodeSource')}</small>
           <div className="field-grid">
             <label className="field">
               {sv(l, 'latitude')}
@@ -603,6 +655,50 @@ export function VenueReviews({ locale: l }: { locale: Locale }) {
           </form>
         ))}
       {!rows.some((x) => x.venue.status === 'PENDING') && <p>{sv(l, 'noVenues')}</p>}
+      <h3>{sv(l, 'liveVenues')}</h3>
+      {rows
+        .map((row) => ({ row, live: row.live ?? row.venue }))
+        .filter(({ live }) => live.status === 'APPROVED')
+        .map(({ row, live }) => (
+          <form
+            className="exception-panel"
+            key={`live:${row.storeId}:${live.suspension?.at ?? 0}`}
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              setBusy(true);
+              setError('');
+              try {
+                await api(`admin/venues/${row.storeId}/suspension`, {
+                  suspended: !live.suspension,
+                  note: f.get('note'),
+                });
+                setRetry((n) => n + 1);
+              } catch (e) {
+                setError(errorText(l, e instanceof ClientError ? e.code : undefined));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <h4>
+              {row.name[l]}
+              {live.suspension ? ` · ${sv(l, 'suspendedLabel')}` : ''}
+            </h4>
+            <p>{live.address}</p>
+            {live.suspension && <p className="flow-muted">{live.suspension.note}</p>}
+            <label className="field">
+              {sv(l, 'reviewNote')}
+              <textarea name="note" required minLength={10} maxLength={500} />
+            </label>
+            <button
+              className={`button small ${live.suspension ? '' : 'secondary'}`}
+              disabled={busy}
+            >
+              {sv(l, live.suspension ? 'restoreVenue' : 'suspendVenue')}
+            </button>
+          </form>
+        ))}
       {error && (
         <p role="alert" className="error-message">
           {error}

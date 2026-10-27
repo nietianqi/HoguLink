@@ -8,6 +8,8 @@ const fields: Record<string, string[]> = {
   partnerApplications: ['draft'],
   adminMembers: ['email', 'name'],
   contentReviews: ['note'],
+  safety: ['location'],
+  adminCredentials: ['totpSecret', 'pendingTotp'],
 };
 export function encodeRecord(kind: string, value: Record<string, unknown>) {
   const names = fields[kind];

@@ -78,6 +78,43 @@ const text = {
     'Waiting for the shop to check you in.',
     '等待店铺核销到店后，由技师开始服务。',
   ],
+  findCoordinates: ['住所から位置を検索', 'Find location from address', '根据地址查找位置'],
+  checkOnMap: ['地図で確認', 'Check on the map', '在地图上核对'],
+  matched: ['一致した住所', 'Matched address', '匹配到的地址'],
+  geocodeSource: [
+    '位置検索：国土地理院。結果を地図で確認し、必要なら緯度・経度を修正してください。',
+    'Location search by GSI Japan. Check the result on the map and correct the coordinates if needed.',
+    '位置检索：日本国土地理院。请在地图上核对结果，必要时修改经纬度。',
+  ],
+  noMatch: [
+    '住所が見つかりませんでした。番地まで入力するか、緯度・経度を直接入力してください。',
+    'No match found. Add the street number, or enter the coordinates directly.',
+    '未找到该地址。请补充门牌号，或直接填写经纬度。',
+  ],
+  GEOCODE_UNAVAILABLE: [
+    '位置検索を利用できません。緯度・経度を直接入力してください。',
+    'Address search is unavailable. Enter the coordinates directly.',
+    '位置检索暂不可用，请直接填写经纬度。',
+  ],
+  distanceFromYou: [
+    '現在地から約 {km} km（直線）',
+    'About {km} km from you (straight line)',
+    '距您约 {km} 公里（直线）',
+  ],
+  staffCheckIn: [
+    'お客様が提示したコードで来店を確認できます。受付がいない店舗では担当者が確認してください。',
+    'Check the customer in with the code they show. In shops without a front desk, the assigned therapist does this.',
+    '可凭顾客出示的核销码确认到店；没有前台的店铺由负责技师核销。',
+  ],
+  venueSuspended: [
+    'HoguLink が来店予約を一時停止しています。既存の予約は対応を続けてください。',
+    'HoguLink has paused in-store bookings for this venue. Keep handling existing bookings.',
+    'HoguLink 已暂停该门店的到店预约，现有预约请继续处理。',
+  ],
+  suspendVenue: ['来店予約を停止', 'Pause in-store bookings', '暂停到店预约'],
+  restoreVenue: ['来店予約を再開', 'Resume in-store bookings', '恢复到店预约'],
+  liveVenues: ['公開中の来店店舗', 'Published venues', '已上线门店'],
+  suspendedLabel: ['停止中', 'Paused', '已暂停'],
   readyToStart: [
     '来店確認済み・開始待ち',
     'Checked in, awaiting service',

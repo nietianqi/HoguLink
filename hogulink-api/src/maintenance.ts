@@ -38,6 +38,8 @@ try {
         'partnerApplications',
         'adminMembers',
         'contentReviews',
+        'safety',
+        'adminCredentials',
       ])
         for (const record of await tx.list<{ id: string }>(kind)) {
           await tx.put(kind, record);

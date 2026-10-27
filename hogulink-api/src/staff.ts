@@ -1,13 +1,18 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import type {
-  Actor,
-  Audit,
-  Listing,
-  Offering,
-  SafetyEvent,
-  Store,
-  TimeOffRequest,
+import {
+  safetyConditionsInput,
+  staffShiftsInput,
+  withinShifts,
+  fulfillmentMode,
+  type Actor,
+  type Audit,
+  type Booking,
+  type Listing,
+  type Offering,
+  type SafetyEvent,
+  type Store,
+  type TimeOffRequest,
 } from '@hogulink/contracts';
 import type { Records } from './repository.js';
 import type { TimeBlock } from './merchant.js';
@@ -105,6 +110,125 @@ export class StaffService {
             createdAt: s.createdAt,
           })),
       };
+    });
+  }
+  /** The therapist keeps their own working windows; scheduled visits are offered only inside them. */
+  async saveShifts(actor: Actor, input: unknown) {
+    const data = staffShiftsInput.parse(input);
+    return this.run(async (tx) => {
+      const { listing } = await this.member(tx, actor);
+      return this.applyShifts(tx, actor, listing, data);
+    });
+  }
+  /** The shop may set or correct shifts for members who do not use the app. */
+  async saveShiftsAsShop(actor: Actor, listingId: string, input: unknown) {
+    ensure(actor.role === 'MERCHANT' && actor.storeId, 'FORBIDDEN', 'Shop account required.', 403);
+    const data = staffShiftsInput.parse(input);
+    return this.run(async (tx) => {
+      const listing = await tx.get<Listing>('listings', listingId);
+      ensure(listing && listing.storeId === actor.storeId, 'NOT_FOUND', 'Staff not found.', 404);
+      return this.applyShifts(tx, actor, listing, data);
+    });
+  }
+  private async applyShifts(
+    tx: Records,
+    actor: Actor,
+    listing: Listing,
+    data: ReturnType<typeof staffShiftsInput.parse>,
+  ) {
+    ensure(
+      (listing.shifts?.version ?? 0) === data.version,
+      'VERSION_CONFLICT',
+      'Shifts changed. Refresh first.',
+      409,
+    );
+    const shifts = {
+      version: data.version + 1,
+      weekly: data.weekly,
+      exceptions: data.exceptions
+        .filter((x) => x.date >= new Date(this.now() + 9 * 3600_000).toISOString().slice(0, 10))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+      updatedAt: this.now(),
+      updatedBy: actor.id,
+    };
+    // Booked customers keep their visit: new shifts must still cover them.
+    for (const b of await tx.find<Booking>('bookings', {
+      assignedStaffId: listing.staffId,
+      status: ['REQUESTED', 'ACCEPTED', 'CONFIRMED'],
+    }))
+      if (
+        b.storeId === listing.storeId &&
+        b.quote.bookingMode !== 'INSTANT' &&
+        b.startedAt === undefined &&
+        b.quote.startAt > this.now()
+      )
+        ensure(
+          withinShifts(shifts, b.quote.startAt, b.quote.endAt),
+          'SHIFT_HAS_BOOKINGS',
+          `A booked ${fulfillmentMode(b.quote) === 'IN_STORE' ? 'in-store' : 'home'} visit falls outside these shifts. Ask the shop to rearrange it first.`,
+          409,
+        );
+    const next = { ...listing, shifts };
+    await tx.put('listings', next);
+    await this.audit(tx, actor, 'STAFF_SHIFTS_UPDATED', listing.id);
+    return next;
+  }
+  /**
+   * The therapist asks for stricter safety conditions; the shop approves them before they
+   * filter bookings. Relaxing a condition is the therapist's own choice and applies at once.
+   */
+  async requestSafetyConditions(actor: Actor, input: unknown) {
+    const conditions = safetyConditionsInput.parse(input);
+    return this.run(async (tx) => {
+      const { listing } = await this.member(tx, actor);
+      const next: Listing = { ...listing };
+      if (!conditions.noFirstLateNight) {
+        delete next.safetyConditions;
+        delete next.safetyRequest;
+      } else if (listing.safetyConditions?.noFirstLateNight) delete next.safetyRequest;
+      else next.safetyRequest = { conditions, requestedAt: this.now(), status: 'PENDING' };
+      await tx.put('listings', next);
+      await this.audit(tx, actor, 'STAFF_SAFETY_CONDITIONS_REQUESTED', listing.id);
+      return next;
+    });
+  }
+  async reviewSafetyConditions(actor: Actor, listingId: string, input: unknown) {
+    ensure(actor.role === 'MERCHANT' && actor.storeId, 'FORBIDDEN', 'Shop account required.', 403);
+    const d = z
+      .object({ approve: z.boolean(), note: z.string().trim().max(300).optional() })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const listing = await tx.get<Listing>('listings', listingId);
+      ensure(listing && listing.storeId === actor.storeId, 'NOT_FOUND', 'Staff not found.', 404);
+      ensure(
+        listing.safetyRequest?.status === 'PENDING',
+        'INVALID_STATE',
+        'There is no pending request.',
+        409,
+      );
+      const next: Listing = d.approve
+        ? {
+            ...listing,
+            safetyConditions: {
+              ...listing.safetyRequest.conditions,
+              approvedAt: this.now(),
+              approvedBy: actor.id,
+            },
+            safetyRequest: undefined,
+          }
+        : {
+            ...listing,
+            safetyRequest: { ...listing.safetyRequest, status: 'REJECTED', note: d.note },
+          };
+      await tx.put('listings', next);
+      await this.audit(
+        tx,
+        actor,
+        d.approve ? 'STAFF_SAFETY_CONDITIONS_APPROVED' : 'STAFF_SAFETY_CONDITIONS_REJECTED',
+        listing.id,
+      );
+      return next;
     });
   }
   async duty(actor: Actor, onDuty: boolean, expectedAt?: number) {

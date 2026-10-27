@@ -13,7 +13,17 @@ type Snapshot = {
 export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Actor }) {
   const [data, setData] = useState<Snapshot>(),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [all, setAll] = useState(false);
+  // Deliveries that need action come first; the rest is history, shown on request.
+  const problem = (status: string) => ['FAILED', 'BLOCKED', 'RETRY'].includes(status);
+  const ordered = data
+    ? [
+        ...data.jobs.filter((j) => problem(j.status)),
+        ...data.jobs.filter((j) => !problem(j.status)),
+      ]
+    : [];
+  const shown = all ? ordered : ordered.slice(0, 10);
   const load = useCallback(async () => {
     setError('');
     try {
@@ -61,7 +71,7 @@ export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Ac
         </div>
       )}
       <div className="runtime-jobs">
-        {data?.jobs.map((job) => (
+        {shown.map((job) => (
           <article key={job.id}>
             <div>
               <strong>
@@ -77,21 +87,24 @@ export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Ac
               <small>{dateTime(l, job.createdAt)}</small>
             </div>
             <span>{rt(l, job.status)}</span>
-            {canAdmin(actor, 'members.manage') &&
-              data.configured &&
-              ['FAILED', 'BLOCKED', 'RETRY'].includes(job.status) && (
-                <button
-                  type="button"
-                  className="button secondary small"
-                  disabled={busy}
-                  onClick={() => void retry(job.id)}
-                >
-                  {rt(l, 'retry')}
-                </button>
-              )}
+            {canAdmin(actor, 'members.manage') && data?.configured && problem(job.status) && (
+              <button
+                type="button"
+                className="button secondary small"
+                disabled={busy}
+                onClick={() => void retry(job.id)}
+              >
+                {rt(l, 'retry')}
+              </button>
+            )}
           </article>
         ))}
       </div>
+      {ordered.length > 10 && (
+        <button type="button" className="text-button" onClick={() => setAll((x) => !x)}>
+          {all ? rt(l, 'showLess') : `${rt(l, 'showAll')} · ${ordered.length}`}
+        </button>
+      )}
       {data && !data.jobs.length && <p>{rt(l, 'empty')}</p>}
       {error && (
         <p className="error-message" role="alert">

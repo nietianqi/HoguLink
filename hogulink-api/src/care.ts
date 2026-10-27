@@ -15,8 +15,14 @@ import {
   type SupportTicket,
   type TicketMessage,
   type RefundRequest,
+  safetyLocationInput,
+  type EmergencyLocation,
+  type Store,
+  type TicketAttachment,
 } from '@hogulink/contracts';
+import sharp from 'sharp';
 import { ensure } from './errors.js';
+import { loadEvidence, saveEvidence } from './evidence-storage.js';
 import { Repository, type Records } from './repository.js';
 import { syncTicketHandling } from './ticket-handling.js';
 import { adminCaseVisible, currentAdmin, requireAdmin } from './admin-access.js';
@@ -34,9 +40,25 @@ const privateCategories = new Set([
   'FINANCIAL',
   'APPEAL',
 ]);
-export function safetyEventView(actor: Actor, event: SafetyEvent): SafetyEvent {
+type StoredAttachment = {
+  id: string;
+  ticketId: string;
+  uploaderId: string;
+  role: Actor['role'];
+  storageKey: string;
+  size: number;
+  createdAt: number;
+};
+export function safetyEventView(
+  actor: Actor,
+  event: SafetyEvent,
+  emergencyContact?: string,
+): SafetyEvent {
   if (actor.role === 'ADMIN') return { ...event, version: event.version ?? 1 };
   return {
+    // The shared location helps only while help is on the way.
+    ...(event.status === 'OPEN' && event.location ? { location: event.location } : {}),
+    ...(actor.role === 'STAFF' && emergencyContact ? { emergencyContact } : {}),
     id: event.id,
     bookingId: event.bookingId,
     staffId: event.staffId,
@@ -314,7 +336,78 @@ export class CareService {
         messages: (await tx.list<TicketMessage>('ticketMessages'))
           .filter((x) => x.ticketId === ticketId)
           .sort((a, b) => a.createdAt - b.createdAt),
+        attachments: (await tx.find<StoredAttachment>('ticketAttachments', { ticketId }))
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .map(({ id, role, createdAt }): TicketAttachment => ({ id, role, createdAt })),
       };
+    });
+  }
+  /** Adds a photo to an open case; anyone who can see the case may add evidence. */
+  async attach(actor: Actor, ticketId: string, input: unknown): Promise<TicketAttachment> {
+    const d = z
+      .object({
+        mime: z.enum(['image/jpeg', 'image/png']),
+        data: z
+          .string()
+          .min(8)
+          .max(470000)
+          .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+      })
+      .strict()
+      .parse(input);
+    let bytes: Buffer = Buffer.from(d.data, 'base64');
+    ensure(
+      bytes.length <= 350000 && bytes.toString('base64') === d.data,
+      'INVALID_PHOTO',
+      'Select a photo no larger than 350 KB.',
+    );
+    ensure(
+      d.mime === 'image/png'
+        ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        : bytes.subarray(0, 3).equals(Buffer.from([255, 216, 255])),
+      'INVALID_PHOTO',
+      'The photo format does not match the file.',
+    );
+    try {
+      // Re-encoding drops embedded metadata such as the camera location.
+      bytes = await sharp(bytes, { limitInputPixels: 20_000_000, failOn: 'warning' })
+        .rotate()
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toBuffer();
+    } catch {
+      ensure(false, 'INVALID_PHOTO', 'Select a valid JPEG or PNG photo.');
+    }
+    return this.run(async (tx) => {
+      const ticket = await this.ticket(tx, actor, ticketId);
+      ensure(open(ticket), 'INVALID_STATE', 'Reopen this case before adding evidence.', 409);
+      ensure(
+        (await tx.count('ticketAttachments', { ticketId })) < 10,
+        'PHOTO_LIMIT',
+        'This case already has the maximum number of photos.',
+        409,
+      );
+      const id = `evidence_${randomUUID()}`;
+      const record: StoredAttachment = {
+        id,
+        ticketId,
+        uploaderId: actor.id,
+        role: actor.role,
+        storageKey: await saveEvidence(id, bytes),
+        size: bytes.length,
+        createdAt: this.now(),
+      };
+      await tx.put('ticketAttachments', record);
+      await this.event(tx, actor, 'SUPPORT_ATTACHMENT_ADDED', ticket);
+      return { id, role: record.role, createdAt: record.createdAt };
+    });
+  }
+  async attachment(actor: Actor, ticketId: string, attachmentId: string) {
+    return this.run(async (tx) => {
+      await this.ticket(tx, actor, ticketId);
+      const record = await tx.get<StoredAttachment>('ticketAttachments', attachmentId);
+      ensure(record?.ticketId === ticketId, 'NOT_FOUND', 'Attachment not found.', 404);
+      return { mime: 'image/jpeg', bytes: await loadEvidence(record) };
     });
   }
   async reply(actor: Actor, ticketId: string, version: number, text: string) {
@@ -674,17 +767,104 @@ export class CareService {
   async safetyEvents(actor: Actor) {
     this.role(actor, 'MERCHANT', 'STAFF', 'ADMIN');
     if (actor.role === 'ADMIN') requireAdmin(actor, 'safety.write');
-    return this.run(async (tx) =>
-      (await tx.list<SafetyEvent>('safety'))
-        .filter(
-          (x) =>
-            actor.role === 'ADMIN' ||
-            (actor.role === 'MERCHANT' && x.storeId === actor.storeId) ||
-            (actor.role === 'STAFF' && x.staffId === actor.staffId),
-        )
-        .map((x) => safetyEventView(actor, x))
-        .sort((a, b) => b.createdAt - a.createdAt),
-    );
+    return this.run(async (tx) => {
+      const events = (await tx.list<SafetyEvent>('safety')).filter(
+        (x) =>
+          actor.role === 'ADMIN' ||
+          (actor.role === 'MERCHANT' && x.storeId === actor.storeId) ||
+          (actor.role === 'STAFF' && x.staffId === actor.staffId),
+      );
+      const contacts = new Map<string, string>();
+      if (actor.role === 'STAFF')
+        for (const storeId of new Set(events.map((x) => x.storeId)))
+          contacts.set(storeId, (await tx.get<Store>('stores', storeId))?.emergencyContact ?? '');
+      return events
+        .map((x) => safetyEventView(actor, x, contacts.get(x.storeId)))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    });
+  }
+  /** The therapist shares their current position once, by explicit choice, for an open event. */
+  async shareLocation(actor: Actor, eventId: string, input: unknown) {
+    this.role(actor, 'STAFF');
+    const data = safetyLocationInput.parse(input);
+    return this.run(async (tx) => {
+      const event = await tx.get<SafetyEvent>('safety', eventId);
+      ensure(event && event.staffId === actor.staffId, 'NOT_FOUND', 'Safety event not found.', 404);
+      ensure(event.status === 'OPEN', 'INVALID_STATE', 'This event is already resolved.', 409);
+      event.location = { ...data, sharedAt: this.now() };
+      event.version = (event.version ?? 1) + 1;
+      await tx.put('safety', event);
+      await tx.put<Audit>('audit', {
+        id: `audit_${randomUUID()}`,
+        actorId: actor.id,
+        action: 'SAFETY_LOCATION_SHARED',
+        bookingId: event.bookingId,
+        detail: event.id,
+        at: this.now(),
+      });
+      // The shop and the safety team are told; the customer is not.
+      await tx.put('outbox', {
+        id: `outbox_${randomUUID()}`,
+        type: 'SAFETY_LOCATION_SHARED',
+        bookingId: event.bookingId,
+        createdAt: this.now(),
+        status: 'PENDING',
+        delivery: 'DEMO_LOCAL_ONLY',
+      });
+      const store = await tx.get<Store>('stores', event.storeId);
+      return safetyEventView(actor, event, store?.emergencyContact);
+    });
+  }
+  /**
+   * Break-glass access for the safety team: during an open event the visit place may be read
+   * after recording why. Every read is audited; addresses stay hidden from the platform otherwise.
+   */
+  async emergencyLocation(
+    actor: Actor,
+    eventId: string,
+    input: unknown,
+  ): Promise<EmergencyLocation> {
+    this.role(actor, 'ADMIN');
+    const data = z
+      .object({ reason: z.string().trim().min(10).max(500) })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'safety.write');
+      const event = await tx.get<SafetyEvent>('safety', eventId);
+      ensure(event, 'NOT_FOUND', 'Safety event not found.', 404);
+      ensure(
+        event.status === 'OPEN',
+        'INVALID_STATE',
+        'The visit place is only available while the event is open.',
+        409,
+      );
+      const b = await tx.get<Booking>('bookings', event.bookingId);
+      const store = await tx.get<Store>('stores', event.storeId);
+      ensure(b && store, 'NOT_FOUND', 'Booking not found.', 404);
+      await tx.put<Audit>('audit', {
+        id: `audit_${randomUUID()}`,
+        actorId: actor.id,
+        action: 'SAFETY_ADDRESS_ACCESSED',
+        bookingId: b.id,
+        detail: `${event.id}:${data.reason}`,
+        at: this.now(),
+      });
+      const inStore = b.quote.fulfillmentMode === 'IN_STORE';
+      const a = b.address;
+      return {
+        eventId: event.id,
+        bookingId: b.id,
+        mode: inStore ? 'IN_STORE' : 'HOME_VISIT',
+        address: inStore
+          ? b.quote.venue?.address
+          : a && [a.detail, a.hotelName, a.room].filter(Boolean).join(' / '),
+        place: inStore ? b.resourceName : a?.type,
+        storeEmergencyContact: store.emergencyContact,
+        ...(event.location ? { location: event.location } : {}),
+      };
+    });
   }
   async resolveSafety(actor: Actor, eventId: string, version: number, text: string) {
     this.role(actor, 'ADMIN');

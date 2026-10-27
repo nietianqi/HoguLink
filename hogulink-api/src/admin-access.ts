@@ -130,6 +130,13 @@ export function authorizeAdminRoute(actor: Actor, path: string, method: string) 
     permission = method === 'GET' ? 'cases.read' : 'cases.write';
   else if (path === 'admin/reviews' || path === 'admin/enforcement-actions')
     permission = 'supply.write';
+  else if (path.startsWith('admin/venues'))
+    permission = method === 'GET' ? 'supply.read' : 'supply.write';
+  else if (path === 'admin/shop-quality' || path === 'admin/suspension-impact')
+    permission = 'supply.read';
+  else if (path === 'admin/todo') permission = 'overview.read';
+  // Blocked-message review is trust & safety work, not an owner-only legacy view.
+  else if (path.startsWith('admin/content-reviews')) permission = 'safety.write';
   else if (
     path.startsWith('admin/customer-restrictions') ||
     path.startsWith('admin/safety-events') ||

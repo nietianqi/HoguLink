@@ -31,6 +31,11 @@ const secureCookie = () =>
 @Controller('v1')
 export class ApiController {
   constructor(@Inject('ENGINE') private engine: Engine) {}
+  /** The signed-in customer on a public page, if any; public reads never require one. */
+  private async viewingCustomer(req: Request) {
+    const viewer = await this.actor(req).catch(() => undefined);
+    return viewer?.role === 'CUSTOMER' ? viewer.id : undefined;
+  }
   private async actor(req: Request): Promise<Actor> {
     const token = req.headers.cookie
       ?.split(';')
@@ -307,9 +312,12 @@ export class ApiController {
         );
       }
       if (
-        ['auth/employee/login', 'auth/employee/activate', 'auth/employee/invitation'].includes(
-          path,
-        ) &&
+        [
+          'auth/employee/login',
+          'auth/employee/activate',
+          'auth/employee/invitation',
+          'auth/employee/mfa-enrollment',
+        ].includes(path) &&
         method === 'POST'
       ) {
         if (path.endsWith('/login'))
@@ -317,7 +325,9 @@ export class ApiController {
         return res.json(
           path.endsWith('/activate')
             ? await this.engine.employees.activate(body)
-            : await this.engine.employees.inspect(body),
+            : path.endsWith('/mfa-enrollment')
+              ? await this.engine.employees.enrollment(body)
+              : await this.engine.employees.inspect(body),
         );
       }
       if (path === 'auth/logout' && method === 'POST') {
@@ -403,6 +413,8 @@ export class ApiController {
             req.query.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
             typeof req.query.area === 'string' ? req.query.area : '',
             req.query.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT',
+            Number(req.query.days) || undefined,
+            await this.viewingCustomer(req),
           ),
         );
       match = path.match(/^public\/stores\/([^/]+)\/free-availability$/);
@@ -422,6 +434,8 @@ export class ApiController {
             req.query.mode === 'INSTANT' ? 'INSTANT' : 'SCHEDULED',
             typeof req.query.area === 'string' ? req.query.area : '',
             req.query.fulfillmentMode === 'IN_STORE' ? 'IN_STORE' : 'HOME_VISIT',
+            Number(req.query.days) || undefined,
+            await this.viewingCustomer(req),
           ),
         );
       }
@@ -650,6 +664,10 @@ export class ApiController {
         return res.json(await this.engine.merchant.snapshot(actor));
       if (path === 'merchant/venue' && method === 'PUT')
         return res.json(await this.engine.venues.save(actor, body));
+      if (path === 'merchant/venue/geocode' && method === 'GET') {
+        await this.engine.limits.check('venue-geocode', actor.id, 20);
+        return res.json(await this.engine.venues.geocode(actor, req.query));
+      }
       if (path === 'merchant/venue/photos' && method === 'POST')
         return res.status(201).json(await this.engine.venues.uploadPhoto(actor, body));
       if (path === 'merchant/venue/calendar' && method === 'GET')
@@ -658,9 +676,22 @@ export class ApiController {
         return res.json(await this.engine.venues.homeVisits(actor, body));
       if (path === 'admin/venues' && method === 'GET')
         return res.json(await this.engine.venues.list(actor));
+      match = path.match(/^admin\/venues\/([^/]+)\/suspension$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.venues.suspend(actor, match[1], body));
       match = path.match(/^admin\/venues\/([^/]+)\/review$/);
       if (match && method === 'POST')
         return res.json(await this.engine.venues.review(actor, match[1], body));
+      if (path === 'staff/safety-conditions' && method === 'PUT')
+        return res.json(await this.engine.staff.requestSafetyConditions(actor, body));
+      match = path.match(/^merchant\/team\/([^/]+)\/safety-conditions$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.staff.reviewSafetyConditions(actor, match[1], body));
+      if (path === 'staff/shifts' && method === 'PUT')
+        return res.json(await this.engine.staff.saveShifts(actor, body));
+      match = path.match(/^merchant\/team\/([^/]+)\/shifts$/);
+      if (match && method === 'PUT')
+        return res.json(await this.engine.staff.saveShiftsAsShop(actor, match[1], body));
       match = path.match(/^merchant\/team\/([^/]+)\/service-modes$/);
       if (match && method === 'PUT')
         return res.json(await this.engine.venues.staffModes(actor, match[1], body));
@@ -718,6 +749,16 @@ export class ApiController {
       match = path.match(/^support-tickets\/([^/]+)$/);
       if (match && method === 'GET')
         return res.json(await this.engine.care.detail(actor, match[1]));
+      match = path.match(/^support-tickets\/([^/]+)\/attachments$/);
+      if (match && method === 'POST')
+        return res.status(201).json(await this.engine.care.attach(actor, match[1], body));
+      match = path.match(/^support-tickets\/([^/]+)\/attachments\/(evidence_[0-9a-f-]{36})$/);
+      if (match && method === 'GET') {
+        const file = await this.engine.care.attachment(actor, match[1], match[2]);
+        res.setHeader('Content-Type', file.mime);
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.send(file.bytes);
+      }
       match = path.match(/^support-tickets\/([^/]+)\/(messages|actions)$/);
       if (match && method === 'POST') {
         if (match[2] === 'actions')
@@ -766,6 +807,15 @@ export class ApiController {
       }
       if (path === 'safety-events' && method === 'GET')
         return res.json(await this.engine.care.safetyEvents(actor));
+      match = path.match(/^staff\/tasks\/([^/]+)\/check-in$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.checkIn(actor, match[1], body));
+      match = path.match(/^staff\/safety-events\/([^/]+)\/location$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.care.shareLocation(actor, match[1], body));
+      match = path.match(/^admin\/safety-events\/([^/]+)\/emergency-location$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.care.emergencyLocation(actor, match[1], body));
       match = path.match(/^admin\/safety-events\/([^/]+)\/resolve$/);
       if (match && method === 'POST') {
         const data = z
@@ -846,6 +896,12 @@ export class ApiController {
       if (match && method === 'GET') return res.json(await this.engine.booking(actor, match[1]));
       if (path === 'dashboard' && method === 'GET')
         return res.json(await this.engine.dashboard(actor));
+      if (path === 'admin/todo' && method === 'GET')
+        return res.json(await this.engine.adminTodo(actor));
+      if (path === 'admin/shop-quality' && method === 'GET')
+        return res.json(await this.engine.quality.shops(actor, req.query));
+      if (path === 'admin/suspension-impact' && method === 'GET')
+        return res.json(await this.engine.quality.suspensionImpact(actor));
       if (path === 'admin/order-monitor' && method === 'GET')
         return res.json(await this.engine.governance.monitor(actor));
       if (path === 'merchant/billing' && method === 'GET') {

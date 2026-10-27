@@ -511,7 +511,9 @@ export class MerchantService {
         ...(Object.keys(travel).length ? { areaTransportFees: travel } : {}),
         ...(hours ? { businessHours: hours } : {}),
       };
-      await tx.put('stores', { ...store, bookingRules: next, ruleVersion: store.ruleVersion + 1 });
+      // Home quotes compare `bookingRules.version`; the shop-wide version is left alone so
+      // in-store checkouts, priced from the venue, are not cancelled by this change.
+      await tx.put('stores', { ...store, bookingRules: next });
       await tx.put<BookingRulesHistory>('bookingRulesHistory', {
         ...next,
         id: `${store.id}:booking-rules:v${next.version}`,

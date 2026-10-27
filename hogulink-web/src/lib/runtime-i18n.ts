@@ -22,6 +22,8 @@ const words = {
   retry: ['再試行', 'Retry', '重试'],
   refresh: ['更新', 'Refresh', '刷新'],
   empty: ['通知はありません。', 'No notifications yet.', '暂无通知。'],
+  showAll: ['すべて表示', 'Show all', '显示全部'],
+  showLess: ['最新のみ表示', 'Show latest only', '只显示最新'],
   error: [
     '読み込めませんでした。再試行してください。',
     'Unable to load. Please try again.',

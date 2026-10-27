@@ -6,21 +6,49 @@ import { Engine } from '../src/engine.js';
 import { bootstrapAdmin } from '../src/employees.js';
 import { authorizeAdminRoute, currentAdmin } from '../src/admin-access.js';
 import { DomainError } from '../src/errors.js';
+import { totpCode } from '../src/totp.js';
 const root: Actor = { id: 'demo-admin', role: 'ADMIN', verificationLevel: 3 };
 const password = 'Sample-password-2026!';
 const reason = 'Reviewed this local account change and the related handling responsibilities.';
 const code = (value: string) => (e: unknown) => e instanceof DomainError && e.code === value;
+const clocks = new WeakMap<Engine, { now: number }>();
 async function fixture(fn: (e: Engine, clock: { now: number }) => Promise<void>) {
   const repo = new Repository(undefined, ':memory:');
   await repo.init();
   const clock = { now: Date.UTC(2026, 9, 18) };
   await bootstrapAdmin(repo, clock.now);
   const e = new Engine(repo, () => clock.now);
+  clocks.set(e, clock);
   try {
     await fn(e, clock);
   } finally {
     await repo.close();
   }
+}
+/** Each step uses the next authenticator code, as a person would 30 seconds later. */
+function nextCode(e: Engine, secret: string) {
+  const clock = clocks.get(e)!;
+  clock.now += 30_000;
+  return totpCode(secret, clock.now);
+}
+async function activate(e: Engine, token: string, pw: string) {
+  const { totp } = await e.employees.inspect({ token });
+  return e.employees.activate({ token, password: pw, code: nextCode(e, totp.secret) });
+}
+async function signIn(e: Engine, email: string, pw: string) {
+  const secret = await e.repo.read(async (tx) => {
+    const m = (await tx.list<AdminMember>('adminMembers')).find(
+      (x) => x.email === email.toLowerCase(),
+    );
+    const c =
+      m && (await tx.get<{ totpSecret?: string; pendingTotp?: string }>('adminCredentials', m.id));
+    return c?.totpSecret ?? c?.pendingTotp;
+  });
+  return e.employees.login({
+    email,
+    password: pw,
+    ...(secret ? { code: nextCode(e, secret) } : {}),
+  });
 }
 async function member(
   e: Engine,
@@ -34,8 +62,8 @@ async function member(
     adminRole,
     teams,
   });
-  await e.employees.activate({ token: invitation.token, password });
-  const actor = await e.employees.login({ email: invitation.member.email, password });
+  await activate(e, invitation.token, password);
+  const actor = await signIn(e, invitation.member.email, password);
   return { actor, invitation };
 }
 async function ticket(
@@ -123,12 +151,9 @@ test('accepting an invitation is one-use, validates password length, and stores 
       adminRole: 'FINANCE',
       teams: [],
     });
-    await assert.rejects(e.employees.activate({ token: i.token, password: 'short' }));
-    await e.employees.activate({ token: i.token, password });
-    await assert.rejects(
-      e.employees.activate({ token: i.token, password }),
-      code('INVITE_INVALID'),
-    );
+    await assert.rejects(activate(e, i.token, 'short'));
+    await activate(e, i.token, password);
+    await assert.rejects(activate(e, i.token, password), code('INVITE_INVALID'));
     await assert.rejects(e.employees.inspect({ token: i.token }), code('INVITE_INVALID'));
     const c = await e.repo.transaction((tx) =>
       tx.get<{ hash: string; inviteHash?: string }>('adminCredentials', i.member.id),
@@ -136,7 +161,7 @@ test('accepting an invitation is one-use, validates password length, and stores 
     assert.equal(c?.hash.length, 128);
     assert.equal(JSON.stringify(c).includes(password), false);
     assert.equal(c?.inviteHash, undefined);
-    const actor = await e.employees.login({ email: 'FINANCE@EXAMPLE.TEST', password });
+    const actor = await signIn(e, 'FINANCE@EXAMPLE.TEST', password);
     assert.equal(actor.adminRole, 'FINANCE');
     assert.deepEqual(actor.adminTeams, []);
   }));
@@ -151,10 +176,7 @@ test('expired or superseded invitations cannot activate and return no account de
     const next = await e.employees.reissue(root, i.member.id, { version: 1, reason });
     await assert.rejects(e.employees.inspect({ token: i.token }), code('INVITE_INVALID'));
     clock.now = next.expiresAt + 1;
-    await assert.rejects(
-      e.employees.activate({ token: next.token, password }),
-      code('INVITE_INVALID'),
-    );
+    await assert.rejects(activate(e, next.token, password), code('INVITE_INVALID'));
   }));
 test('group membership must match the role and protected safety work cannot be assigned to support', () =>
   fixture(async (e) => {
@@ -267,6 +289,7 @@ test('disabling an employee immediately revokes old sessions and releases unfini
       e.repo.transaction((tx) => currentAdmin(tx, actor)),
       code('UNAUTHENTICATED'),
     );
+    // A disabled account is refused before any authenticator code is checked.
     await assert.rejects(
       e.employees.login({ email: 'one@example.test', password }),
       code('INVALID_CREDENTIALS'),
@@ -306,7 +329,7 @@ test('role or team changes release only the work that loses eligibility and revo
       e.repo.transaction((tx) => currentAdmin(tx, actor)),
       code('UNAUTHENTICATED'),
     );
-    const again = await e.employees.login({ email: 'one@example.test', password });
+    const again = await signIn(e, 'one@example.test', password);
     assert.deepEqual(again.adminTeams, ['CUSTOMER_SUPPORT']);
   }));
 test('reset access invalidates both old password and invitation while sending active work to triage', () =>
@@ -317,24 +340,12 @@ test('reset access invalidates both old password and invitation while sending ac
     const m = (await e.employees.list(root)).members.find((m) => m.id === actor.id)!;
     const i = await e.employees.reissue(root, m.id, { version: m.version, reason });
     assert.equal(i.released, 1);
-    await assert.rejects(
-      e.employees.login({ email: m.email, password }),
-      code('INVALID_CREDENTIALS'),
-    );
+    await assert.rejects(signIn(e, m.email, password), code('INVALID_CREDENTIALS'));
     await edit(e, m.id, { name: 'Updated pending account' });
-    await assert.rejects(
-      e.employees.login({ email: m.email, password }),
-      code('INVALID_CREDENTIALS'),
-    );
-    await e.employees.activate({ token: i.token, password: 'Changed-password-2026!' });
-    await assert.rejects(
-      e.employees.login({ email: m.email, password }),
-      code('INVALID_CREDENTIALS'),
-    );
-    assert.equal(
-      (await e.employees.login({ email: m.email, password: 'Changed-password-2026!' })).id,
-      m.id,
-    );
+    await assert.rejects(signIn(e, m.email, password), code('INVALID_CREDENTIALS'));
+    await activate(e, i.token, 'Changed-password-2026!');
+    await assert.rejects(signIn(e, m.email, password), code('INVALID_CREDENTIALS'));
+    assert.equal((await signIn(e, m.email, 'Changed-password-2026!')).id, m.id);
   }));
 test('re-enabling a disabled account requires a fresh invitation and activation', () =>
   fixture(async (e) => {
@@ -342,23 +353,14 @@ test('re-enabling a disabled account requires a fresh invitation and activation'
     await edit(e, actor.id, { enabled: false });
     const enabled = await edit(e, actor.id, { enabled: true });
     assert.equal(enabled.member.status, 'INVITED');
-    await assert.rejects(
-      e.employees.activate({ token: invitation.token, password }),
-      code('INVITE_INVALID'),
-    );
-    await assert.rejects(
-      e.employees.login({ email: invitation.member.email, password }),
-      code('INVALID_CREDENTIALS'),
-    );
+    await assert.rejects(activate(e, invitation.token, password), code('INVITE_INVALID'));
+    await assert.rejects(signIn(e, invitation.member.email, password), code('INVALID_CREDENTIALS'));
     const reissued = await e.employees.reissue(root, actor.id, {
       version: enabled.member.version,
       reason,
     });
-    await e.employees.activate({ token: reissued.token, password });
-    assert.equal(
-      (await e.employees.login({ email: invitation.member.email, password })).id,
-      actor.id,
-    );
+    await activate(e, reissued.token, password);
+    assert.equal((await signIn(e, invitation.member.email, password)).id, actor.id);
   }));
 test('self and bootstrap access are protected and concurrent member edits have one winner', () =>
   fixture(async (e) => {
@@ -414,4 +416,62 @@ test('customer and merchant views never receive employee directories or internal
     assert.equal(data.includes('Employee one'), false);
     assert.equal(data.includes('assignees'), false);
     assert.equal(data.includes(reason), false);
+  }));
+
+test('platform staff need an authenticator code: no password-only, wrong or replayed codes', () =>
+  fixture(async (e, clock) => {
+    const { invitation } = await member(e);
+    const email = invitation.member.email;
+    await assert.rejects(e.employees.login({ email, password }), code('INVALID_CREDENTIALS'));
+    await assert.rejects(
+      e.employees.login({ email, password, code: '000000' }),
+      code('INVALID_CREDENTIALS'),
+    );
+    const secret = await e.repo.read(
+      async (tx) =>
+        (await tx.get<{ totpSecret: string }>('adminCredentials', invitation.member.id))!
+          .totpSecret,
+    );
+    clock.now += 30_000;
+    const fresh = totpCode(secret, clock.now);
+    assert.ok(await e.employees.login({ email, password, code: fresh }));
+    await assert.rejects(
+      e.employees.login({ email, password, code: fresh }),
+      code('INVALID_CREDENTIALS'),
+      'the same code cannot be used twice',
+    );
+  }));
+
+test('an active account without an authenticator enrolls with its password at next sign-in', () =>
+  fixture(async (e, clock) => {
+    const { invitation } = await member(e);
+    const email = invitation.member.email;
+    // An account activated before authenticators were required.
+    await e.repo.transaction(async (tx) => {
+      const c = (await tx.get<Record<string, unknown>>('adminCredentials', invitation.member.id))!;
+      delete c.totpSecret;
+      delete c.lastTotpStep;
+      await tx.put('adminCredentials', { ...c, id: invitation.member.id });
+    });
+    await assert.rejects(e.employees.login({ email, password }), code('MFA_ENROLLMENT_REQUIRED'));
+    await assert.rejects(e.employees.enrollment({ email, password: 'Wrong-password-2026!' }));
+    const { secret, uri } = await e.employees.enrollment({ email, password });
+    assert.match(uri, /^otpauth:\/\/totp\/HoguLink:/);
+    clock.now += 30_000;
+    assert.ok(await e.employees.login({ email, password, code: totpCode(secret, clock.now) }));
+    await assert.rejects(e.employees.enrollment({ email, password }), code('MFA_ALREADY_ENROLLED'));
+  }));
+
+test('a reissued invitation resets the authenticator', () =>
+  fixture(async (e) => {
+    const { actor, invitation } = await member(e);
+    const before = (await e.repo.read((tx) =>
+      tx.get<{ totpSecret: string }>('adminCredentials', actor.id),
+    ))!.totpSecret;
+    const m = await e.repo.read((tx) => tx.get<AdminMember>('adminMembers', actor.id));
+    const reissued = await e.employees.reissue(root, actor.id, { version: m!.version, reason });
+    const { totp } = await e.employees.inspect({ token: reissued.token });
+    assert.notEqual(totp.secret, before);
+    await activate(e, reissued.token, password);
+    assert.ok(await signIn(e, invitation.member.email, password));
   }));

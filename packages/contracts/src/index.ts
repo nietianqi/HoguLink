@@ -239,7 +239,86 @@ export type Listing = {
   offeringIds: string[];
   hotelOnly: boolean;
   photo: string;
+  /** When the therapist works scheduled visits. Unset keeps every business hour bookable. */
+  shifts?: StaffShifts;
+  /** Safety conditions approved by the shop; enforced as hard filters on new home visits. */
+  safetyConditions?: SafetyConditions & { approvedAt: number; approvedBy: string };
+  /** A stricter condition the therapist asked for, waiting for the shop. */
+  safetyRequest?: {
+    conditions: SafetyConditions;
+    requestedAt: number;
+    status: 'PENDING' | 'REJECTED';
+    note?: string;
+  };
 };
+export type SafetyConditions = {
+  /** 22:00-06:00 home visits only for customers who completed a visit with this shop. */
+  noFirstLateNight: boolean;
+};
+export const safetyConditionsInput = z.object({ noFirstLateNight: z.boolean() }).strict();
+/** Whether a visit start falls in the late-night band used by safety rules (22:00-06:00 JST). */
+export const lateNight = (startAt: number) => {
+  const hour = new Date(startAt + 9 * 3_600_000).getUTCHours();
+  return hour >= 22 || hour < 6;
+};
+/** JST minutes; an end at or before the start runs past midnight and belongs to the start day. */
+export type ShiftWindow = { startMinute: number; endMinute: number };
+export type StaffShifts = {
+  version: number;
+  /** Seven days, Sunday first; an empty day is a day off. */
+  weekly: ShiftWindow[][];
+  /** Replacements for single dates (YYYY-MM-DD); an empty list is a day off. */
+  exceptions: { date: string; windows: ShiftWindow[] }[];
+  updatedAt: number;
+  updatedBy: string;
+};
+const shiftWindowInput = z
+  .object({
+    startMinute: z.number().int().min(0).max(1410).multipleOf(30),
+    endMinute: z.number().int().min(30).max(1440).multipleOf(30),
+  })
+  .strict()
+  .refine((w) => w.startMinute !== w.endMinute % 1440 || w.endMinute === 1440);
+export const staffShiftsInput = z
+  .object({
+    version: z.number().int().min(0),
+    weekly: z.array(z.array(shiftWindowInput).max(2)).length(7),
+    exceptions: z
+      .array(
+        z
+          .object({
+            date: z.string().regex(/^20\d{2}-\d{2}-\d{2}$/),
+            windows: z.array(shiftWindowInput).max(2),
+          })
+          .strict(),
+      )
+      .max(90)
+      .refine((list) => new Set(list.map((x) => x.date)).size === list.length),
+  })
+  .strict();
+/** Whether a scheduled visit lies wholly inside one of the therapist's working windows. */
+export function withinShifts(
+  shifts: Pick<StaffShifts, 'weekly' | 'exceptions'> | undefined,
+  startAt: number,
+  endAt: number,
+) {
+  if (!shifts) return true;
+  const day = 86_400_000,
+    midnight = Math.floor((startAt + 9 * 3_600_000) / day) * day - 9 * 3_600_000;
+  for (const base of [midnight - day, midnight]) {
+    const date = new Date(base + 9 * 3_600_000);
+    const windows =
+      shifts.exceptions.find((x) => x.date === date.toISOString().slice(0, 10))?.windows ??
+      shifts.weekly[date.getUTCDay()] ??
+      [];
+    for (const w of windows) {
+      const from = base + w.startMinute * 60_000,
+        to = base + (w.endMinute <= w.startMinute ? w.endMinute + 1440 : w.endMinute) * 60_000;
+      if (startAt >= from && endAt <= to) return true;
+    }
+  }
+  return false;
+}
 export type Quote = {
   fulfillmentMode?: FulfillmentMode;
   venue?: VenueSnapshot;
@@ -394,6 +473,33 @@ export type SafetyEvent = {
   resolvedAt?: number;
   resolvedBy?: string;
   resolution?: string;
+  /** Shared once by the therapist after raising the event; shown to the shop and safety team while open. */
+  location?: SafetyLocation;
+  /** View only: the shop's emergency number, shown to the therapist who raised the event. */
+  emergencyContact?: string;
+};
+export type SafetyLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  sharedAt: number;
+};
+export const safetyLocationInput = z
+  .object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracy: z.number().min(0).max(100000),
+  })
+  .strict();
+/** What the safety team may see during an open safety event, after recording a reason. */
+export type EmergencyLocation = {
+  eventId: string;
+  bookingId: string;
+  mode: 'HOME_VISIT' | 'IN_STORE';
+  address?: string;
+  place?: string;
+  storeEmergencyContact: string;
+  location?: SafetyLocation;
 };
 export const supportCategories = [
   'SERVICE_QUALITY',
@@ -433,6 +539,8 @@ export type SupportTicket = {
   restrictionVersion?: number;
   sourceSafetyEventId?: string;
 };
+/** A photo added to a case as evidence; the file is only served through the case's visibility. */
+export type TicketAttachment = { id: string; role: Role; createdAt: number };
 export type TicketMessage = {
   id: string;
   ticketVersion?: number;
@@ -1164,12 +1272,14 @@ export const venueAvailable = (store: {
   venue?: {
     status: string;
     enabled: boolean;
+    suspension?: unknown;
     capacity?: number;
     resources?: { active: boolean }[];
   };
 }) =>
   store.venue?.status === 'APPROVED' &&
   store.venue.enabled &&
+  !store.venue.suspension &&
   (store.venue.resources
     ? store.venue.resources.some((r) => r.active)
     : store.venue.capacity === undefined || store.venue.capacity > 0);

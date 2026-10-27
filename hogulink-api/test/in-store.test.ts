@@ -12,6 +12,7 @@ import {
   start,
 } from './helpers/experience-fixture.js';
 import { bookingAlertActive } from '../src/governance.js';
+import { authorizeAdminRoute } from '../src/admin-access.js';
 import { mobileTherapists } from '../src/mobile.js';
 import sharp from 'sharp';
 import { venueCanServe } from '@hogulink/contracts';
@@ -154,6 +155,16 @@ test('one reception resource cannot be held twice, including by different staff;
     clock.now = h.expiresAt + 1;
     const next = await e.quote(customer, quoteInput(e));
     assert.ok((await e.hold(customer, next.id)).resourceId);
+  }));
+
+test('a failed card check releases the reception resource as well as the therapist', () =>
+  fixture(async (e) => {
+    await configure(e);
+    const first = await e.hold(customer, (await e.quote(customer, quoteInput(e))).id);
+    await assert.rejects(e.authorizeDemo(customer, first.id, false), code('PAYMENT_FAILED'));
+    const other = { ...customer, id: 'other-customer' };
+    const q = await e.quote(other, { ...quoteInput(e), listingId: 'listing-mio' });
+    assert.equal((await e.hold(other, q.id)).resourceId, first.resourceId);
   }));
 
 test('check-in is private, scoped, versioned and separate from service; full actual duration remains mandatory', () =>
@@ -768,6 +779,41 @@ test('operating settings apply at once but cannot strand existing bookings', () 
     assert.equal((await e.quote(customer, later)).nominationFee, 800);
   }));
 
+test('home rule edits and venue edits only expire quotes of their own service mode', () =>
+  fixture(async (e) => {
+    await configure(e);
+    const homeInput = (startAt: number) => ({
+      listingId: 'listing-aoi',
+      offeringId: 'store-nagi-60',
+      bookingMode: 'SCHEDULED',
+      nominationType: 'NOMINATED',
+      startAt,
+      area: 'shinjuku',
+      requiredLanguage: '',
+    });
+    const readStore = async () =>
+      (await e.repo.read((tx) => tx.get<any>('stores', shop.storeId!)))!;
+    const inStoreQuote = await e.quote(customer, quoteInput(e));
+    const homeQuote = await e.quote(customer, homeInput(e.now() + 300 * minute));
+    const rules = (await readStore()).bookingRules;
+    await e.merchant.bookingRules(shop, {
+      version: rules?.version ?? 0,
+      nominationFee: 1500,
+      templateId: 'FLEXIBLE_2H',
+    });
+    await e.hold(customer, inStoreQuote.id);
+    await assert.rejects(e.hold(customer, homeQuote.id), code('SHOP_RULES_CHANGED'));
+    const nextHome = await e.quote(customer, homeInput(e.now() + 420 * minute));
+    const nextInStore = await e.quote(customer, quoteInput(e, e.now() + 540 * minute));
+    await e.venues.save(shop, {
+      ...venueDraft,
+      version: (await readStore()).venue.version,
+      nominationFee: 700,
+    });
+    assert.equal((await e.hold(customer, nextHome.id)).quoteId, nextHome.id);
+    await assert.rejects(e.hold(customer, nextInStore.id), code('SHOP_RULES_CHANGED'));
+  }));
+
 test('venue photos must be platform uploads and become public only with an approved venue', () =>
   fixture(async (e) => {
     await configure(e);
@@ -937,5 +983,97 @@ test('the customer can reply to an in-store no-show report before any fee', () =
         await act('CONFIRM');
         assert.equal(b.noShow!.status, 'CONFIRMED');
       }
+    }
+  }));
+
+test('the assigned therapist can check in an in-store customer; other therapists cannot', () =>
+  fixture(async (e, clock) => {
+    await configure(e);
+    let b = await confirmed(e);
+    clock.now = b.quote.startAt;
+    b = await e.booking(customer, b.id);
+    const code12 = b.checkInCode!;
+    b = await e.booking(staff, b.id);
+    await assert.rejects(
+      e.checkIn(quality, b.id, { version: b.version, code: code12 }),
+      (err: any) => ['FORBIDDEN', 'NOT_FOUND'].includes(err.code),
+    );
+    b = await e.checkIn(staff, b.id, { version: b.version, code: code12 });
+    assert.equal(b.checkIn!.actorId, staff.id);
+  }));
+
+test('the platform can pause a venue: no new in-store bookings, existing ones continue', () =>
+  fixture(async (e, clock) => {
+    await configure(e);
+    let b = await confirmed(e);
+    const note = { note: 'Investigating a report about the reception room.' };
+    await e.venues.suspend(admin, shop.storeId!, { suspended: true, ...note });
+    await assert.rejects(
+      e.quote(customer, quoteInput(e, b.quote.endAt + 60 * minute)),
+      code('VENUE_UNAVAILABLE'),
+    );
+    assert.ok(
+      !(await e.publicCatalog({ fulfillmentMode: 'IN_STORE' })).stores.some(
+        (s) => s.id === shop.storeId,
+      ),
+    );
+    const anyMode = (await e.publicCatalog({ fulfillmentMode: 'ALL' })).stores.find(
+      (s) => s.id === shop.storeId,
+    );
+    assert.equal(anyMode?.venue, undefined, 'a paused venue is not shown publicly');
+    // An operating edit by the shop keeps the platform pause.
+    const store = (await e.repo.read((tx) => tx.get<any>('stores', shop.storeId!)))!;
+    await e.venues.save(shop, { ...venueDraft, version: store.venue.version, nominationFee: 400 });
+    assert.ok((await e.repo.read((tx) => tx.get<any>('stores', shop.storeId!)))!.venue.suspension);
+    // The booked customer is still served.
+    clock.now = b.quote.startAt;
+    b = await e.booking(customer, b.id);
+    b = await e.checkIn(shop, b.id, { version: b.version, code: b.checkInCode });
+    b = await e.event(staff, b.id, b.version, 'START');
+    assert.equal(b.status, 'IN_SERVICE');
+    await e.venues.suspend(admin, shop.storeId!, { suspended: false, ...note });
+    assert.ok(await e.quote(customer, quoteInput(e, b.quote.endAt + 120 * minute)));
+  }));
+
+test('operations staff may review venues; support staff may not change them', () => {
+  const operations = { ...admin, adminRole: 'OPERATIONS' as const };
+  const support = { ...admin, adminRole: 'SUPPORT' as const };
+  assert.doesNotThrow(() => authorizeAdminRoute(operations, 'admin/venues', 'GET'));
+  assert.doesNotThrow(() =>
+    authorizeAdminRoute(operations, 'admin/venues/store-nagi/review', 'POST'),
+  );
+  assert.throws(() => authorizeAdminRoute(support, 'admin/venues/store-nagi/suspension', 'POST'));
+  assert.doesNotThrow(() => authorizeAdminRoute(operations, 'admin/shop-quality', 'GET'));
+});
+
+test('venue address search returns Japanese coordinates only and degrades when unavailable', () =>
+  fixture(async (e) => {
+    const original = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () =>
+        new Response(
+          JSON.stringify([
+            {
+              geometry: { coordinates: [139.6917, 35.6895] },
+              properties: { title: '東京都新宿区西新宿二丁目' },
+            },
+            { geometry: { coordinates: [2.35, 48.85] }, properties: { title: 'Paris' } },
+          ]),
+          { status: 200 },
+        )) as typeof fetch;
+      const rows = await e.venues.geocode(shop, { q: '東京都新宿区西新宿2-8-1' });
+      assert.deepEqual(rows, [
+        { latitude: 35.6895, longitude: 139.6917, label: '東京都新宿区西新宿二丁目' },
+      ]);
+      await assert.rejects(e.venues.geocode(customer, { q: '東京都新宿区' }), code('FORBIDDEN'));
+      globalThis.fetch = (async () => {
+        throw new Error('offline');
+      }) as typeof fetch;
+      await assert.rejects(
+        e.venues.geocode(shop, { q: '東京都新宿区' }),
+        code('GEOCODE_UNAVAILABLE'),
+      );
+    } finally {
+      globalThis.fetch = original;
     }
   }));

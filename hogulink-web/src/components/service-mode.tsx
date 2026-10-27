@@ -1,5 +1,6 @@
 'use client';
 import {
+  distanceKm,
   fulfillmentModes,
   type FulfillmentMode,
   type Locale,
@@ -7,6 +8,7 @@ import {
   type VenueSnapshot,
 } from '@hogulink/contracts';
 import { sv } from '@/lib/service-mode-i18n';
+import { useDeviceLocation } from './h5-business';
 import { money, t } from '@/lib/i18n';
 import type { ModePrice } from '@/lib/consumer-model';
 
@@ -92,10 +94,21 @@ export function VenueInfo({
   venue: VenueSnapshot | PublicVenue;
 }) {
   const map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${venue.latitude},${venue.longitude}`)}`;
+  // Computed on this device from its own rounded position; nothing is sent to HoguLink.
+  const { point } = useDeviceLocation();
+  const km = point ? distanceKm(point, { lat: venue.latitude, lng: venue.longitude }) : undefined;
   return (
     <section className="exception-panel venue-info" aria-label={sv(l, 'venue')}>
       <h3>{sv(l, 'venue')}</h3>
       <p>{venue.address}</p>
+      {km !== undefined && (
+        <p className="flow-muted">
+          {sv(l, 'distanceFromYou').replace(
+            '{km}',
+            km < 10 ? km.toFixed(1) : String(Math.round(km)),
+          )}
+        </p>
+      )}
       {venue.directions && <p>{venue.directions}</p>}
       {'photos' in venue && (
         <div className="venue-photo-list">

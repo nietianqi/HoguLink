@@ -39,6 +39,8 @@ import type {
   TimeOffRequest,
 } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
+import { ShiftEditor } from './shift-editor';
+import { sh } from '@/lib/shift-i18n';
 import { areaName, dateTime, errorText, languageNames, statusText, t } from '@/lib/i18n';
 import { ft, staffTabs, type StaffTab, type StaffTextKey } from '@/lib/staff-i18n';
 import { NoShowPanel } from './no-show-panel';
@@ -1254,6 +1256,18 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                     </button>
                   )}
                 </section>
+                <section className="staff-panel">
+                  <h2>{sh(l, 'title')}</h2>
+                  <ShiftEditor
+                    key={data.listing.shifts?.version ?? 0}
+                    locale={l}
+                    shifts={data.listing.shifts}
+                    onSave={async (input) => {
+                      await api('staff/shifts', input, 'PUT');
+                      await refresh();
+                    }}
+                  />
+                </section>
               </>
             )}
             {tab === 'profile' && (
@@ -1325,6 +1339,43 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                       ))}
                     </div>
                     <p>{ft(l, 'profileHelp')}</p>
+                  </section>
+                  <section className="staff-panel">
+                    <h2>{sh(l, 'conditions')}</h2>
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        disabled={busy}
+                        checked={
+                          (data.listing.safetyRequest?.status === 'PENDING'
+                            ? data.listing.safetyRequest.conditions.noFirstLateNight
+                            : data.listing.safetyConditions?.noFirstLateNight) ?? false
+                        }
+                        onChange={(e) =>
+                          void mutate(() =>
+                            api(
+                              'staff/safety-conditions',
+                              { noFirstLateNight: e.target.checked },
+                              'PUT',
+                            ),
+                          )
+                        }
+                      />
+                      {sh(l, 'noFirstLateNight')}
+                    </label>
+                    {(data.listing.safetyRequest || data.listing.safetyConditions) && (
+                      <p className="flow-muted">
+                        {sh(
+                          l,
+                          data.listing.safetyRequest?.status ??
+                            (data.listing.safetyConditions ? 'APPROVED' : 'PENDING'),
+                        )}
+                        {data.listing.safetyRequest?.note
+                          ? ` · ${data.listing.safetyRequest.note}`
+                          : ''}
+                      </p>
+                    )}
+                    <p className="flow-muted">{sh(l, 'conditionsHelp')}</p>
                   </section>
                   <section className="staff-panel">
                     <div className="staff-panel-title">

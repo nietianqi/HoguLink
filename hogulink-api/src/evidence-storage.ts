@@ -4,7 +4,7 @@ import { seal, unseal } from './secrets.js';
 import type { Repository } from './repository.js';
 export type StoredEvidence = { id: string; data?: string; storageKey?: string };
 /** Record kinds whose files live in evidence storage under the record id. */
-const fileKinds = new Set(['partnerEvidence', 'venuePhotos']);
+const fileKinds = new Set(['partnerEvidence', 'venuePhotos', 'ticketAttachments']);
 function location(id: string) {
   if (!/^evidence_[a-f0-9-]{36}$/.test(id)) throw new Error('Invalid evidence storage key');
   return join(resolve(process.env.EVIDENCE_DIRECTORY || 'data/private-evidence'), `${id}.enc`);

@@ -4,10 +4,12 @@ import { useDemoAccess } from '@/lib/use-runtime';
 import { SystemDelivery } from './system-delivery';
 import { rt } from '@/lib/runtime-i18n';
 import { FinanceCenter } from './finance-center';
-import { QualityEntry } from './quality-workspace';
 import { qt } from '@/lib/quality-i18n';
 import { OnboardingReview } from './partner-portal';
 import { NoShowPanel } from './no-show-panel';
+import { EmergencyLookup, SharedLocation } from './safety-help';
+import { ShopQuality, SuspensionImpactPanel } from './shop-quality';
+import { AdminTodoBoard } from './admin-todo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -37,9 +39,11 @@ import {
   Wallet,
   X,
   UsersRound,
+  MessageSquareWarning,
+  Star,
 } from 'lucide-react';
 import type { Actor, AdminBooking, AdminReview, Locale, SafetyEvent } from '@hogulink/contracts';
-import { bookingStatuses, canAdmin } from '@hogulink/contracts';
+import { bookingStatuses, canAdmin, type AdminTodo } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
 import { areaName, dateTime, errorText, money, statusText, t } from '@/lib/i18n';
 import { acceptanceLabel } from '@/lib/visit-i18n';
@@ -108,6 +112,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     [error, setError] = useState(''),
     [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
+  const [todo, setTodo] = useState<AdminTodo>();
   const [search, setSearch] = useState(''),
     [shop, setShop] = useState(''),
     [status, setStatus] = useState('all'),
@@ -145,9 +150,13 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     const version = ++generation.current;
     setFetching(true);
     try {
-      const value = await api<Workspace>('admin/workspace');
+      const [value, pending] = await Promise.all([
+        api<Workspace>('admin/workspace'),
+        api<AdminTodo>('admin/todo').catch(() => undefined),
+      ]);
       if (version === generation.current) {
         setData(value);
+        setTodo(pending);
         setReadError('');
       }
     } catch (e) {
@@ -320,8 +329,27 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
   const selectedOrder = requestedBooking
     ? data?.bookings.find((b) => b.id === requestedBooking)
     : orders[0];
+  /** Tab badges use the to-do counts, so the board and the navigation always agree. */
+  const tabCount = (view: AdminTab) =>
+    view === 'orders'
+      ? (todo?.orderAlerts?.open ?? 0)
+      : view === 'safety'
+        ? (todo?.safetyEvents ?? 0) + (todo?.cases?.attention ?? 0)
+        : view === 'review'
+          ? (todo?.onboarding ?? 0) +
+            (todo?.venues ?? 0) +
+            (todo?.aftercare ?? 0) +
+            needReview.length
+          : view === 'finance'
+            ? (todo?.finance?.unmatched ?? 0) + (todo?.finance?.invoices ?? 0)
+            : 0;
   const openCases = data?.cases.filter(activeCase) ?? [],
     openSafety = data?.safety.filter((s) => s.status === 'OPEN') ?? [];
+  const urgentCount =
+    openSafety.length +
+    openCases.filter(
+      (c) => c.priority === 'HIGH' || c.status === 'PLATFORM_ESCALATED' || c.dueAt < Date.now(),
+    ).length;
   const finance = financeTotals(data?.bookings ?? [], data?.feeEntries ?? []),
     trend = adminTrend(data?.bookings ?? []),
     peak = Math.max(1, ...trend.map((d) => d.count));
@@ -629,8 +657,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
         <nav aria-label={at(l, 'portal')}>
           {visibleTabs.map((view) => {
             const Icon = icons[view],
-              count =
-                view === 'safety' ? openSafety.length : view === 'review' ? needReview.length : 0;
+              count = tabCount(view);
             return (
               <Link key={view} href={href(view)} aria-current={view === tab ? 'page' : undefined}>
                 <Icon size={18} />
@@ -641,10 +668,28 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           })}
         </nav>
         <div className="admin-sidebar-bottom">
+          <small>{at(l, 'moreWork')}</small>
           {canAdmin(actor, 'cases.read') && (
             <Link href={`/${l}/admin/support`}>
               <CircleHelp size={18} />
               {at(l, 'support')}
+              {!!todo?.cases?.attention && <b>{todo.cases.attention}</b>}
+              <ArrowUpRight size={15} />
+            </Link>
+          )}
+          {canAdmin(actor, 'supply.write') && (
+            <Link href={`/${l}/admin/quality`}>
+              <Star size={18} />
+              {at(l, 'experienceNav')}
+              {!!todo?.experience && <b>{todo.experience}</b>}
+              <ArrowUpRight size={15} />
+            </Link>
+          )}
+          {canAdmin(actor, 'safety.write') && (
+            <Link href={`/${l}/admin/safety-review`}>
+              <MessageSquareWarning size={18} />
+              {at(l, 'contentNav')}
+              {!!todo?.contentReviews && <b>{todo.contentReviews}</b>}
               <ArrowUpRight size={15} />
             </Link>
           )}
@@ -659,9 +704,6 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
         </div>
       </aside>
       <div className="admin-content">
-        {(canAdmin(actor!, 'supply.write') || canAdmin(actor!, 'safety.write')) && (
-          <QualityEntry locale={l} role="ADMIN" />
-        )}
         <header className="admin-heading">
           <div>
             <span className="eyebrow">HOGULINK / OPERATIONS</span>
@@ -712,6 +754,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           {visibleTabs.map((view) => (
             <Link key={view} href={href(view)} aria-current={view === tab ? 'page' : undefined}>
               {at(l, view)}
+              {tabCount(view) > 0 && <b>{tabCount(view)}</b>}
             </Link>
           ))}
         </div>
@@ -794,104 +837,20 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           <>
             {tab === 'overview' && (
               <>
-                <div className="admin-stat-grid">
-                  <div>
-                    <span>{at(l, 'allOrders')}</span>
-                    <strong>{data.bookings.length}</strong>
-                    <small>{at(l, 'allTime')}</small>
-                    <ListChecks size={20} />
-                  </div>
-                  {canAdmin(actor, 'cases.read') && (
-                    <div>
-                      <span>{at(l, 'openCases')}</span>
-                      <strong>{openCases.length}</strong>
-                      <small>{at(l, 'open')}</small>
-                      <BookOpen size={20} />
-                    </div>
-                  )}
-                  <div>
-                    <span>{at(l, 'published')}</span>
-                    <strong>
-                      {data.listings.filter((x) => liveListing(x, data.stores)).length}
-                      <small> / {data.listings.length}</small>
-                    </strong>
-                    <small>{at(l, 'approved')}</small>
-                    <ShieldCheck size={20} />
-                  </div>
-                  {canAdmin(actor, 'finance.read') && (
-                    <div>
-                      <span>{at(l, 'platformNet')}</span>
-                      <strong className="money">{money(l, finance.platform)}</strong>
-                      <small>{at(l, 'afterReversal')}</small>
-                      <Wallet size={20} />
-                    </div>
-                  )}
-                </div>
-                <div className="admin-overview-grid">
-                  <section className="admin-control">
-                    <div className="admin-control-top">
-                      <span>
-                        <i />
-                        {at(l, 'portal')}
-                      </span>
-                      <ShieldCheck size={25} />
-                    </div>
-                    <h2>{at(l, 'control')}</h2>
-                    <p>{at(l, 'controlHelp')}</p>
-                    <div className="admin-control-metrics">
-                      {canAdmin(actor, 'safety.write') && (
-                        <Link href={href('safety')}>
-                          <strong>{openSafety.length}</strong>
-                          <span>
-                            {at(l, 'openSafety')}
-                            <ArrowUpRight size={14} />
-                          </span>
-                        </Link>
-                      )}
-                      {canAdmin(actor, 'supply.read') && (
-                        <Link href={`${href('review')}&queue=pending`}>
-                          <strong>{needReview.length}</strong>
-                          <span>
-                            {at(l, 'reviewCount')}
-                            <ArrowUpRight size={14} />
-                          </span>
-                        </Link>
-                      )}
-                      <Link href={`${href('orders')}&status=attention`}>
-                        <strong>{data.bookings.filter(orderNeedsAttention).length}</strong>
-                        <span>
-                          {at(l, 'attention')}
-                          <ArrowUpRight size={14} />
-                        </span>
-                      </Link>
-                    </div>
-                  </section>
-                  <section className="admin-panel admin-trend">
-                    <div className="admin-panel-heading">
-                      <div>
-                        <h2>{at(l, 'trend')}</h2>
-                        <p>{at(l, 'trendHelp')}</p>
-                      </div>
-                      <span>JST</span>
-                    </div>
-                    <div
-                      className="admin-chart"
-                      role="img"
-                      aria-label={trend.map((d) => `${d.day}: ${d.count}`).join(', ')}
-                    >
-                      {trend.map((d) => (
-                        <div key={d.day}>
-                          <strong>{d.count}</strong>
-                          <div>
-                            <span style={{ height: `${(d.count / peak) * 100}%` }} />
-                          </div>
-                          <small>{d.day.slice(5).replace('-', '/')}</small>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                </div>
-                {canAdmin(actor, 'cases.read') && (
+                <AdminTodoBoard
+                  locale={l}
+                  todo={todo}
+                  links={{
+                    safety: href('safety'),
+                    orders: href('orders'),
+                    cases: `/${l}/admin/support`,
+                    review: href('review'),
+                    quality: `/${l}/admin/quality`,
+                    content: `/${l}/admin/safety-review`,
+                    finance: href('finance'),
+                  }}
+                />
+                {canAdmin(actor, 'cases.read') && urgentCount > 0 && (
                   <section className="admin-panel admin-priority">
                     <div className="admin-panel-heading">
                       <h2>{at(l, 'next')}</h2>
@@ -961,9 +920,67 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                     </div>
                   </section>
                 )}
+                <h2 className="admin-section-title">{at(l, 'metricsTitle')}</h2>
+                <div className="admin-stat-grid">
+                  <div>
+                    <span>{at(l, 'allOrders')}</span>
+                    <strong>{data.bookings.length}</strong>
+                    <small>{at(l, 'allTime')}</small>
+                    <ListChecks size={20} />
+                  </div>
+                  <div>
+                    <span>{at(l, 'completedOrders')}</span>
+                    <strong>{data.bookings.filter((b) => b.status === 'COMPLETED').length}</strong>
+                    <small>{at(l, 'allTime')}</small>
+                    <Check size={20} />
+                  </div>
+                  <div>
+                    <span>{at(l, 'published')}</span>
+                    <strong>
+                      {data.listings.filter((x) => liveListing(x, data.stores)).length}
+                      <small> / {data.listings.length}</small>
+                    </strong>
+                    <small>{at(l, 'approved')}</small>
+                    <ShieldCheck size={20} />
+                  </div>
+                  {canAdmin(actor, 'finance.read') && (
+                    <div>
+                      <span>{at(l, 'platformNet')}</span>
+                      <strong className="money">{money(l, finance.platform)}</strong>
+                      <small>{at(l, 'afterReversal')}</small>
+                      <Wallet size={20} />
+                    </div>
+                  )}
+                </div>
+                <div className="admin-overview-grid admin-overview-single">
+                  <section className="admin-panel admin-trend">
+                    <div className="admin-panel-heading">
+                      <div>
+                        <h2>{at(l, 'trend')}</h2>
+                        <p>{at(l, 'trendHelp')}</p>
+                      </div>
+                      <span>JST</span>
+                    </div>
+                    <div
+                      className="admin-chart"
+                      role="img"
+                      aria-label={trend.map((d) => `${d.day}: ${d.count}`).join(', ')}
+                    >
+                      {trend.map((d) => (
+                        <div key={d.day}>
+                          <strong>{d.count}</strong>
+                          <div>
+                            <span style={{ height: `${(d.count / peak) * 100}%` }} />
+                          </div>
+                          <small>{d.day.slice(5).replace('-', '/')}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
                 <section className="admin-panel">
                   <div className="admin-panel-heading">
-                    <h2>{at(l, 'orders')}</h2>
+                    <h2>{at(l, 'recentOrders')}</h2>
                     <Link href={href('orders')}>
                       {at(l, 'all')}
                       <ArrowUpRight size={15} />
@@ -1129,10 +1146,14 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'review' && (
               <>
-                {canAdmin(actor, 'supply.write') && <VenueReviews locale={l} />}
                 {canAdmin(actor, 'supply.write') && (
                   <OnboardingReview locale={l} onChanged={() => void refresh()} />
                 )}
+                {canAdmin(actor, 'supply.write') && <VenueReviews locale={l} />}
+                {canAdmin(actor, 'supply.read') && (
+                  <SuspensionImpactPanel locale={l} orderHref={(id) => href('orders', id)} />
+                )}
+                {canAdmin(actor, 'supply.read') && <ShopQuality locale={l} />}
                 <div className="admin-toolbar">
                   {searchInput()}
                   {shopSelect()}
@@ -1344,6 +1365,8 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                           {at(l, 'reference')} {s.bookingId.slice(-8)}
                           <ArrowUpRight size={14} />
                         </Link>
+                        {s.location && <SharedLocation locale={l} location={s.location} />}
+                        {s.status === 'OPEN' && <EmergencyLookup locale={l} eventId={s.id} />}
                         {s.resolution && <p className="admin-resolution">{s.resolution}</p>}
                         {s.status === 'OPEN' && (
                           <button

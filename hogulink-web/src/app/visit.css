@@ -494,6 +494,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
+  /* Up to two weeks of days scroll sideways instead of shrinking. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 .visit-day-picker button {
   display: flex;

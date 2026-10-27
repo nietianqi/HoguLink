@@ -26,6 +26,7 @@ import { WorkspaceNav } from './workspace-nav';
 import { ct } from '@/lib/care-i18n';
 import { xt } from '@/lib/exception-i18n';
 import { NoShowPanel } from './no-show-panel';
+import { SafetyHelp } from './safety-help';
 import { BookingQueue } from './booking-queue';
 import { dt } from '@/lib/desktop-i18n';
 import { filterBookings, needsAttention, type BookingFilter } from '@/lib/desktop-model';
@@ -896,7 +897,17 @@ export function Operations({
                             <p className="address-display">
                               {b.address.name} · {b.address.detail}
                               {b.address.type === 'HOTEL' &&
-                                ` · ${b.address.hotelName} / ${b.address.room}`}
+                                ` · ${b.address.hotelName} / ${b.address.room}`}{' '}
+                              <a
+                                className="text-button"
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                  [b.address.hotelName, b.address.detail].filter(Boolean).join(' '),
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {sv(l, 'navigate')} ↗
+                              </a>
                             </p>
                           ) : (
                             role === 'STAFF' && <p className="muted">{t(l, 'noAddress')}</p>
@@ -935,6 +946,9 @@ export function Operations({
                         role={role}
                         onUpdated={refresh}
                       />
+                      {role === 'STAFF' && (
+                        <SafetyHelp locale={l} bookingId={b.id} refreshKey={b.version} />
+                      )}
                       {role === 'CUSTOMER' && (
                         <>
                           <details className="order-policy-snapshot" id={`order-policy-${b.id}`}>

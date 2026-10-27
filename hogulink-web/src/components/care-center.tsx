@@ -28,6 +28,8 @@ import {
   type TicketMessage,
 } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
+import { EmergencyLookup, SharedLocation } from './safety-help';
+import { CaseAttachments } from './case-attachments';
 import { dateTime, errorText, t } from '@/lib/i18n';
 import { ct, categoryLabel, caseStatus, isCareKey } from '@/lib/care-i18n';
 import { useSession } from './booking-form';
@@ -43,11 +45,12 @@ import { af } from '@/lib/customer-flow-i18n';
 import { ca } from '@/lib/customer-auth-i18n';
 import { CaseDecisionPanel } from './case-decision';
 import { gt, isGovernanceKey } from '@/lib/governance-i18n';
-import type { CaseDecisionDetail } from '@hogulink/contracts';
+import type { CaseDecisionDetail, TicketAttachment } from '@hogulink/contracts';
 
 type TicketDetail = {
   ticket: SupportTicket;
   messages: TicketMessage[];
+  attachments?: TicketAttachment[];
   refundPending?: boolean;
   decision?: CaseDecisionDetail;
 };
@@ -710,7 +713,7 @@ export function CareCenter({
                     <div className="case-description">{ticket.description}</div>
                     {ticket.refundRequestId && actor && role !== 'STAFF' && (
                       <RefundCasePanel
-                        key={ticket.id}
+                        key={`refund:${ticket.id}`}
                         locale={l}
                         ticket={ticket}
                         actor={actor}
@@ -783,6 +786,15 @@ export function CareCenter({
                         </article>
                       ))}
                     </div>
+                    {detail && (
+                      <CaseAttachments
+                        key={`attachments:${detail.ticket.id}`}
+                        locale={l}
+                        ticketId={detail.ticket.id}
+                        initial={detail.attachments ?? []}
+                        canAdd={activeCase(ticket)}
+                      />
+                    )}
                     {ticket.resolution && (
                       <div className="case-resolution">
                         <strong>
@@ -1142,6 +1154,10 @@ export function CareCenter({
                         {dateTime(l, event.createdAt)} · {event.bookingId.slice(-8)}
                       </small>
                     </div>
+                    {event.location && <SharedLocation locale={l} location={event.location} />}
+                    {role === 'ADMIN' && event.status === 'OPEN' && (
+                      <EmergencyLookup locale={l} eventId={event.id} />
+                    )}
                     {role === 'ADMIN' && event.resolution && (
                       <p className="case-description">{event.resolution}</p>
                     )}

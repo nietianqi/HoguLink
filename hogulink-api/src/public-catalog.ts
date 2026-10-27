@@ -1,3 +1,4 @@
+import { venueAvailable } from '@hogulink/contracts';
 import type { Store, Listing, PublicStore, Offering } from '@hogulink/contracts';
 import { effectiveBookingRules } from './booking-rules.js';
 export function toPublicStore(
@@ -29,10 +30,17 @@ export function toPublicStore(
     approved: store.approved,
     areas: mode === 'IN_STORE' && store.venue ? [store.venue.area] : store.areas,
     homeVisitsEnabled: store.homeVisitsEnabled,
-    ...(store.venue?.status === 'APPROVED'
+    // Only a venue that can take bookings is shown; paused or disabled venues stay private.
+    ...(venueAvailable(store)
       ? {
           venue: (() => {
-            const { resources, reviewedBy: _by, reviewNote: _note, ...publicVenue } = store.venue!;
+            const {
+              resources,
+              reviewedBy: _by,
+              reviewNote: _note,
+              suspension: _paused,
+              ...publicVenue
+            } = store.venue!;
             return { ...publicVenue, capacity: resources.filter((r) => r.active).length };
           })(),
         }

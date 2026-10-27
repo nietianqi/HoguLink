@@ -146,10 +146,33 @@ const words = {
     '操作失败，请重试。',
   ],
   INVALID_CREDENTIALS: [
-    'メールアドレスまたはパスワードが違います。',
-    'Email or password is incorrect.',
-    '邮箱或密码不正确。',
+    'メールアドレス、パスワードまたは認証コードが違います。',
+    'Email, password or authenticator code is incorrect.',
+    '邮箱、密码或验证码不正确。',
   ],
+  MFA_ENROLLMENT_REQUIRED: [
+    '認証アプリの設定が必要です。下のキーを認証アプリに追加し、表示されたコードを入力してください。',
+    'Set up an authenticator app: add the key below to the app, then enter the code it shows.',
+    '需要设置身份验证器：请将下方密钥添加到验证器应用，然后输入显示的验证码。',
+  ],
+  MFA_ALREADY_ENROLLED: [
+    '認証アプリは設定済みです。コードを入力してサインインしてください。',
+    'Your authenticator is already set up. Sign in with its code.',
+    '验证器已设置，请输入验证码登录。',
+  ],
+  code: ['認証コード（6桁）', 'Authenticator code (6 digits)', '验证码（6 位）'],
+  codeHelp: [
+    '認証アプリ（Google Authenticator など）に表示される6桁のコードです。同じコードは2回使えません。',
+    'The 6-digit code shown in your authenticator app (such as Google Authenticator). Each code works once.',
+    '验证器应用（如 Google Authenticator）显示的 6 位数字，同一验证码只能使用一次。',
+  ],
+  mfaSetup: ['認証アプリの設定', 'Authenticator setup', '设置身份验证器'],
+  mfaSetupHelp: [
+    '認証アプリでこのキーを追加するか、スマートフォンではリンクから開いてください。キーは他人に共有しないでください。',
+    'Add this key in your authenticator app, or open the link on your phone. Do not share the key.',
+    '请在验证器应用中添加此密钥，或在手机上点击链接打开。请勿向他人透露密钥。',
+  ],
+  openAuthenticator: ['認証アプリで開く', 'Open in authenticator app', '在验证器应用中打开'],
   INVITE_INVALID: [
     '招待は無効・使用済み・期限切れです。責任者に再発行を依頼してください。',
     'This invitation is invalid, used or expired. Ask an owner for a new link.',

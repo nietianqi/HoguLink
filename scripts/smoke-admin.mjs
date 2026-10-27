@@ -1,4 +1,4 @@
-import { advanceVisit, confirmVisit } from './qa-clock.mjs';
+import { advanceVisit, confirmVisit, bookable } from './qa-clock.mjs';
 import assert from 'node:assert/strict';
 const origin = process.env.SMOKE_ORIGIN || 'http://127.0.0.1:3000',
   apiOrigin = process.env.SMOKE_API_ORIGIN;
@@ -105,7 +105,7 @@ let b = await call(
   201,
   'admin-smoke-booking',
 );
-const pending = await makeQuote(slot + 6 * 3600000);
+const pending = await makeQuote(bookable(slot + 6 * 3600000));
 async function review(targetType, targetId, decision) {
   const snap = await call(admin, 'admin/workspace'),
     key = targetType === 'STORE' ? 'stores' : targetType === 'LISTING' ? 'listings' : 'offerings',

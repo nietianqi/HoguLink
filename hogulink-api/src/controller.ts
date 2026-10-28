@@ -18,11 +18,23 @@ import { stores as demoStores, listings as demoListings } from './seed.js';
 
 type Session = { id: string; actor: Actor; expiresAt: number };
 const hashToken = (value: string) => createHash('sha256').update(value).digest('hex');
-const allowedOrigins = new Set([
-  ...(process.env.WEB_ORIGIN
-    ? [process.env.WEB_ORIGIN]
-    : ['http://localhost:3000', 'http://127.0.0.1:3000']),
-]);
+/**
+ * A local web origin also accepts its localhost/127.0.0.1 twin: both reach the same machine,
+ * and mixing them otherwise rejects every sign-in and booking. Public origins stay exact.
+ */
+export function webOrigins(configured = process.env.WEB_ORIGIN) {
+  if (!configured) return new Set(['http://localhost:3000', 'http://127.0.0.1:3000']);
+  const origins = new Set([configured]);
+  try {
+    const url = new URL(configured);
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      url.hostname = url.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
+      origins.add(url.origin);
+    }
+  } catch {}
+  return origins;
+}
+const allowedOrigins = webOrigins();
 const demoEnabled = () =>
   process.env.DEMO_ACCESS_ENABLED !== '0' && (process.env.APP_MODE ?? 'demo') === 'demo';
 const secureCookie = () =>
@@ -1408,6 +1420,7 @@ export class ApiController {
         return res.status(422).json({
           error: {
             code: 'VALIDATION_ERROR',
+            fields: [...new Set(error.issues.map((issue) => issue.path.join('.')).filter(Boolean))],
             message: error.issues.map((x) => `${x.path.join('.')}: ${x.message}`).join('; '),
           },
           requestId,

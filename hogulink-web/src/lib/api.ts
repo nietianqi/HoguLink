@@ -26,17 +26,19 @@ export async function serverApi<T>(path: string): Promise<T> {
     `${process.env.API_INTERNAL_URL || 'http://127.0.0.1:4000'}/v1/${path}`,
     { cache: 'no-store', signal: AbortSignal.timeout(8000) },
   );
-  if (!response.ok)
-    throw new ServerApiError(response.status);
+  if (!response.ok) throw new ServerApiError(response.status);
   return response.json();
 }
 export class ServerApiError extends Error {
-  constructor(public status: number) { super('HoguLink API is not available.'); }
+  constructor(public status: number) {
+    super('HoguLink API is not available.');
+  }
 }
 export class ClientError extends Error {
   constructor(
     public code: string,
     message: string,
+    public fields: readonly string[] = [],
   ) {
     super(message);
   }
@@ -58,7 +60,13 @@ export async function api<T>(
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  const data = await response.json();
+  // A stopped or restarting API reaches the page as a non-JSON proxy error, not a request error.
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new ClientError('SERVICE_UNAVAILABLE', 'The service is temporarily unavailable.');
+  }
   if (
     response.status === 401 &&
     epoch === sessionEpoch &&
@@ -71,7 +79,13 @@ export async function api<T>(
     window.dispatchEvent(new Event('hogulink-session-invalid'));
   }
   if (!response.ok)
-    throw new ClientError(data.error?.code ?? 'error', data.error?.message ?? 'Request failed');
+    throw new ClientError(
+      data.error?.code ?? 'error',
+      data.error?.message ?? 'Request failed',
+      Array.isArray(data.error?.fields)
+        ? data.error.fields.filter((field: unknown) => typeof field === 'string').slice(0, 20)
+        : [],
+    );
   if (
     typeof window !== 'undefined' &&
     path.startsWith('auth/') &&

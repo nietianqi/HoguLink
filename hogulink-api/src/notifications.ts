@@ -1,10 +1,11 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import type { Actor, Booking, Locale } from '@hogulink/contracts';
-import { Repository, type Records } from './repository.js';
+import { Repository, type Records, type RecordFilter } from './repository.js';
 import { seal, unseal } from './secrets.js';
 import { ensure } from './errors.js';
 import { requireAdmin } from './admin-access.js';
 import { activeStaffMembership } from './staff-access.js';
+import { smtpSender } from './smtp-email.js';
 
 export type Email = { to: string; subject: string; text: string };
 export type Outbox = {
@@ -101,6 +102,7 @@ export type EmailSender = (email: Email, key: string) => Promise<string>;
 export function configuredSender(): EmailSender | undefined {
   const provider = process.env.EMAIL_PROVIDER || 'disabled';
   if (provider === 'disabled') return undefined;
+  if (provider === 'smtp') return smtpSender();
   if (provider === 'resend') {
     if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM)
       throw new Error('RESEND_API_KEY and EMAIL_FROM are required');
@@ -162,11 +164,18 @@ export function configuredSender(): EmailSender | undefined {
   }
   throw new Error('Unsupported EMAIL_PROVIDER');
 }
+export function notificationEmailScope(): 'all' | 'customer-auth' {
+  const scope = process.env.NOTIFICATION_EMAIL_SCOPE || 'all';
+  if (scope !== 'all' && scope !== 'customer-auth')
+    throw new Error('Invalid NOTIFICATION_EMAIL_SCOPE');
+  return scope;
+}
 export class NotificationWorker {
   constructor(
     private repo: Repository,
     private send?: EmailSender,
     private now = () => Date.now(),
+    private scope: 'all' | 'customer-auth' = notificationEmailScope(),
   ) {}
   private async emails(job: Outbox) {
     if (job.payloadSealed)
@@ -237,26 +246,31 @@ export class NotificationWorker {
     batchSize = Math.max(1, Math.min(4, batchSize));
     if (!this.send) return { processed: 0, configured: false };
     const jobs = await this.repo.transaction(async (tx) => {
+      const scopeFilter: RecordFilter =
+        this.scope === 'customer-auth' ? { type: ['CUSTOMER_VERIFY', 'CUSTOMER_RESET'] } : {};
       const pending = await tx.find<Outbox>(
         'outbox',
-        { status: 'PENDING' },
+        { status: 'PENDING', ...scopeFilter },
         { limit: batchSize, orderBy: 'createdAt' },
       );
       const retries = await tx.find<Outbox>(
         'outbox',
-        { status: 'RETRY', nextAttemptAt: { lte: this.now() } },
+        { status: 'RETRY', nextAttemptAt: { lte: this.now() }, ...scopeFilter },
         { limit: batchSize },
       );
       const abandoned = await tx.find<Outbox>(
         'outbox',
-        { status: 'PROCESSING', leaseUntil: { lte: this.now() } },
+        { status: 'PROCESSING', leaseUntil: { lte: this.now() }, ...scopeFilter },
         { limit: batchSize },
       );
       const accountMail = await tx.find<Outbox>(
         'outbox',
         {
           status: 'PENDING',
-          type: ['CUSTOMER_VERIFY', 'CUSTOMER_RESET', 'STAFF_INVITATION', 'EMPLOYEE_INVITATION'],
+          type:
+            this.scope === 'customer-auth'
+              ? ['CUSTOMER_VERIFY', 'CUSTOMER_RESET']
+              : ['CUSTOMER_VERIFY', 'CUSTOMER_RESET', 'STAFF_INVITATION', 'EMPLOYEE_INVITATION'],
         },
         { limit: 2, orderBy: 'createdAt' },
       );
@@ -335,6 +349,7 @@ export class NotificationWorker {
       );
       return {
         configured: !!this.send,
+        deliveryScope: this.scope,
         counts,
         jobs: all.map(
           ({ payloadSealed: _payload, receipts: _receipts, leaseId: _lease, ...job }) => job,

@@ -132,7 +132,7 @@ const copy = {
   allUpdates: ['查看全部更新', 'すべてのお知らせ', 'View all updates'],
   therapists: ['技师档案', 'スタッフ', 'Therapists'],
   illustration: ['图片为示意', 'イメージ画像', 'Illustrative image'],
-  orders: ['全部订单', '予約一覧', 'My bookings'],
+  orders: ['我的预约', '予約一覧', 'My bookings'],
   welcome: ['把休息，交给今天。', '今日は、ひと休み。', 'Make time to unwind.'],
   welcomeSub: [
     '东京上门放松 · 店铺负责服务',

@@ -49,6 +49,7 @@ API 设置放在 `hogulink-api/.env`，参考根目录 `.env.example`。默认 `
 
 1. `EMAIL_PROVIDER=resend`，提供 `RESEND_API_KEY`、已验证域名的 `EMAIL_FROM`、`PUBLIC_WEB_URL` 和 `WEB_ORIGIN`。
 2. `EMAIL_PROVIDER=webhook`，提供 HTTPS `NOTIFICATION_WEBHOOK_URL` 和至少 32 字符的 `NOTIFICATION_WEBHOOK_SECRET`。仅开发进程允许本机 HTTP 接收端。
+3. `EMAIL_PROVIDER=smtp`，可使用 Gmail 应用专用密码，提供 `SMTP_USER`、`SMTP_PASSWORD` 或 `SMTP_PASSWORD_FILE`，端口 465/587 均强制加密。先运行无邮件发送的连接检查；首次启用限定注册/找回密码，配置与验收见 [邮件发送说明](EMAIL_DELIVERY.md)。
 
 网关接收 `{id,email:{to,subject,text}}`。验证 `X-Hogu-Signature = HMAC-SHA256(secret, timestamp + '.' + 原始请求体)`，检查时间窗口，按 `Idempotency-Key` 去重，成功时返回 `{messageId:string}`。`SENT` 表示服务商受理，收件人实际收到/阅读、退信及外部送达回执需再接入。
 

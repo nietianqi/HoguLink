@@ -25,7 +25,6 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
         {(
           [
             ['addresses', 'account/addresses'],
-            ['card', 'account/benefits'],
             ['privacy', 'legal/privacy'],
             ['terms', 'legal/terms'],
             ['support', 'account/support'],

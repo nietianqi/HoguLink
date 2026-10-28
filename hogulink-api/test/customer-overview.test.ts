@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Actor, Booking, Hold, SupportTicket } from '@hogulink/contracts';
+import type { Actor, Booking, Hold, Listing, Store, SupportTicket } from '@hogulink/contracts';
 import { DomainError } from '../src/errors.js';
 import {
   booking,
@@ -55,8 +55,10 @@ test('customer overview starts empty and rejects workspace identities', () =>
       support: 0,
       favorites: 0,
       closed: 0,
+      completed: 0,
     });
     assert.deepEqual(o.recent, []);
+    assert.deepEqual(o.reviewBookingIds, []);
     for (const actor of [staff, shop, admin])
       await assert.rejects(() => e.experience.overview(actor), fail('FORBIDDEN'));
   }));
@@ -89,18 +91,21 @@ test('review counters track actionable completed charges and do not count conten
   fixture(async (e, clock) => {
     const b = await complete(e, clock);
     assert.equal((await e.experience.overview(customer)).counts.review, 1);
+    assert.deepEqual((await e.experience.overview(customer)).reviewBookingIds, [b.id]);
     const r = await e.experience.saveReview(customer, b.id, {
       version: 0,
       scores: reviewScores,
       text: reviewText,
     });
     assert.equal((await e.experience.overview(customer)).counts.review, 0);
+    assert.deepEqual((await e.experience.overview(customer)).reviewBookingIds, []);
     await e.experience.moderate(admin, 'REVIEW', r.id, {
       ...moderation,
       version: r.version,
       decision: 'REJECT',
     });
     assert.equal((await e.experience.overview(customer)).reviewBookingId, b.id);
+    assert.deepEqual((await e.experience.overview(customer)).reviewBookingIds, [b.id]);
     const current = (await e.experience.customerExperience(customer, b.id)).review!;
     await e.experience.withdraw(customer, r.id, { version: current.version });
     assert.equal((await e.experience.overview(customer)).counts.review, 1);
@@ -149,6 +154,79 @@ test('only active private favorites are counted, independently of booking totals
     await e.experience.favorite(customer, 'listing-aoi', { version: r.version, active: false });
     assert.equal((await e.experience.overview(customer)).counts.favorites, 0);
   }));
+
+test('account cards identify the shop, assigned therapist and service mode without private address details', () =>
+  fixture(async (e) => {
+    const b = await booking(e);
+    const { store, listing } = await e.repo.transaction(async (tx) => ({
+      store: (await tx.get<Store>('stores', b.storeId))!,
+      listing: (await tx.get<Listing>('listings', 'listing-aoi'))!,
+    }));
+    let o = await e.experience.overview(customer);
+    assert.deepEqual(o.focus?.storeName, store.name);
+    assert.deepEqual(o.focus?.therapistName, listing.name);
+    assert.equal(o.focus?.therapistPhoto, listing.photo);
+    assert.equal(o.focus?.fulfillmentMode, 'HOME_VISIT');
+    assert.equal(o.focus?.area, b.quote.area);
+    assert.equal(o.focus?.endAt, b.quote.endAt);
+    assert(!JSON.stringify(o).includes('Private QA address'));
+    assert(!JSON.stringify(o).includes('QA Hotel'));
+    await e.repo.transaction(async (tx) => {
+      await tx.put('listings', { ...listing, portraitConsent: false });
+      await tx.put('bookings', {
+        ...b,
+        id: 'in-store-summary',
+        quote: {
+          ...b.quote,
+          startAt: b.quote.startAt + 7200000,
+          endAt: b.quote.endAt + 7200000,
+          fulfillmentMode: 'IN_STORE',
+          venue: { area: 'minato' },
+        },
+      } as Booking);
+    });
+    o = await e.experience.overview(customer);
+    assert.equal(o.focus?.therapistPhoto, undefined);
+    assert.equal(o.recent.find((b) => b.id === 'in-store-summary')?.fulfillmentMode, 'IN_STORE');
+    assert.equal(o.recent.find((b) => b.id === 'in-store-summary')?.area, 'minato');
+    await e.repo.transaction(async (tx) => {
+      await tx.put('bookings', {
+        ...b,
+        id: 'unassigned-summary',
+        assignedStaffId: null,
+        selectedStaffId: null,
+        assignedListingId: null,
+        selectedStaffListingId: null,
+        quote: { ...b.quote, nominationType: 'FREE' },
+      });
+    });
+    assert.equal(
+      (await e.experience.overview(customer)).recent.find((b) => b.id === 'unassigned-summary')
+        ?.therapistName['zh-cn'],
+      '由店铺安排技师',
+    );
+  }));
+
+test('review list includes every actionable owned booking and excludes foreign and already submitted reviews', () =>
+  fixture(async (e, clock) => {
+    const b = await complete(e, clock);
+    await e.repo.transaction(async (tx) => {
+      await tx.put('bookings', { ...b, id: 'second-owned' });
+      await tx.put('bookings', { ...b, id: 'foreign-completed', customerId: other.id });
+    });
+    let o = await e.experience.overview(customer);
+    assert.deepEqual(new Set(o.reviewBookingIds), new Set([b.id, 'second-owned']));
+    assert.equal(o.counts.completed, 2);
+    await e.experience.saveReview(customer, b.id, {
+      version: 0,
+      scores: reviewScores,
+      text: reviewText,
+    });
+    o = await e.experience.overview(customer);
+    assert.deepEqual(o.reviewBookingIds, ['second-owned']);
+    assert.equal(o.counts.review, 1);
+    assert.equal(o.counts.completed, 2);
+  }));
 test('cancelled charged orders do not create review tasks and recent cards retain their service snapshot', () =>
   fixture(async (e) => {
     const b = await booking(e);
@@ -173,6 +251,8 @@ test('recent orders are bounded and response counts cover the full owned history
     const o = await e.experience.overview(customer);
     assert.equal(o.recent.length, 3);
     assert.equal(o.counts.review, 4);
+    assert.equal(o.counts.completed, 4);
+    assert.equal(o.reviewBookingIds.length, 4);
     assert.equal(o.counts.active, 0);
   }));
 test('current visit is selected from all owned orders, prioritizing consent and preserving the service snapshot', () =>

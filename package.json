@@ -18,7 +18,7 @@
     "test": "npm run test -w @hogulink/api",
     "build": "npm run typecheck && npm run build -w @hogulink/web",
     "check": "npm run test && npm run test:desktop && npm run test:demo-media && npm run build",
-    "test:desktop": "node --import tsx --test scripts/desktop-model.test.ts scripts/consumer-model.test.ts scripts/discovery-model.test.ts scripts/therapist-directory-model.test.ts scripts/customer-flow-model.test.ts scripts/customer-api-session.test.ts scripts/coordination-model.test.ts scripts/invoice-model.test.ts scripts/reporting-model.test.ts scripts/promotion-model.test.ts scripts/service-availability.test.ts scripts/booking-presentation.test.ts scripts/customer-booking-data.test.ts scripts/partner-booking-data.test.ts scripts/service-mode-model.test.ts scripts/storefront-model.test.ts",
+    "test:desktop": "node --import tsx --test scripts/desktop-model.test.ts scripts/consumer-model.test.ts scripts/account-model.test.ts scripts/discovery-model.test.ts scripts/therapist-directory-model.test.ts scripts/customer-flow-model.test.ts scripts/customer-auth-model.test.ts scripts/customer-api-session.test.ts scripts/coordination-model.test.ts scripts/invoice-model.test.ts scripts/reporting-model.test.ts scripts/promotion-model.test.ts scripts/service-availability.test.ts scripts/booking-presentation.test.ts scripts/customer-booking-data.test.ts scripts/partner-booking-data.test.ts scripts/service-mode-model.test.ts scripts/storefront-model.test.ts",
     "smoke": "node scripts/smoke-isolated.mjs",
     "format": "prettier --write hogulink-api/src hogulink-api/test hogulink-web/src packages/contracts/src scripts docs README.md package.json",
     "smoke:care": "node scripts/smoke-isolated.mjs --only=care",

@@ -17,7 +17,16 @@ import {
   UserRound,
   ShieldCheck,
 } from 'lucide-react';
-import type { Actor, Booking, Listing, Locale, Message, Role } from '@hogulink/contracts';
+import type {
+  Actor,
+  Booking,
+  CustomerOverview,
+  Listing,
+  Locale,
+  Message,
+  Role,
+} from '@hogulink/contracts';
+import { at } from '@/lib/account-i18n';
 import { api, ClientError, type Catalog } from '@/lib/api';
 import { t, errorText, dateTime, money, statusText, areaName, type TextKey } from '@/lib/i18n';
 import { useSession } from './booking-form';
@@ -86,6 +95,8 @@ export function Operations({
   const [selectedBooking, setSelectedBooking] = useState(initialSelected ?? '');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [ordersLoaded, setOrdersLoaded] = useState(false);
+  const [reviewBookingIds, setReviewBookingIds] = useState<string[]>([]);
+  const [reviewUnavailable, setReviewUnavailable] = useState(false);
   const [catalog, setCatalog] = useState<Catalog>();
   const [dashboard, setDashboard] = useState<Dashboard>();
   const [error, setError] = useState('');
@@ -111,12 +122,17 @@ export function Operations({
   const refresh = useCallback(async () => {
     const generation = ++loadVersion.current;
     if (role === 'CUSTOMER' && actor?.role === 'CUSTOMER') {
-      const next = await loadCustomerBookings(bookingId);
+      const [next, overview] = await Promise.all([
+        loadCustomerBookings(bookingId),
+        bookingId ? undefined : api<CustomerOverview>('customer/overview').catch(() => undefined),
+      ]);
       if (generation !== loadVersion.current) return;
       void next.catalog.then((value) => {
         if (generation === loadVersion.current) setCatalog(value);
       });
       setBookings(next.bookings);
+      setReviewBookingIds(overview?.reviewBookingIds ?? []);
+      setReviewUnavailable(!bookingId && !overview);
       setOrdersLoaded(true);
       return;
     }
@@ -140,6 +156,8 @@ export function Operations({
     let current = true;
     messageVersion.current++;
     setOrdersLoaded(false);
+    setReviewBookingIds([]);
+    setReviewUnavailable(false);
     setBookings([]);
     setCatalog(undefined);
     setDashboard(undefined);
@@ -257,6 +275,7 @@ export function Operations({
     status: queueStatus,
     search: queueSearch,
     period: queuePeriod,
+    reviewBookingIds,
     describe: (b) =>
       `${stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot} ${listingName(b.assignedListingId)} ${listingName(b.selectedStaffListingId)}`,
   });
@@ -514,6 +533,8 @@ export function Operations({
                     role={role}
                     bookings={visibleBookings}
                     allBookings={bookings}
+                    reviewBookingIds={reviewBookingIds}
+                    reviewUnavailable={reviewUnavailable}
                     catalog={{ stores, listings }}
                     selectedId={role === 'CUSTOMER' ? undefined : selectedId}
                     onSelect={setSelectedBooking}
@@ -538,12 +559,44 @@ export function Operations({
                   {ot(l, 'missingOrder')}
                 </p>
               )}
-              {!visibleBookings.length && bookings.length > 0 && (
-                <div className="empty-state">
-                  <CalendarDays size={30} />
-                  <h3>{dt(l, 'noMatches')}</h3>
-                </div>
-              )}
+              {role === 'CUSTOMER' &&
+                !bookingId &&
+                queueStatus === 'review' &&
+                reviewUnavailable && (
+                  <div className="quality-error" role="alert">
+                    <p>{at(l, 'reviewUnavailable')}</p>
+                    <button
+                      className="quality-button"
+                      disabled={busy}
+                      onClick={async () => {
+                        setBusy(true);
+                        try {
+                          await refresh();
+                        } catch (e) {
+                          setError(errorText(l, e instanceof ClientError ? e.code : undefined));
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {at(l, 'retry')}
+                    </button>
+                  </div>
+                )}
+              {!visibleBookings.length &&
+                ordersLoaded &&
+                !(role === 'CUSTOMER' && !bookingId) &&
+                (bookings.length > 0 || (role === 'CUSTOMER' && queueStatus === 'review')) &&
+                !(role === 'CUSTOMER' && queueStatus === 'review' && reviewUnavailable) && (
+                  <div className="empty-state">
+                    <CalendarDays size={30} />
+                    <h3>
+                      {role === 'CUSTOMER' && queueStatus === 'review'
+                        ? at(l, 'noReviews')
+                        : dt(l, 'noMatches')}
+                    </h3>
+                  </div>
+                )}
               {ordersLoaded && !bookings.length && (role !== 'CUSTOMER' || !!bookingId) && (
                 <div className="empty-state">
                   <CalendarDays size={35} />

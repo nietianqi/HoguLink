@@ -1,12 +1,21 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Actor, Locale } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
 import { ca, safeAccountReturn } from '@/lib/customer-auth-i18n';
 import { useSession } from './booking-form';
-type Mode = 'login' | 'register' | 'forgot' | 'verify' | 'reset';
+import {
+  customerAuthInput,
+  validateCustomerAuth,
+  authFieldError,
+  authRequestError,
+  type AuthField,
+  type AuthFieldErrors,
+  type CustomerAuthMode,
+} from '@/lib/customer-auth-model';
+type Mode = CustomerAuthMode;
 export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
   const query = useSearchParams(),
     router = useRouter(),
@@ -16,10 +25,12 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(''),
     [error, setError] = useState(''),
-    [email, setEmail] = useState(''),
+    [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({}),
+    [verificationRequested, setVerificationRequested] = useState(false),
     [demoAccess, setDemoAccess] = useState(false),
     [delivery, setDelivery] = useState<boolean>();
   const returnTo = safeAccountReturn(l, query.get('returnTo'));
+  const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     const readLink = () => {
       const fragment = new URLSearchParams(window.location.hash.slice(1));
@@ -45,33 +56,59 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
     setMode(next);
     setNotice('');
     setError('');
+    setFieldErrors({});
+    setVerificationRequested(false);
   }
-  function failure(e: unknown) {
+  function focusError(errors: AuthFieldErrors) {
+    const first = (['name', 'email', 'password', 'terms'] as const).find((field) => errors[field]);
+    requestAnimationFrame(() => {
+      const input = first && formRef.current?.elements.namedItem(first);
+      if (input instanceof HTMLElement) input.focus();
+    });
+  }
+  function edit(field: AuthField) {
+    setFieldErrors((previous) => ({ ...previous, [field]: undefined }));
+    setError('');
+    setNotice('');
+  }
+  function failure(e: unknown, requestMode: Mode = mode) {
     const code = e instanceof ClientError ? e.code : '';
-    setError(
-      ca(
-        l,
-        code === 'INVALID_CREDENTIALS'
-          ? 'credentials'
-          : code === 'EMAIL_NOT_VERIFIED'
-            ? 'unverified'
-            : code === 'TOKEN_INVALID'
-              ? 'invalid'
-              : code === 'RATE_LIMITED'
-                ? 'limited'
-                : 'error',
-      ),
-    );
+    if (e instanceof ClientError && code === 'VALIDATION_ERROR') {
+      const errors: AuthFieldErrors = {};
+      for (const field of e.fields) {
+        const issue = authFieldError(field);
+        if (issue) errors[issue.field] = issue.message;
+      }
+      if (Object.values(errors).some(Boolean)) {
+        setFieldErrors(errors);
+        setError(ca(l, 'checkFields'));
+        focusError(errors);
+        return;
+      }
+    }
+    if (code === 'EMAIL_NOT_VERIFIED') setVerificationRequested(true);
+    const network = e instanceof TypeError && /fetch|network|load failed/i.test(e.message);
+    setError(ca(l, network ? 'networkError' : authRequestError(requestMode, code)));
   }
   async function request(kind: 'resend-verification' | 'forgot-password') {
+    if (!formRef.current) return;
+    const input = customerAuthInput(new FormData(formRef.current));
+    const emailError = validateCustomerAuth('forgot', input).email;
+    if (emailError) {
+      setFieldErrors({ email: emailError });
+      setError(ca(l, 'checkFields'));
+      focusError({ email: emailError });
+      return;
+    }
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      await api(`auth/customer/${kind}`, { email, locale: l });
-      setNotice(ca(l, 'sent'));
+      await api(`auth/customer/${kind}`, { email: input.email, locale: l });
+      setNotice(ca(l, kind === 'forgot-password' ? 'resetSent' : 'verificationSent'));
+      if (kind === 'resend-verification') setVerificationRequested(true);
     } catch (e) {
-      failure(e);
+      failure(e, 'forgot');
     } finally {
       setBusy(false);
     }
@@ -79,32 +116,41 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const input = customerAuthInput(data);
+    const errors = validateCustomerAuth(mode, input);
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) {
+      setError(ca(l, 'checkFields'));
+      focusError(errors);
+      return;
+    }
     setBusy(true);
     setError('');
     setNotice('');
     try {
       if (mode === 'login') {
         setActor(
-          await api<Actor>('auth/customer/login', { email, password: data.get('password') }),
+          await api<Actor>('auth/customer/login', { email: input.email, password: input.password }),
         );
         router.replace(returnTo);
       } else if (mode === 'register') {
         await api('auth/customer/register', {
-          email,
-          password: data.get('password'),
-          name: data.get('name'),
+          email: input.email,
+          password: input.password,
+          name: input.name,
           locale: l,
-          termsAccepted: data.get('terms') === 'on',
+          termsAccepted: input.termsAccepted,
         });
         setNotice(ca(l, 'registered'));
+        setVerificationRequested(true);
         setMode('login');
       } else if (mode === 'forgot') {
-        await api('auth/customer/forgot-password', { email, locale: l });
-        setNotice(ca(l, 'sent'));
+        await api('auth/customer/forgot-password', { email: input.email, locale: l });
+        setNotice(ca(l, 'resetSent'));
       } else {
         await api(`auth/customer/${mode === 'verify' ? 'verify-email' : 'reset-password'}`, {
           token,
-          ...(mode === 'reset' ? { password: data.get('password') } : {}),
+          ...(mode === 'reset' ? { password: input.password } : {}),
         });
         setToken('');
         setNotice(ca(l, mode === 'verify' ? 'verified' : 'changed'));
@@ -129,6 +175,11 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
         )}
         {actor?.role === 'CUSTOMER' && !token ? (
           <div className="customer-auth-signed">
+            {error && (
+              <p className="customer-auth-error" role="alert">
+                {error}
+              </p>
+            )}
             <p>
               {ca(l, 'signed')} · <strong>{actor.displayName || actor.id}</strong>
             </p>
@@ -171,7 +222,17 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
                 ))}
               </div>
             )}
-            <form onSubmit={submit} className="customer-auth-fields">
+            {notice && (
+              <p className="customer-auth-notice" role="status">
+                {notice}
+              </p>
+            )}
+            <form ref={formRef} noValidate onSubmit={submit} className="customer-auth-fields">
+              {error && (
+                <p className="customer-auth-error" role="alert">
+                  {error}
+                </p>
+              )}
               {mode === 'register' && (
                 <label htmlFor="customer-name">
                   {ca(l, 'name')}
@@ -181,7 +242,15 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
                     autoComplete="name"
                     required
                     maxLength={80}
+                    onChange={() => edit('name')}
+                    aria-invalid={!!fieldErrors.name}
+                    aria-describedby={fieldErrors.name ? 'customer-name-error' : undefined}
                   />
+                  {fieldErrors.name && (
+                    <small id="customer-name-error" className="customer-auth-field-error">
+                      {ca(l, fieldErrors.name)}
+                    </small>
+                  )}
                 </label>
               )}
               {!token && (
@@ -194,9 +263,17 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
                     autoComplete="email"
                     required
                     maxLength={254}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    // Uncontrolled: a browser can fill it before the page is interactive,
+                    // and re-rendering must never wipe what it filled.
+                    onChange={() => edit('email')}
+                    aria-invalid={!!fieldErrors.email}
+                    aria-describedby={fieldErrors.email ? 'customer-email-error' : undefined}
                   />
+                  {fieldErrors.email && (
+                    <small id="customer-email-error" className="customer-auth-field-error">
+                      {ca(l, fieldErrors.email)}
+                    </small>
+                  )}
                 </label>
               )}
               {['login', 'register', 'reset'].includes(mode) && (
@@ -211,19 +288,44 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
                     required
                     minLength={mode === 'login' ? 1 : 12}
                     maxLength={128}
-                    aria-describedby={mode === 'login' ? undefined : 'password-guidance'}
+                    onChange={() => edit('password')}
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={
+                      fieldErrors.password
+                        ? 'customer-password-error'
+                        : mode === 'login'
+                          ? undefined
+                          : 'password-guidance'
+                    }
                   />
-                  {mode !== 'login' && (
+                  {mode !== 'login' && !fieldErrors.password && (
                     <small id="password-guidance">{ca(l, 'passwordHelp')}</small>
+                  )}
+                  {fieldErrors.password && (
+                    <small id="customer-password-error" className="customer-auth-field-error">
+                      {ca(l, fieldErrors.password)}
+                    </small>
                   )}
                 </label>
               )}
               {mode === 'register' && (
                 <>
                   <label className="customer-auth-consent">
-                    <input type="checkbox" name="terms" required />
+                    <input
+                      type="checkbox"
+                      name="terms"
+                      required
+                      onChange={() => edit('terms')}
+                      aria-invalid={!!fieldErrors.terms}
+                      aria-describedby={fieldErrors.terms ? 'customer-terms-error' : undefined}
+                    />
                     {ca(l, 'terms')}
                   </label>
+                  {fieldErrors.terms && (
+                    <small id="customer-terms-error" className="customer-auth-field-error">
+                      {ca(l, fieldErrors.terms)}
+                    </small>
+                  )}
                   <div className="customer-auth-links">
                     <Link href={`/${l}/legal/terms`} target="_blank" rel="noreferrer">
                       {ca(l, 'termsLink')}
@@ -240,24 +342,23 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
             </form>
             {!token && (
               <div className="customer-auth-links">
-                <button type="button" disabled={busy} onClick={() => change('forgot')}>
-                  {ca(l, 'forgot')}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || !email}
-                  onClick={() => request('resend-verification')}
-                >
-                  {ca(l, 'resend')}
-                </button>
+                {mode === 'login' && (
+                  <button type="button" disabled={busy} onClick={() => change('forgot')}>
+                    {ca(l, 'forgot')}
+                  </button>
+                )}
+                {verificationRequested && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => request('resend-verification')}
+                  >
+                    {ca(l, 'resend')}
+                  </button>
+                )}
               </div>
             )}
           </>
-        )}
-        {error && (
-          <p className="error-message" role="alert">
-            {error}
-          </p>
         )}
         {demoAccess && !token && actor?.role !== 'CUSTOMER' && (
           <details className="customer-auth-demo">
@@ -283,11 +384,6 @@ export function CustomerAuthForm({ locale: l }: { locale: Locale }) {
               {ca(l, 'demoLogin')}
             </button>
           </details>
-        )}
-        {notice && (
-          <p className="success notice" role="status">
-            {notice}
-          </p>
         )}
       </section>
     </main>

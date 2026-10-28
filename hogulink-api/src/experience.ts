@@ -166,16 +166,58 @@ export class ExperienceService {
           });
       }
       const recent: CustomerOverview['recent'] = [];
-      for (const b of bookings.slice(0, 3)) {
-        const o = await tx.get<Offering>('offerings', b.quote.offeringId);
-        recent.push({
+      const summary = async (b: Booking): Promise<CustomerOverview['recent'][number]> => {
+        const [offering, store, listing] = await Promise.all([
+          tx.get<Offering>('offerings', b.quote.offeringId),
+          tx.get<Store>('stores', b.storeId),
+          b.assignedListingId || b.selectedStaffListingId
+            ? tx.get<Listing>('listings', (b.assignedListingId ?? b.selectedStaffListingId)!)
+            : undefined,
+        ]);
+        const therapist = listing?.storeId === b.storeId ? listing : undefined;
+        return {
           id: b.id,
           status: b.status,
           startAt: b.quote.startAt,
+          endAt: b.quote.endAt,
           total: b.quote.total,
           serviceName: b.quote.serviceName ??
-            o?.name ?? { ja: 'サービス', en: 'Service', 'zh-cn': '服务' },
-        });
+            offering?.name ?? { ja: 'サービス', en: 'Service', 'zh-cn': '服务' },
+          fulfillmentMode: fulfillmentMode(b.quote),
+          storeName: store?.name ?? {
+            ja: b.legalNameSnapshot,
+            en: b.legalNameSnapshot,
+            'zh-cn': b.legalNameSnapshot,
+          },
+          therapistName:
+            therapist?.name ??
+            (b.assignedListingId || b.selectedStaffListingId
+              ? {
+                  ja: 'スタッフ情報は予約詳細で確認',
+                  en: 'See booking for therapist details',
+                  'zh-cn': '技师信息请查看预约详情',
+                }
+              : {
+                  ja: '店舗がスタッフを手配',
+                  en: 'Assigned by the shop',
+                  'zh-cn': '由店铺安排技师',
+                }),
+          ...(therapist?.portraitConsent &&
+          therapist.identityVerified &&
+          therapist.membershipActive &&
+          therapist.publicationStatus === 'PUBLISHED_INDEXABLE' &&
+          store?.approved &&
+          store.active
+            ? { therapistPhoto: therapist.photo }
+            : {}),
+          area:
+            fulfillmentMode(b.quote) === 'IN_STORE'
+              ? (b.quote.venue?.area ?? b.quote.area)
+              : b.quote.area,
+        };
+      };
+      for (const b of bookings.slice(0, 3)) {
+        recent.push(await summary(b));
       }
       // Select from the full owned history: a live visit can be older than
       // the three recent cards, and consent must not disappear behind them.
@@ -198,20 +240,15 @@ export class ExperienceService {
         })[0];
       let focus: CustomerOverview['focus'];
       if (current) {
-        const offering = await tx.get<Offering>('offerings', current.quote.offeringId);
         focus = {
-          id: current.id,
-          status: current.status,
-          startAt: current.quote.startAt,
-          total: current.quote.total,
-          serviceName: current.quote.serviceName ??
-            offering?.name ?? { ja: 'サービス', en: 'Service', 'zh-cn': '服务' },
+          ...(recent.find((b) => b.id === current.id) ?? (await summary(current))),
           requiresConsent: current.replacementConsent === 'PENDING' && !!current.proposedListingId,
         };
       }
       return {
         counts: {
           checkout: resumable.length,
+          completed: bookings.filter((b) => b.status === 'COMPLETED').length,
           closed: bookings.filter((b) => ['CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status))
             .length,
           active: bookings.filter(
@@ -235,6 +272,7 @@ export class ExperienceService {
         },
         resumeCheckout: resumable[0],
         reviewBookingId: actionable[0]?.id,
+        reviewBookingIds: actionable.map((b) => b.id),
         focus,
         recent,
         now: this.now(),
@@ -494,7 +532,7 @@ export class ExperienceService {
         offeringId: o.id,
         nominationType: b.quote.nominationType,
         bookingMode: 'SCHEDULED',
-        ...(inStore ? { fulfillmentMode: 'IN_STORE' as const } : {}),
+        fulfillmentMode: fulfillmentMode(b.quote),
         area,
         language: b.quote.requiredLanguage,
         priceChanged:

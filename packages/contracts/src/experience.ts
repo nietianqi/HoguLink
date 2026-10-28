@@ -6,6 +6,7 @@ import type {
   PublicStore,
   SafetyEvent,
   BookingStatus,
+  FulfillmentMode,
 } from './index.js';
 export type CustomerOverview = {
   counts: {
@@ -15,9 +16,12 @@ export type CustomerOverview = {
     support: number;
     favorites: number;
     closed: number;
+    completed: number;
   };
   resumeCheckout?: { holdId: string; expiresAt: number; total: number };
   reviewBookingId?: string;
+  /** All owned visits for which the customer can still submit or revise a review. */
+  reviewBookingIds: string[];
   focus?: CustomerOverview['recent'][number] & { requiresConsent: boolean };
   recent: {
     id: string;
@@ -25,6 +29,13 @@ export type CustomerOverview = {
     startAt: number;
     total: number;
     serviceName: Localized;
+    endAt: number;
+    fulfillmentMode: FulfillmentMode;
+    storeName: Localized;
+    therapistName: Localized;
+    therapistPhoto?: string;
+    /** Area only: private visit addresses and contact information stay on the order. */
+    area: string;
   }[];
   now: number;
 };

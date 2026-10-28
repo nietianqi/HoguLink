@@ -356,6 +356,7 @@ test('rebooking resolves the current shop service and never reuses a time, payme
       await tx.put('offerings', { ...o!, price: o!.price + 1000, version: o!.version + 1 });
     });
     const next = await e.experience.rebook(customer, b.id);
+    assert.equal(next.fulfillmentMode, 'HOME_VISIT');
     assert.equal(next.priceChanged, true);
     assert.equal(next.offeringId, b.quote.offeringId);
     assert.equal(next.listingSlug, 'aoi-tokyo');

@@ -17,9 +17,14 @@ export default async function Page({
   searchParams: Promise<{ status?: string }>;
 }) {
   const q = await searchParams;
-  const filter: BookingFilter = ['all', 'active', 'completed', 'attention', 'closed'].includes(
-    q.status ?? '',
-  )
+  const filter: BookingFilter = [
+    'all',
+    'active',
+    'review',
+    'completed',
+    'attention',
+    'closed',
+  ].includes(q.status ?? '')
     ? (q.status as BookingFilter)
     : 'all';
   const l = asLocale((await params).locale);

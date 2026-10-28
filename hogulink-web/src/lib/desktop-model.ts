@@ -50,7 +50,7 @@ export function needsAttention(b: Booking, role: Role): boolean {
     ['DECLINED', 'WITHDRAWN', 'EXPIRED'].includes(b.staffTaskStatus)
   );
 }
-export type BookingFilter = 'all' | 'attention' | 'active' | 'completed' | 'closed';
+export type BookingFilter = 'all' | 'attention' | 'active' | 'review' | 'completed' | 'closed';
 export function filterBookings(
   bookings: Booking[],
   options: {
@@ -59,6 +59,7 @@ export function filterBookings(
     search: string;
     period: string;
     now?: number;
+    reviewBookingIds?: readonly string[];
     describe: (b: Booking) => string;
   },
 ) {
@@ -70,6 +71,13 @@ export function filterBookings(
       if (options.status === 'attention' && !needsAttention(b, options.role)) return false;
       if (options.status === 'active' && (closed || b.status === 'COMPLETED')) return false;
       if (options.status === 'completed' && b.status !== 'COMPLETED') return false;
+      if (
+        options.status === 'review' &&
+        (options.role !== 'CUSTOMER' ||
+          b.status !== 'COMPLETED' ||
+          !options.reviewBookingIds?.includes(b.id))
+      )
+        return false;
       if (options.status === 'closed' && !closed) return false;
       if (options.period === 'today' && japanDay(b.quote.startAt) !== japanDay(now)) return false;
       if (

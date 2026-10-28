@@ -22,6 +22,78 @@ const text = {
     'Use 12–128 characters.',
     '请设置 12–128 位密码。',
   ],
+  nameRequired: ['お名前を入力してください。', 'Enter your name.', '请填写姓名。'],
+  nameLong: [
+    'お名前は80文字以内で入力してください。',
+    'Use no more than 80 characters for your name.',
+    '姓名不能超过 80 个字符。',
+  ],
+  emailRequired: [
+    'メールアドレスを入力してください。',
+    'Enter your email address.',
+    '请填写邮箱地址。',
+  ],
+  emailInvalid: [
+    '有効なメールアドレスを入力してください。',
+    'Enter a valid email address, such as name@example.com.',
+    '邮箱格式不正确，请填写完整地址，例如 name@example.com。',
+  ],
+  passwordRequired: ['パスワードを入力してください。', 'Enter your password.', '请填写密码。'],
+  passwordShort: [
+    'パスワードは12文字以上で設定してください。',
+    'Use at least 12 characters for your password.',
+    '密码至少需要 12 个字符，请增加长度。',
+  ],
+  passwordLong: [
+    'パスワードは128文字以内で設定してください。',
+    'Use no more than 128 characters for your password.',
+    '密码不能超过 128 个字符。',
+  ],
+  termsRequired: [
+    '利用規約とプライバシーの説明を確認し、同意してください。',
+    'Read and agree to the terms and privacy notice to continue.',
+    '请阅读并勾选同意服务条款和隐私说明。',
+  ],
+  checkFields: [
+    '表示された入力項目を確認してください。',
+    'Check the highlighted fields below.',
+    '请修改下方标红的内容。',
+  ],
+  networkError: [
+    '接続できませんでした。通信環境を確認して再試行してください。入力内容は保持されています。',
+    'Could not connect. Check your internet connection and try again. Your entries are still here.',
+    '网络连接中断，请检查网络后重试。已填写的内容会保留。',
+  ],
+  registerError: [
+    '登録を完了できませんでした。入力内容は保持されています。少し待って再試行してください。',
+    'Registration could not be completed. Your entries are still here; please try again shortly.',
+    '暂时无法完成注册，请稍后重试。已填写的内容会保留。',
+  ],
+  loginError: [
+    'ログインできませんでした。少し待って再試行してください。',
+    'Could not sign you in. Please try again shortly.',
+    '暂时无法登录，请稍后重试。',
+  ],
+  emailError: [
+    'メールのリクエストを受け付けられませんでした。少し待って再試行してください。',
+    'Could not request the email. Please try again shortly.',
+    '暂时无法申请验证或找回密码邮件，请稍后重试。',
+  ],
+  originError: [
+    'このアドレスからは送信できません。ページを更新し、それでも続く場合は正式なHoguLinkのアドレスから開き直してください。',
+    'This page address cannot submit. Refresh the page; if it keeps happening, reopen HoguLink from its official address.',
+    '当前网址无法提交。请刷新页面；如果仍然失败，请从 HoguLink 的正式网址重新打开。',
+  ],
+  serviceError: [
+    'サービスに一時的に接続できません。少し待って再試行してください。入力内容は保持されています。',
+    'The service is temporarily unreachable. Please try again shortly. Your entries are still here.',
+    '服务暂时连接不上，请稍后重试。已填写的内容会保留。',
+  ],
+  refreshError: [
+    'ページを更新して、もう一度お試しください。',
+    'Refresh this page and try again.',
+    '页面状态已失效，请刷新后重试。',
+  ],
   forgot: ['パスワードをお忘れですか', 'Forgot your password?', '忘记密码'],
   reset: ['パスワードの再設定', 'Reset password', '重设密码'],
   verify: ['メールアドレスを確認', 'Verify email', '确认邮箱'],
@@ -32,10 +104,20 @@ const text = {
     'If the account is eligible, an email will be sent. Please check your inbox.',
     '如果邮箱符合条件，我们会发送邮件，请查看收件箱。',
   ],
+  resetSent: [
+    'このメールアドレスで登録されている場合、再設定リンクが届きます。迷惑メールフォルダもご確認ください。',
+    'If this email is registered, a password reset link will arrive. Check your spam folder too.',
+    '如果该邮箱已注册，你会收到密码重设链接。请同时查看收件箱和垃圾邮件。',
+  ],
+  verificationSent: [
+    '確認メールをリクエストしました。メール内のリンクを開いてください。迷惑メールフォルダもご確認ください。',
+    'Verification email requested. Open the link in your inbox and check your spam folder too.',
+    '验证邮件申请已提交。请到邮箱点击验证链接，并检查垃圾邮件文件夹。',
+  ],
   registered: [
     '登録手続きを受け付けました。メール内の確認リンクから認証後にログインしてください。すでに登録済みの場合はログインまたは再設定をご利用ください。',
     'Request received. Verify your email using the link before signing in. If you already have an account, sign in or reset your password.',
-    '注册请求已受理，请通过邮件中的链接验证邮箱后登录。如已注册，请直接登录或找回密码。',
+    '请到邮箱查收验证邮件，点击链接后即可登录。链接 30 分钟内有效；已注册的邮箱可直接登录或找回密码。',
   ],
   verified: [
     '確認が完了しました。ログインしてください。',
@@ -71,7 +153,7 @@ const text = {
   error: [
     '手続きを完了できませんでした。入力内容を確認して再試行してください。',
     'We could not complete this request. Check your details and try again.',
-    '未能完成操作，请核对输入后重试。',
+    '暂时无法完成操作，请稍后重试。已填写的内容会保留。',
   ],
   credentials: [
     'メールアドレスまたはパスワードが正しくありません。',
@@ -89,6 +171,7 @@ const text = {
     '操作过于频繁，请稍后重试。',
   ],
 } as const;
+export type CustomerAuthText = keyof typeof text;
 export function ca(l: Locale, k: keyof typeof text) {
   return text[k][l === 'ja' ? 0 : l === 'en' ? 1 : 2];
 }

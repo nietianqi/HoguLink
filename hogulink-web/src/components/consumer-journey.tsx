@@ -2,7 +2,6 @@
 import { sv } from '@/lib/service-mode-i18n';
 import { ModePrices } from './service-mode';
 import { choiceModePrices } from '@/lib/consumer-model';
-import { CustomerSignIn } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
@@ -12,33 +11,18 @@ import {
   Heart,
   History,
   Store,
-  Clock3,
-  ShieldCheck,
-  UserRound,
-  ReceiptText,
-  MessageCircle,
-  Star,
-  LogOut,
   RefreshCw,
   Leaf,
   MapPin,
-  XCircle,
   TicketPercent,
-  Settings,
 } from 'lucide-react';
-import {
-  H5AccountProfile,
-  H5AccountFeatures,
-  H5AccountUtilities,
-  H5OrderPrompt,
-} from './h5-consumer';
 import { ht } from '@/lib/h5-i18n';
-import type { Actor, CustomerOverview, Locale } from '@hogulink/contracts';
+import type { Locale } from '@hogulink/contracts';
 import { api, type Catalog } from '@/lib/api';
-import { areaName, areas, dateTime, languageNames, money, statusText, t } from '@/lib/i18n';
-import { ut, type ConsumerText } from '@/lib/consumer-i18n';
+import { areaName, areas, dateTime, languageNames, money, t } from '@/lib/i18n';
+import { ut } from '@/lib/consumer-i18n';
 import { xt } from '@/lib/discovery-i18n';
-import { af } from '@/lib/customer-flow-i18n';
+
 import { qt, qualityError } from '@/lib/quality-i18n';
 import {
   historyKey,
@@ -51,8 +35,7 @@ import { useSession } from './booking-form';
 import { H5Badges, H5Price } from './h5-business';
 import { MobileSheet } from './mobile-ui';
 import { PriceLines } from './catalog';
-import { WorkdayTools } from './workday-tools';
-import { wt } from '@/lib/workday-i18n';
+
 import { instantServiceMembers } from '@/lib/service-availability';
 
 const durationWords = { 60: 'short', 90: 'medium', 120: 'long' } as const;
@@ -571,326 +554,4 @@ export function DeviceHistory({ locale: l, catalog }: { locale: Locale; catalog:
     </main>
   );
 }
-export function CustomerHub({ locale: l }: { locale: Locale }) {
-  const { actor, setActor, loading } = useSession(),
-    [overview, setOverview] = useState<CustomerOverview>(),
-    [demo, setDemo] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    generation = useRef(0);
-  const load = useCallback(async () => {
-    const id = ++generation.current;
-    if (actor?.role !== 'CUSTOMER') {
-      setOverview(undefined);
-      return;
-    }
-    try {
-      const data = await api<CustomerOverview>('customer/overview');
-      if (id === generation.current) {
-        setOverview(data);
-        setError('');
-      }
-    } catch (e) {
-      if (id === generation.current) setError(qualityError(l, e));
-    }
-  }, [actor, l]);
-  useEffect(() => {
-    void load();
-    return () => {
-      generation.current++;
-    };
-  }, [load]);
-  useEffect(() => {
-    if (actor?.role !== 'CUSTOMER') return;
-    const visible = () => {
-      if (document.visibilityState === 'visible') void load();
-    };
-    window.addEventListener('focus', visible);
-    document.addEventListener('visibilitychange', visible);
-    return () => {
-      window.removeEventListener('focus', visible);
-      document.removeEventListener('visibilitychange', visible);
-    };
-  }, [actor, load]);
-  useEffect(() => {
-    if (!overview?.resumeCheckout) return;
-    const timer = setTimeout(
-      () => void load(),
-      Math.max(1, overview.resumeCheckout.expiresAt - overview.now + 100),
-    );
-    return () => clearTimeout(timer);
-  }, [overview, load]);
-  useEffect(() => {
-    api<Catalog>('public/staff-listings')
-      .then((c) => setDemo(c.demo))
-      .catch(() => {});
-  }, []);
-  const signed = actor?.role === 'CUSTOMER';
-  const links = {
-    checkout: overview?.resumeCheckout
-      ? `/${l}/checkout/${overview.resumeCheckout.holdId}`
-      : `/${l}/services`,
-    active: `/${l}/account/bookings?status=active`,
-    review: overview?.reviewBookingId
-      ? `/${l}/account/bookings/${overview.reviewBookingId}`
-      : `/${l}/account/bookings?status=completed`,
-    support: `/${l}/account/support`,
-    closed: `/${l}/account/bookings?status=closed`,
-  };
-  return (
-    <main
-      id="main"
-      className="wrap consumer-page consumer-account workday-customer h5-surface"
-      aria-busy={loading || (signed && !overview && !error)}
-    >
-      <H5AccountProfile locale={l} actor={actor} loading={loading} />
-      <H5AccountFeatures locale={l} />
-      <section className="consumer-account-hero">
-        <div className="consumer-avatar">
-          <UserRound size={30} strokeWidth={1.4} />
-        </div>
-        <div>
-          <span className="quality-eyebrow">HOGULINK / MY SPACE</span>
-          <h1>{signed ? ut(l, 'accountTitle') : ut(l, 'guest')}</h1>
-          <p>{ut(l, 'accountHelp')}</p>
-        </div>
-        <div className="customer-account-actions">
-          <Link className="quality-button" href={`/${l}/account/support`}>
-            <ShieldCheck size={17} />
-            {ht(l, 'support')}
-          </Link>
-          <Link className="quality-button" href={`/${l}/account/settings`}>
-            <Settings size={17} />
-            {ht(l, 'settings')}
-          </Link>
-          {signed && (
-            <button
-              className="quality-button consumer-refresh"
-              aria-label={ut(l, 'refresh')}
-              onClick={() => void load()}
-            >
-              <RefreshCw size={17} />
-            </button>
-          )}
-        </div>
-      </section>
-      {signed && overview?.focus && (
-        <section className="workday-customer-focus" aria-label={wt(l, 'currentVisit')}>
-          <div className="workday-focus-heading">
-            <span>{wt(l, 'currentVisit')}</span>
-            <span className={`status-badge status-${overview.focus.status.toLowerCase()}`}>
-              {overview.focus.requiresConsent
-                ? wt(l, 'consentPending')
-                : statusText(l, overview.focus.status)}
-            </span>
-          </div>
-          <h2>{overview.focus.serviceName[l]}</h2>
-          <p>
-            {dateTime(l, overview.focus.startAt)} · JST{' '}
-            <strong>{money(l, overview.focus.total)}</strong>
-          </p>
-          {overview.focus.requiresConsent && <p>{wt(l, 'consentHelp')}</p>}
-          <Link className="button" href={`/${l}/account/bookings/${overview.focus.id}`}>
-            {wt(
-              l,
-              overview.focus.requiresConsent
-                ? 'consent'
-                : overview.focus.status === 'AWAITING_COMPLETION'
-                  ? 'completionPending'
-                  : 'track',
-            )}
-            <ArrowRight size={18} />
-          </Link>
-        </section>
-      )}
-      {signed && (
-        <WorkdayTools
-          locale={l}
-          items={[
-            {
-              href: `/${l}/account/bookings`,
-              label: ut(l, 'orderSection'),
-              icon: CalendarDays,
-              count: overview?.counts.active,
-            },
-            { href: `/${l}/account/addresses`, label: af(l, 'addresses'), icon: MapPin },
-            { href: `/${l}/account/messages`, label: xt(l, 'inbox'), icon: MessageCircle },
-            {
-              href: `/${l}/account/support`,
-              label: ut(l, 'support'),
-              icon: ShieldCheck,
-              count: overview?.counts.support,
-            },
-          ]}
-        />
-      )}
-      {!loading && !signed && (
-        <section className="consumer-signin quality-card">
-          <h2>{ut(l, 'pendingLogin')}</h2>
-          {actor && <p>{ut(l, 'otherRole')}</p>}
-          <CustomerSignIn locale={l} className="quality-primary" />
-          {actor && (
-            <Link className="quality-link" href={`/${l}/${actor.role.toLowerCase()}`}>
-              {qt(l, 'back')}
-            </Link>
-          )}
-        </section>
-      )}
-      {error && (
-        <p className="quality-error" role="alert">
-          {error}
-        </p>
-      )}
-      <section className="consumer-orders">
-        <div className="consumer-section-head">
-          <h2>{ut(l, 'orderSection')}</h2>
-          <Link href={`/${l}/account/bookings`}>
-            {ut(l, 'allOrders')}
-            <ArrowUpRight size={15} />
-          </Link>
-        </div>
-        <div className="consumer-order-shortcuts">
-          {(
-            [
-              [ReceiptText, 'checkout'],
-              [CalendarDays, 'active'],
-              [Star, 'review'],
-              [XCircle, 'closed'],
-            ] as const
-          ).map(([Icon, key]) => (
-            <Link
-              key={key}
-              href={links[key]}
-              title={key === 'closed' ? ht(l, 'closedHelp') : undefined}
-            >
-              <span>
-                <Icon size={24} strokeWidth={1.6} />
-                {signed && overview && overview.counts[key] > 0 && (
-                  <b>{overview.counts[key] > 99 ? '99+' : overview.counts[key]}</b>
-                )}
-              </span>
-              <strong>{key === 'closed' ? ht(l, 'closed') : ut(l, key)}</strong>
-            </Link>
-          ))}
-        </div>
-        {overview?.resumeCheckout && (
-          <Link className="consumer-resume" href={links.checkout}>
-            <Clock3 size={21} />
-            <span>
-              <strong>
-                {ut(l, 'resume')} · {money(l, overview.resumeCheckout.total)}
-              </strong>
-              <small>
-                {ut(l, 'expires')} {dateTime(l, overview.resumeCheckout.expiresAt)}
-              </small>
-              <small>{ut(l, 'holdHelp')}</small>
-            </span>
-            <ArrowRight size={18} />
-          </Link>
-        )}
-        {signed && overview && !overview.recent.length && (
-          <Link className="consumer-start h5-desktop-start" href={`/${l}/services`}>
-            <Leaf size={22} />
-            <span>{ut(l, 'start')}</span>
-            <ArrowRight size={18} />
-          </Link>
-        )}
-        {!overview?.resumeCheckout &&
-          !overview?.focus &&
-          ((!loading && !signed) || overview?.counts.active === 0) && (
-            <H5OrderPrompt locale={l} signed={signed} />
-          )}
-      </section>
-      {overview && overview.recent.length > 0 && (
-        <section className="consumer-recent">
-          <h2>{ut(l, 'recent')}</h2>
-          {overview.recent.map((b) => (
-            <Link
-              className="consumer-recent-order"
-              key={b.id}
-              href={`/${l}/account/bookings/${b.id}`}
-            >
-              <span>
-                <small>{statusText(l, b.status)}</small>
-                <strong>{b.serviceName[l]}</strong>
-                <time>{dateTime(l, b.startAt)}</time>
-              </span>
-              <span>
-                <strong>{money(l, b.total)}</strong>
-                <ArrowUpRight size={17} />
-              </span>
-            </Link>
-          ))}
-        </section>
-      )}
-      <H5AccountUtilities locale={l} />
-      <section className="consumer-utilities">
-        <h2>{ut(l, 'utilities')}</h2>
-        <div>
-          <Link href={`/${l}/account/addresses`}>
-            <MapPin size={21} />
-            <span>{af(l, 'addresses')}</span>
-            <ArrowUpRight size={15} />
-          </Link>
-          <Link href={`/${l}/account/messages`}>
-            <MessageCircle size={21} />
-            <span>{xt(l, 'inbox')}</span>
-            <ArrowUpRight size={15} />
-          </Link>
-          <Link href={`/${l}/account/favorites?type=shops`}>
-            <Store size={21} />
-            <span>{xt(l, 'shopFavorites')}</span>
-            <ArrowUpRight size={15} />
-          </Link>
-          {(
-            [
-              [Heart, 'favorites', 'account/favorites'],
-              [History, 'history', 'account/history'],
-              [ShieldCheck, 'safety', 'guides/booking-and-safety'],
-              [Store, 'partner', 'onboarding?role=MERCHANT'],
-              [MessageCircle, 'support', 'account/support'],
-              [ReceiptText, 'terms', 'guides/terms'],
-            ] as const
-          ).map(([Icon, key, path]) => (
-            <Link key={key} href={`/${l}/${path}`}>
-              <Icon size={21} />
-              <span>{ut(l, key)}</span>
-              {key === 'favorites' && overview && <small>{overview.counts.favorites}</small>}
-              <ArrowUpRight size={15} />
-            </Link>
-          ))}
-        </div>
-      </section>
-      {signed && (
-        <div className="consumer-logout">
-          <small>{ut(l, 'logoutHelp')}</small>
-          <button
-            className="quality-link"
-            disabled={busy}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await api('auth/logout', {});
-                try {
-                  localStorage.removeItem(historyKey);
-                } catch {}
-                generation.current++;
-                setActor(null);
-                setOverview(undefined);
-                window.dispatchEvent(new Event('hogulink-history-updated'));
-                window.dispatchEvent(new Event('hogulink-session-invalid'));
-              } catch (e) {
-                setError(qualityError(l, e));
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            <LogOut size={15} />
-            {ut(l, 'logout')}
-          </button>
-        </div>
-      )}
-    </main>
-  );
-}
+export { CustomerHub } from './customer-account-hub';

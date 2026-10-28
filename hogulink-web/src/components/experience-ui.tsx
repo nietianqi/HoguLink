@@ -24,6 +24,7 @@ import { useSession } from './booking-form';
 import { FavoriteKinds } from './engagement-ui';
 import { MobileSheet } from './mobile-ui';
 import { WorkspaceNav } from './workspace-nav';
+import { rebookingHref, type Rebooking } from '@/lib/account-model';
 
 export function FeedbackSummary({
   locale: l,
@@ -231,15 +232,6 @@ export function FavoriteToggle({ locale: l, listingId }: { locale: Locale; listi
     </div>
   );
 }
-type Rebooking = {
-  fulfillmentMode?: 'HOME_VISIT' | 'IN_STORE';
-  listingSlug: string;
-  offeringId: string;
-  nominationType: string;
-  bookingMode: string;
-  area: string;
-  language?: string;
-};
 export function CustomerExperiencePanel({
   locale: l,
   booking: b,
@@ -309,16 +301,7 @@ export function CustomerExperiencePanel({
             setError('');
             try {
               const r = await api<Rebooking>(`customer/bookings/${b.id}/rebook`);
-              const q = new URLSearchParams({
-                ...(r.fulfillmentMode ? { fulfillmentMode: r.fulfillmentMode } : {}),
-                offering: r.offeringId,
-                nomination: r.nominationType,
-                mode: r.bookingMode,
-                area: r.area,
-                rebook: '1',
-              });
-              if (r.language) q.set('language', r.language);
-              router.push(`/${l}/book/${r.listingSlug}?${q}`);
+              router.push(rebookingHref(l, r));
             } catch (e) {
               setError(qualityError(l, e));
             } finally {

@@ -54,6 +54,8 @@ const env = {
   API_PORT: String(port),
   APP_MODE: 'demo',
   PAYMENT_PROVIDER: 'demo',
+  EMAIL_PROVIDER: 'disabled',
+  RUN_BACKGROUND_JOBS: '0',
   NODE_ENV: 'development',
   WEB_ORIGIN: origin,
   SMOKE_CLOCK_TOKEN: randomUUID(),

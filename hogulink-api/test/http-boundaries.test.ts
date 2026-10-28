@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
 import type { Actor, Listing } from '@hogulink/contracts';
-import { ApiController } from '../src/controller.js';
+import { ApiController, webOrigins } from '../src/controller.js';
 import { Engine } from '../src/engine.js';
 import { Repository } from '../src/repository.js';
 import { seed } from '../src/seed.js';
@@ -281,4 +281,17 @@ test('FULL-HTTP authentication, permissions, validation and membership revocatio
     await app.close();
     await repo.close();
   }
+});
+
+test('a local web origin also accepts its loopback twin; public origins stay exact', () => {
+  assert.deepEqual(
+    [...webOrigins('http://localhost:3000')],
+    ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  );
+  assert.deepEqual(
+    [...webOrigins('http://127.0.0.1:3100')],
+    ['http://127.0.0.1:3100', 'http://localhost:3100'],
+  );
+  assert.deepEqual([...webOrigins('https://hogulink.example')], ['https://hogulink.example']);
+  assert.deepEqual([...webOrigins(undefined)], ['http://localhost:3000', 'http://127.0.0.1:3000']);
 });

@@ -56,6 +56,41 @@
   font-weight: 400;
   color: var(--hl-muted);
 }
+.customer-auth-card .customer-auth-error {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #edc8c1;
+  border-radius: 10px;
+  background: #fff6f3;
+  color: #983b2a;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.7;
+}
+.customer-auth-fields .customer-auth-field-error {
+  color: #a23d2d;
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.customer-auth-fields input[aria-invalid='true'] {
+  border-color: #bd4c39;
+  background: #fffaf8;
+}
+.customer-auth-fields input:focus-visible {
+  outline: 2px solid var(--hl-pine-900);
+  outline-offset: 2px;
+}
+.customer-auth-card .customer-auth-notice {
+  padding: 14px 16px;
+  margin: 0 0 20px;
+  border: 1px solid var(--hl-line);
+  border-radius: 10px;
+  background: var(--hl-tint);
+  color: var(--hl-pine-900);
+  font-size: 14px;
+  line-height: 1.8;
+}
 .customer-auth-fields .customer-auth-consent {
   display: flex;
   align-items: flex-start;

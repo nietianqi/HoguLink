@@ -191,6 +191,21 @@ try {
   assert.equal(health.headers.get('x-frame-options'), 'DENY');
   checks += 2;
   await request('auth/demo', { role: 'ADMIN' }, '', 404);
+  const invalidRegistration = await request(
+    'auth/customer/register',
+    { name: '', email: 'not-an-email', password: 'short', locale: 'zh-cn', termsAccepted: false },
+    '',
+    422,
+  );
+  assert.equal(invalidRegistration.data.error.code, 'VALIDATION_ERROR');
+  assert.deepEqual([...invalidRegistration.data.error.fields].sort(), [
+    'email',
+    'name',
+    'password',
+    'termsAccepted',
+  ]);
+  assert.equal(messages.length, 0, 'Invalid registration must not enqueue a verification email');
+  checks += 3;
   const a = 'account-a@example.test',
     b = 'account-b@example.test';
   await request('auth/customer/register', { ...input(a), role: 'ADMIN' }, '', 422);

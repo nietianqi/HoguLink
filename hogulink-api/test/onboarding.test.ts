@@ -17,7 +17,7 @@ import { DomainError } from '../src/errors.js';
 import { CONSENT_TERMS } from '../src/onboarding.js';
 import { toPublicStore } from '../src/public-catalog.js';
 import sharp from 'sharp';
-import { registerClock, finishVisit } from './helpers/visit-fixture.js';
+import { registerClock, finishVisit, nextDayNoonJst } from './helpers/visit-fixture.js';
 const root: Actor = { id: 'demo-admin', role: 'ADMIN', verificationLevel: 3 };
 const merchant: Actor = {
   id: 'demo-owner-store-nagi',
@@ -627,7 +627,7 @@ async function reservation(e: Engine, staffActor: Actor, listingId: string) {
     offeringId: 'store-nagi-60',
     bookingMode: 'SCHEDULED',
     nominationType: 'NOMINATED',
-    startAt: e.now() + 180 * 60000,
+    startAt: nextDayNoonJst(e.now()),
     area: 'shinjuku',
     requiredLanguage: '',
   });

@@ -20,6 +20,7 @@ import {
 import { xt } from '@/lib/discovery-i18n';
 import { InboxUnreadBadge } from './inbox-badge';
 import { st } from '@/lib/merchant-i18n';
+import { mo } from '@/lib/merchant-operations-i18n';
 import { ft } from '@/lib/staff-i18n';
 import { at, adminTabAllowed, type AdminTab } from '@/lib/admin-i18n';
 import type { Actor, Locale } from '@hogulink/contracts';
@@ -250,8 +251,8 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
             active: path === base && query.get('tab') === 'schedule',
           },
           {
-            href: `${base}/support`,
-            label: mt(locale, 'help'),
+            href: `${base}?tab=overview&tools=1#merchant-tools`,
+            label: mo(locale, 'more'),
             Icon: LifeBuoy,
             active: path.endsWith('/support'),
           },

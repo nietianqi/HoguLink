@@ -1,5 +1,7 @@
 'use client';
 import { VenueReviews } from './venue-settings';
+import { ServiceProposalReviews } from './merchant-services';
+import { mo } from '@/lib/merchant-operations-i18n';
 import { MediaReview } from './media-review';
 import { StorefrontReviews } from './storefront-reviews';
 import { useDemoAccess } from '@/lib/use-runtime';
@@ -12,13 +14,17 @@ import { NoShowPanel } from './no-show-panel';
 import { EmergencyLookup, SharedLocation } from './safety-help';
 import { ShopQuality, SuspensionImpactPanel } from './shop-quality';
 import { AdminTodoBoard } from './admin-todo';
+import { AdminNavigation } from './admin-navigation';
+import { AdminCustomers } from './admin-customers';
+import { AdminMetrics } from './admin-metrics';
+import { SafetyHandlingPanel } from './safety-handling-panel';
+import { sv as serviceModeLabel } from '@/lib/service-mode-i18n';
+import { ot } from '@/lib/admin-operations-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ArrowRight,
   ArrowUpRight,
-  Bell,
   BookOpen,
   Check,
   ChevronLeft,
@@ -28,7 +34,6 @@ import {
   Download,
   FileCheck2,
   History,
-  LayoutDashboard,
   Leaf,
   ListChecks,
   LockKeyhole,
@@ -38,13 +43,16 @@ import {
   ShieldAlert,
   ShieldCheck,
   Store as StoreIcon,
-  Wallet,
   X,
-  UsersRound,
-  MessageSquareWarning,
-  Star,
 } from 'lucide-react';
-import type { Actor, AdminBooking, AdminReview, Locale, SafetyEvent } from '@hogulink/contracts';
+import type {
+  Actor,
+  AdminBooking,
+  AdminReview,
+  Audit,
+  Locale,
+  SafetyEvent,
+} from '@hogulink/contracts';
 import { bookingStatuses, canAdmin, type AdminTodo } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
 import { areaName, dateTime, errorText, money, statusText, t } from '@/lib/i18n';
@@ -63,7 +71,6 @@ import {
   activeCase,
   adminTrend,
   filterAdminOrders,
-  financeTotals,
   liveListing,
   orderNeedsAttention,
   type AdminWorkspace as Workspace,
@@ -87,17 +94,6 @@ type ReviewTarget = {
   checks: { label: AdminKey; ok: boolean }[];
 };
 type ReviewDraft = { target: ReviewTarget; decision: AdminReview['decision'] };
-const icons = {
-  overview: LayoutDashboard,
-  orders: ListChecks,
-  review: FileCheck2,
-  safety: ShieldCheck,
-  finance: Wallet,
-  audit: History,
-  system: Server,
-  members: UsersRound,
-};
-
 export function AdminWorkspace({ locale: l }: { locale: Locale }) {
   const query = useSearchParams(),
     router = useRouter(),
@@ -115,10 +111,14 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
   const [todo, setTodo] = useState<AdminTodo>();
-  const [search, setSearch] = useState(''),
-    [shop, setShop] = useState(''),
+  const [searches, setSearches] = useState<Record<string, string>>({
+    orders: query.get('search') ?? '',
+  });
+  const search = searches[tab] ?? '';
+  const setSearch = (value: string) => setSearches((old) => ({ ...old, [tab]: value }));
+  const [shop, setShop] = useState(query.get('store') ?? ''),
     [status, setStatus] = useState('all'),
-    [period, setPeriod] = useState('all'),
+    [period, setPeriod] = useState(query.get('period') ?? 'all'),
     [targetType, setTargetType] = useState('all'),
     [reviewFilter, setReviewFilter] = useState('all'),
     [safetyFilter, setSafetyFilter] = useState('open'),
@@ -128,12 +128,31 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     [reason, setReason] = useState(''),
     [ack, setAck] = useState(false);
   const [historyLimit, setHistoryLimit] = useState(10);
+  const [fulfillmentMode, setFulfillmentMode] = useState(query.get('fulfillmentMode') ?? '');
+  const [dateFrom, setDateFrom] = useState(query.get('from') ?? '');
+  const [dateTo, setDateTo] = useState(query.get('to') ?? '');
+  const [orderSort, setOrderSort] = useState(query.get('sort') ?? 'newest');
   const requestedStatus = query.get('status'),
     requestedQueue = query.get('queue');
   const generation = useRef(0),
     hasRole = actor?.role === 'ADMIN';
   const href = (view: AdminTab, booking?: string) =>
-    `/${l}/admin?${new URLSearchParams({ tab: view, ...(booking ? { booking } : {}) })}`;
+    `/${l}/admin?${new URLSearchParams({
+      tab: view,
+      ...(view === 'orders'
+        ? {
+            search: searches.orders ?? '',
+            store: shop,
+            status,
+            period,
+            fulfillmentMode,
+            from: dateFrom,
+            to: dateTo,
+            sort: orderSort,
+          }
+        : {}),
+      ...(booking ? { booking } : {}),
+    })}`;
   const fail = useCallback(
     (e: unknown) => {
       const code = e instanceof ClientError ? e.code : undefined;
@@ -179,17 +198,22 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     void refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
-    }, 45000);
+    }, 15000);
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    window.addEventListener('focus', onFocus);
     return () => {
       generation.current++;
       window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
     };
   }, [refresh]);
   useEffect(() => {
-    setSearch('');
     setPage(1);
   }, [tab]);
   useEffect(() => {
+    if (tab !== 'orders') return;
     setStatus(
       requestedStatus &&
         (requestedStatus === 'attention' ||
@@ -203,16 +227,57 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
   }, [tab, requestedQueue]);
   useEffect(() => {
     setPage(1);
-  }, [search, shop, status, period, targetType, reviewFilter, safetyFilter]);
+  }, [
+    search,
+    shop,
+    status,
+    period,
+    targetType,
+    reviewFilter,
+    safetyFilter,
+    fulfillmentMode,
+    dateFrom,
+    dateTo,
+    orderSort,
+  ]);
   const requestedBooking = query.get('booking');
+  const orderFilterQuery = query.toString();
+  useEffect(() => {
+    if (tab !== 'orders') return;
+    const values = new URLSearchParams(orderFilterQuery);
+    setShop(values.get('store') ?? '');
+    setPeriod(values.get('period') ?? 'all');
+    setFulfillmentMode(values.get('fulfillmentMode') ?? '');
+    setDateFrom(values.get('from') ?? '');
+    setDateTo(values.get('to') ?? '');
+    setOrderSort(values.get('sort') ?? 'newest');
+    const value = values.get('search') ?? '';
+    setSearches((old) => (old.orders === value ? old : { ...old, orders: value }));
+  }, [tab, orderFilterQuery]);
+  const orderTrigger = useRef<HTMLAnchorElement | null>(null);
+  const focusOrder = query.get('focus');
+  const focusedOrder = useRef('');
   useEffect(() => {
     if (requestedBooking) {
-      setSearch('');
-      setStatus('all');
-      setPeriod('all');
-      setShop('');
+      focusedOrder.current = '';
+      return;
     }
-  }, [requestedBooking]);
+    if (tab !== 'orders' || !data || !focusOrder || focusedOrder.current === focusOrder) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLAnchorElement>(
+        `.admin-orders-panel a[data-order-id="${CSS.escape(focusOrder)}"]`,
+      );
+      (target ?? document.querySelector<HTMLElement>('.admin-heading h1'))?.focus();
+      focusedOrder.current = focusOrder;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [requestedBooking, focusOrder, tab, data]);
+  const orderWasOpen = useRef(false);
+  useEffect(() => {
+    if (orderWasOpen.current && !requestedBooking && tab === 'orders')
+      orderTrigger.current?.focus();
+    orderWasOpen.current = !!requestedBooking && tab === 'orders';
+  }, [requestedBooking, tab]);
   async function login(finance = false) {
     generation.current++;
     setData(undefined);
@@ -318,19 +383,26 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             : !x.visible)) &&
       `${x.name} ${x.subtitle}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const profileTarget = targets.find(
+    (target) => target.id === query.get('entity') && target.type === query.get('entityType'),
+  );
   const orders = data
     ? filterAdminOrders(data.bookings, {
         search,
         storeId: shop,
         status,
         period,
+        fulfillmentMode,
+        from: period === 'custom' ? dateFrom : '',
+        to: period === 'custom' ? dateTo : '',
+        sort: orderSort,
         describe: (b) =>
           `${shopName(b.storeId)} ${staffName(b.assignedListingId)} ${serviceName(b)}`,
       })
     : [];
   const selectedOrder = requestedBooking
     ? data?.bookings.find((b) => b.id === requestedBooking)
-    : orders[0];
+    : undefined;
   /** Tab badges use the to-do counts, so the board and the navigation always agree. */
   const tabCount = (view: AdminTab) =>
     view === 'orders'
@@ -338,7 +410,10 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
       : view === 'safety'
         ? (todo?.safetyEvents ?? 0) + (todo?.cases?.attention ?? 0)
         : view === 'review'
-          ? (todo?.onboarding ?? 0) +
+          ? (todo?.media ?? 0) +
+            (todo?.storefronts ?? 0) +
+            (todo?.services ?? 0) +
+            (todo?.onboarding ?? 0) +
             (todo?.venues ?? 0) +
             (todo?.aftercare ?? 0) +
             needReview.length
@@ -352,8 +427,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     openCases.filter(
       (c) => c.priority === 'HIGH' || c.status === 'PLATFORM_ESCALATED' || c.dueAt < Date.now(),
     ).length;
-  const finance = financeTotals(data?.bookings ?? [], data?.feeEntries ?? []),
-    trend = adminTrend(data?.bookings ?? []),
+  const trend = adminTrend(data?.bookings ?? []),
     peak = Math.max(1, ...trend.map((d) => d.count));
   const safetyCases = (data?.cases ?? []).filter(
     (c) =>
@@ -372,19 +446,25 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
       `${s.type} ${s.bookingId}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
   const auditRows = (data?.audit ?? []).filter((a) =>
-    `${a.action} ${a.bookingId ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()),
+    `${a.action} ${auditLabel(l, a.action)} ${a.bookingId ?? ''}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase()),
   );
   const feeRows = (data?.feeEntries ?? []).filter((f) => !shop || f.storeId === shop);
-  const operator = (id: string): AdminKey =>
-    id === 'system'
-      ? 'automation'
-      : id.includes('admin')
-        ? 'platform'
-        : id.includes('owner')
-          ? 'merchant'
-          : id.includes('staff')
-            ? 'staff'
-            : 'customer';
+  const operator = (entry: Audit) => {
+    const role = entry.actorRole;
+    return role === 'SYSTEM'
+      ? at(l, 'automation')
+      : role === 'ADMIN'
+        ? at(l, 'platform')
+        : role === 'MERCHANT'
+          ? at(l, 'merchant')
+          : role === 'STAFF'
+            ? at(l, 'staff')
+            : role === 'CUSTOMER'
+              ? at(l, 'customer')
+              : ot(l, 'unknownActor');
+  };
   function openReview(target: ReviewTarget, decision: AdminReview['decision']) {
     setReview({ target, decision });
     setReason('');
@@ -418,16 +498,30 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     else if (tab === 'audit')
       exportCsv('audit', [
         [at(l, 'time'), at(l, 'action'), at(l, 'reference')],
-        ...auditRows.map((a) => [dateTime(l, a.at), a.action, a.bookingId?.slice(-8) ?? '']),
+        ...auditRows.map((a) => [
+          dateTime(l, a.at),
+          auditLabel(l, a.action),
+          a.bookingId?.slice(-8) ?? '',
+        ]),
       ]);
     else
       exportCsv('orders', [
-        [at(l, 'reference'), at(l, 'shop'), at(l, 'status'), at(l, 'visit'), 'JPY'],
+        [
+          at(l, 'reference'),
+          at(l, 'shop'),
+          at(l, 'status'),
+          at(l, 'visit'),
+          ot(l, 'created'),
+          ot(l, 'allModes'),
+          'JPY',
+        ],
         ...orders.map((b) => [
           b.id.slice(-8),
           shopName(b.storeId),
           statusText(l, b.status),
           dateTime(l, b.quote.startAt),
+          dateTime(l, b.createdAt),
+          serviceModeLabel(l, b.quote.fulfillmentMode ?? 'HOME_VISIT'),
           b.quote.total,
         ]),
       ]);
@@ -515,6 +609,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
               <th>{at(l, 'reference')}</th>
               <th>{at(l, 'service')}</th>
               <th>{at(l, 'visit')}</th>
+              {!compact && <th>{ot(l, 'created')}</th>}
               <th>{at(l, 'status')}</th>
               {!compact && <th>{at(l, 'amount')}</th>}
               <th>
@@ -529,13 +624,24 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                 className={selectedOrder?.id === b.id && tab === 'orders' ? 'selected' : ''}
               >
                 <td>
-                  <Link className="admin-order-reference" href={href('orders', b.id)}>
+                  <Link
+                    className="admin-order-reference"
+                    data-order-id={b.id}
+                    href={href('orders', b.id)}
+                    onClick={(e) => {
+                      orderTrigger.current = e.currentTarget;
+                    }}
+                    scroll={false}
+                  >
                     {b.id.slice(-8).toUpperCase()}
                   </Link>
                   <small>{shopName(b.storeId)}</small>
                 </td>
                 <td>
                   <strong>{serviceName(b)}</strong>
+                  <small className="admin-service-mode">
+                    {serviceModeLabel(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')}
+                  </small>
                   <small>
                     {staffName(b.assignedListingId)} ·{' '}
                     {Math.round((b.quote.endAt - b.quote.startAt) / 60000)} {at(l, 'minutes')}
@@ -545,6 +651,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                   {dateTime(l, b.quote.startAt)}
                   <small>JST</small>
                 </td>
+                {!compact && <td>{dateTime(l, b.createdAt)}</td>}
                 <td>
                   <span className={`admin-pill ${orderNeedsAttention(b) ? 'warning' : ''}`}>
                     {statusText(l, b.status)}
@@ -556,6 +663,10 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                   <Link
                     className="admin-icon"
                     href={href('orders', b.id)}
+                    onClick={(e) => {
+                      orderTrigger.current = e.currentTarget;
+                    }}
+                    scroll={false}
                     aria-label={`${at(l, 'view')} ${b.id.slice(-8)}`}
                   >
                     <ArrowUpRight size={17} />
@@ -573,9 +684,40 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
       </div>
     );
   }
-  function reviewDetail() {
-    if (!review) return null;
-    const target = review.target;
+  const reviewSections = [
+    'qualification',
+    'venues',
+    'media',
+    'storefront',
+    'services',
+    'directory',
+    'quality',
+    'aftercare',
+    'history',
+  ] as const;
+  const reviewCounts = {
+    qualification: todo?.onboarding ?? 0,
+    venues: todo?.venues ?? 0,
+    media: todo?.media ?? 0,
+    storefront: todo?.storefronts ?? 0,
+    services: todo?.services ?? 0,
+    directory: 0,
+    quality: 0,
+    aftercare: todo?.aftercare ?? 0,
+    history: 0,
+  };
+  const requestedSection = query.get('section');
+  const availableSections = reviewSections.filter(
+    (key) =>
+      canAdmin(actor, 'supply.write') ||
+      !['qualification', 'venues', 'media', 'storefront', 'services'].includes(key),
+  );
+  const reviewSection =
+    availableSections.find((key) => key === requestedSection) ??
+    availableSections.find((key) => reviewCounts[key] > 0) ??
+    (canAdmin(actor, 'supply.write') ? 'qualification' : 'directory');
+  function reviewDetail(target: ReviewTarget | undefined = review?.target) {
+    if (!target) return null;
     const store = data?.stores.find((s) => s.id === target.storeId),
       listing =
         target.type === 'LISTING' ? data?.listings.find((s) => s.id === target.id) : undefined,
@@ -629,7 +771,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           )}
           {target.checks.map((c) => (
             <div key={c.label}>
-              <dt>{at(l, c.label)}</dt>
+              <dt>{c.label === 'routing' ? ot(l, 'routing') : at(l, c.label)}</dt>
               <dd>
                 {c.ok ? <Check size={15} /> : <X size={15} />}{' '}
                 {at(l, c.ok ? 'complete' : 'missing')}
@@ -642,93 +784,38 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
   }
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
-        <Link className="admin-wordmark" href={href('overview')}>
-          <span>
-            <Leaf size={24} />
-          </span>
-          <strong>
-            HoguLink<small>PLATFORM CONSOLE</small>
-          </strong>
-        </Link>
-        <div className="admin-space-label">
-          <ShieldCheck size={16} />
-          {at(l, 'portal')}
-          <span>DEMO</span>
-        </div>
-        <nav aria-label={at(l, 'portal')}>
-          {visibleTabs.map((view) => {
-            const Icon = icons[view],
-              count = tabCount(view);
-            return (
-              <Link key={view} href={href(view)} aria-current={view === tab ? 'page' : undefined}>
-                <Icon size={18} />
-                {at(l, view)}
-                {count > 0 && <b>{count}</b>}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="admin-sidebar-bottom">
-          <small>{at(l, 'moreWork')}</small>
-          {canAdmin(actor, 'cases.read') && (
-            <Link href={`/${l}/admin/support`}>
-              <CircleHelp size={18} />
-              {at(l, 'support')}
-              {!!todo?.cases?.attention && <b>{todo.cases.attention}</b>}
-              <ArrowUpRight size={15} />
-            </Link>
-          )}
-          {canAdmin(actor, 'supply.write') && (
-            <Link href={`/${l}/admin/quality`}>
-              <Star size={18} />
-              {at(l, 'experienceNav')}
-              {!!todo?.experience && <b>{todo.experience}</b>}
-              <ArrowUpRight size={15} />
-            </Link>
-          )}
-          {canAdmin(actor, 'safety.write') && (
-            <Link href={`/${l}/admin/safety-review`}>
-              <MessageSquareWarning size={18} />
-              {at(l, 'contentNav')}
-              {!!todo?.contentReviews && <b>{todo.contentReviews}</b>}
-              <ArrowUpRight size={15} />
-            </Link>
-          )}
-          <p>
-            <LockKeyhole size={14} />
-            {at(l, 'demo')}
-          </p>
-          <Link href={`/${l}`}>
-            {t(l, 'explore')}
-            <ArrowUpRight size={15} />
-          </Link>
-        </div>
-      </aside>
+      <AdminNavigation
+        locale={l}
+        active={tab}
+        counts={Object.fromEntries(visibleTabs.map((view) => [view, tabCount(view)]))}
+        hrefs={Object.fromEntries(visibleTabs.map((view) => [view, href(view)]))}
+      />
       <div className="admin-content">
         <header className="admin-heading">
           <div>
             <span className="eyebrow">HOGULINK / OPERATIONS</span>
-            <h1>{at(l, tab === 'overview' ? 'title' : tab)}</h1>
+            <h1 tabIndex={-1}>{at(l, tab === 'overview' ? 'title' : tab)}</h1>
             <p>
-              {tab === 'members'
-                ? et(l, 'intro')
-                : at(
-                    l,
-                    tab === 'overview'
-                      ? 'intro'
-                      : tab === 'review'
-                        ? 'supplyHelp'
-                        : tab === 'safety'
-                          ? 'safetyHelp'
-                          : tab === 'finance'
-                            ? 'financeHelp'
-                            : tab === 'audit'
-                              ? 'auditHelp'
-                              : tab === 'system'
-                                ? 'systemHelp'
-                                : 'refundBoundary',
-                  )}
+              {tab === 'customers'
+                ? ot(l, 'customerHelp')
+                : tab === 'members'
+                  ? et(l, 'intro')
+                  : at(
+                      l,
+                      tab === 'overview'
+                        ? 'intro'
+                        : tab === 'review'
+                          ? 'supplyHelp'
+                          : tab === 'safety'
+                            ? 'safetyHelp'
+                            : tab === 'finance'
+                              ? 'financeHelp'
+                              : tab === 'audit'
+                                ? 'auditHelp'
+                                : tab === 'system'
+                                  ? 'systemHelp'
+                                  : 'refundBoundary',
+                    )}
             </p>
           </div>
           <div className="admin-heading-tools">
@@ -752,14 +839,6 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             </Link>
           </div>
         </header>
-        <div className="admin-mobile-tabs" role="navigation" aria-label={at(l, 'portal')}>
-          {visibleTabs.map((view) => (
-            <Link key={view} href={href(view)} aria-current={view === tab ? 'page' : undefined}>
-              {at(l, view)}
-              {tabCount(view) > 0 && <b>{tabCount(view)}</b>}
-            </Link>
-          ))}
-        </div>
         <details className="admin-account" open={!hasRole}>
           <summary>
             <ShieldCheck size={14} />
@@ -839,51 +918,53 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           <>
             {tab === 'overview' && (
               <>
-                <AdminTodoBoard
-                  locale={l}
-                  todo={todo}
-                  links={{
-                    safety: href('safety'),
-                    orders: href('orders'),
-                    cases: `/${l}/admin/support`,
-                    review: href('review'),
-                    quality: `/${l}/admin/quality`,
-                    content: `/${l}/admin/safety-review`,
-                    finance: href('finance'),
-                  }}
-                />
                 {canAdmin(actor, 'cases.read') && urgentCount > 0 && (
-                  <section className="admin-panel admin-priority">
+                  <section className="admin-panel admin-priority" aria-live="polite">
                     <div className="admin-panel-heading">
-                      <h2>{at(l, 'next')}</h2>
+                      <h2>{ot(l, 'priority')}</h2>
                       <Link href={href('safety')}>
                         {at(l, 'all')}
                         <ArrowUpRight size={15} />
                       </Link>
                     </div>
                     <div>
-                      {openSafety.slice(0, 2).map((s) => (
-                        <Link href={href('safety', s.bookingId)} key={s.id}>
-                          <span className="admin-priority-icon warning">
-                            <ShieldAlert size={19} />
-                          </span>
-                          <div>
-                            <strong>
-                              {s.type === 'MISSED_CHECK_IN'
-                                ? qt(l, 'MISSED_CHECK_IN')
-                                : s.type === 'SOS'
-                                  ? 'SOS'
-                                  : at(l, 'safetyEvent')}{' '}
-                              · {shopName(s.storeId)}
-                            </strong>
-                            <p>
-                              {dateTime(l, s.createdAt)} · {s.bookingId.slice(-8)}
-                            </p>
-                          </div>
-                          <span className="admin-pill warning">{at(l, 'open')}</span>
-                          <ChevronRight size={17} />
-                        </Link>
-                      ))}
+                      {openSafety
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            Number(b.type === 'SOS') - Number(a.type === 'SOS') ||
+                            Number(!!a.handling) - Number(!!b.handling) ||
+                            a.createdAt - b.createdAt,
+                        )
+                        .slice(0, 3)
+                        .map((s) => (
+                          <Link
+                            href={href('safety', s.bookingId)}
+                            key={s.id}
+                            className={s.type === 'SOS' ? 'admin-critical-event' : undefined}
+                          >
+                            <span className="admin-priority-icon warning">
+                              <ShieldAlert size={19} />
+                            </span>
+                            <div>
+                              <strong>
+                                {s.type === 'MISSED_CHECK_IN'
+                                  ? qt(l, 'MISSED_CHECK_IN')
+                                  : s.type === 'SOS'
+                                    ? 'SOS'
+                                    : at(l, 'safetyEvent')}{' '}
+                                · {shopName(s.storeId)}
+                              </strong>
+                              <p>
+                                {dateTime(l, s.createdAt)} · {s.bookingId.slice(-8)}
+                              </p>
+                            </div>
+                            <span className="admin-pill warning">
+                              {s.handling?.ownerName ?? ot(l, 'unassigned')}
+                            </span>
+                            <ChevronRight size={17} />
+                          </Link>
+                        ))}
                       {openCases
                         .filter(
                           (c) =>
@@ -922,38 +1003,20 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                     </div>
                   </section>
                 )}
-                <h2 className="admin-section-title">{at(l, 'metricsTitle')}</h2>
-                <div className="admin-stat-grid">
-                  <div>
-                    <span>{at(l, 'allOrders')}</span>
-                    <strong>{data.bookings.length}</strong>
-                    <small>{at(l, 'allTime')}</small>
-                    <ListChecks size={20} />
-                  </div>
-                  <div>
-                    <span>{at(l, 'completedOrders')}</span>
-                    <strong>{data.bookings.filter((b) => b.status === 'COMPLETED').length}</strong>
-                    <small>{at(l, 'allTime')}</small>
-                    <Check size={20} />
-                  </div>
-                  <div>
-                    <span>{at(l, 'published')}</span>
-                    <strong>
-                      {data.listings.filter((x) => liveListing(x, data.stores)).length}
-                      <small> / {data.listings.length}</small>
-                    </strong>
-                    <small>{at(l, 'approved')}</small>
-                    <ShieldCheck size={20} />
-                  </div>
-                  {canAdmin(actor, 'finance.read') && (
-                    <div>
-                      <span>{at(l, 'platformNet')}</span>
-                      <strong className="money">{money(l, finance.platform)}</strong>
-                      <small>{at(l, 'afterReversal')}</small>
-                      <Wallet size={20} />
-                    </div>
-                  )}
-                </div>
+                <AdminTodoBoard
+                  locale={l}
+                  todo={todo}
+                  links={{
+                    safety: href('safety'),
+                    orders: `${href('orders')}&section=alerts`,
+                    cases: `/${l}/admin/support`,
+                    review: href('review'),
+                    quality: `/${l}/admin/quality`,
+                    content: `/${l}/admin/safety-review`,
+                    finance: href('finance'),
+                  }}
+                />
+                <AdminMetrics locale={l} data={data} canFinance={canAdmin(actor, 'finance.read')} />
                 <div className="admin-overview-grid admin-overview-single">
                   <section className="admin-panel admin-trend">
                     <div className="admin-panel-heading">
@@ -995,12 +1058,20 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
             {tab === 'orders' && (
               <>
                 {actor && (
-                  <OrderMonitor
-                    key={`${actor.id}:${actor.adminRole}:${actor.adminSessionVersion}`}
-                    locale={l}
-                    actor={actor}
-                    storeName={shopName}
-                  />
+                  <details
+                    className="admin-monitor-disclosure"
+                    open={query.get('section') === 'alerts'}
+                  >
+                    <summary>
+                      {at(l, 'orders')} · {todo?.orderAlerts?.open ?? 0}
+                    </summary>
+                    <OrderMonitor
+                      key={`${actor.id}:${actor.adminRole}:${actor.adminSessionVersion}`}
+                      locale={l}
+                      actor={actor}
+                      storeName={shopName}
+                    />
+                  </details>
                 )}
                 <div className="admin-toolbar">
                   {searchInput()}
@@ -1029,12 +1100,57 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                       if (requestedBooking) router.replace(href('orders'), { scroll: false });
                     }}
                   >
-                    {(['all', 'today', 'upcoming'] as const).map((v) => (
+                    {(['all', 'today', 'upcoming', 'custom'] as const).map((v) => (
                       <option value={v} key={v}>
-                        {at(l, v === 'all' ? 'allDates' : v)}
+                        {v === 'custom'
+                          ? ot(l, 'customDates')
+                          : at(l, v === 'all' ? 'allDates' : v)}
                       </option>
                     ))}
                   </select>
+                  <select
+                    aria-label={ot(l, 'allModes')}
+                    value={fulfillmentMode}
+                    onChange={(e) => setFulfillmentMode(e.target.value)}
+                  >
+                    <option value="">{ot(l, 'allModes')}</option>
+                    {(['HOME_VISIT', 'IN_STORE'] as const).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {serviceModeLabel(l, mode)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label={ot(l, 'sort')}
+                    value={orderSort}
+                    onChange={(e) => setOrderSort(e.target.value)}
+                  >
+                    <option value="newest">{ot(l, 'newest')}</option>
+                    <option value="visit">{ot(l, 'visitFirst')}</option>
+                    <option value="amount">{ot(l, 'amountHigh')}</option>
+                  </select>
+                  {period === 'custom' && (
+                    <>
+                      <label>
+                        {ot(l, 'dateFrom')}
+                        <input
+                          type="date"
+                          value={dateFrom}
+                          max={dateTo || undefined}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        {ot(l, 'dateTo')}
+                        <input
+                          type="date"
+                          value={dateTo}
+                          min={dateFrom || undefined}
+                          onChange={(e) => setDateTo(e.target.value)}
+                        />
+                      </label>
+                    </>
+                  )}
                   <button className="button secondary" onClick={exportCurrent}>
                     <Download size={16} />
                     {at(l, 'export')}
@@ -1045,256 +1161,318 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                   {pager(orders.length)}
                 </section>
                 {selectedOrder && (
-                  <section className="admin-panel admin-order-detail" id="admin-order-detail">
-                    <div className="admin-panel-heading">
-                      <div>
-                        <span className="eyebrow">
-                          ORDER / {selectedOrder.id.slice(-8).toUpperCase()}
-                        </span>
-                        <h2>{at(l, 'details')}</h2>
+                  <MobileSheet
+                    open={true}
+                    onClose={() =>
+                      router.replace(`${href('orders')}&focus=${selectedOrder.id}`, {
+                        scroll: false,
+                      })
+                    }
+                    title={`${at(l, 'details')} · ${selectedOrder.id.slice(-8).toUpperCase()}`}
+                    locale={l}
+                    className="admin-order-drawer"
+                  >
+                    <section className="admin-panel admin-order-detail" id="admin-order-detail">
+                      <div className="admin-panel-heading">
+                        <div>
+                          <span className="eyebrow">
+                            ORDER / {selectedOrder.id.slice(-8).toUpperCase()}
+                          </span>
+                          <h2>{at(l, 'details')}</h2>
+                        </div>
+                        <span className="admin-pill">{statusText(l, selectedOrder.status)}</span>
                       </div>
-                      <span className="admin-pill">{statusText(l, selectedOrder.status)}</span>
-                    </div>
-                    <div className="admin-order-columns">
-                      <div>
-                        <h3>{serviceName(selectedOrder)}</h3>
-                        <p>
-                          {dateTime(l, selectedOrder.quote.startAt)} ·{' '}
-                          {areaName(l, selectedOrder.quote.area)}
-                        </p>
-                        <dl>
-                          <div>
-                            <dt>{at(l, 'contract')}</dt>
-                            <dd>{selectedOrder.legalNameSnapshot}</dd>
-                          </div>
-                          <div>
-                            <dt>{at(l, 'original')}</dt>
-                            <dd>
-                              {selectedOrder.quote.nominationType === 'FREE'
-                                ? t(l, 'free')
-                                : staffName(selectedOrder.selectedStaffListingId)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>{at(l, 'assigned')}</dt>
-                            <dd>{staffName(selectedOrder.assignedListingId)}</dd>
-                          </div>
-                          <div>
-                            <dt>{at(l, 'frozen')}</dt>
-                            <dd>{acceptanceLabel(l, selectedOrder.acceptanceMode)}</dd>
-                          </div>
-                        </dl>
-                      </div>
-                      <div className="admin-order-money">
-                        {(
-                          [
-                            ['amount', selectedOrder.quote.total],
-                            ['captured', selectedOrder.capturedAmount],
-                            ['refunded', selectedOrder.refundedAmount],
-                          ] as const
-                        ).map(([key, value]) => (
-                          <div key={key}>
-                            <span>{at(l, key)}</span>
-                            <strong>{money(l, value)}</strong>
-                          </div>
-                        ))}
-                        <p>
-                          {at(l, 'payment')} · {statusText(l, selectedOrder.paymentStatus)}
-                        </p>
-                        <NoShowPanel
-                          locale={l}
-                          booking={selectedOrder}
-                          role="ADMIN"
-                          onUpdated={refresh}
-                        />
-                        <Link
-                          className="button secondary full"
-                          href={href('safety', selectedOrder.id)}
-                        >
-                          {at(l, 'related')}
-                          <ArrowUpRight size={16} />
-                        </Link>
-                        {canAdmin(actor, 'finance.read') && (
+                      <div className="admin-order-columns">
+                        <div>
+                          <h3>{serviceName(selectedOrder)}</h3>
+                          <p className="admin-service-mode">
+                            {serviceModeLabel(
+                              l,
+                              selectedOrder.quote.fulfillmentMode ?? 'HOME_VISIT',
+                            )}
+                          </p>
+                          {selectedOrder.quote.fulfillmentMode === 'IN_STORE' &&
+                            selectedOrder.quote.venue && <p>{selectedOrder.quote.venue.address}</p>}
+                          <p>
+                            {dateTime(l, selectedOrder.quote.startAt)} ·{' '}
+                            {areaName(l, selectedOrder.quote.area)}
+                          </p>
+                          <dl>
+                            <div>
+                              <dt>{at(l, 'contract')}</dt>
+                              <dd>{selectedOrder.legalNameSnapshot}</dd>
+                            </div>
+                            <div>
+                              <dt>{at(l, 'original')}</dt>
+                              <dd>
+                                {selectedOrder.quote.nominationType === 'FREE'
+                                  ? t(l, 'free')
+                                  : staffName(selectedOrder.selectedStaffListingId)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>{at(l, 'assigned')}</dt>
+                              <dd>{staffName(selectedOrder.assignedListingId)}</dd>
+                            </div>
+                            <div>
+                              <dt>{at(l, 'frozen')}</dt>
+                              <dd>{acceptanceLabel(l, selectedOrder.acceptanceMode)}</dd>
+                            </div>
+                          </dl>
+                        </div>
+                        <div className="admin-order-money">
+                          {(
+                            [
+                              ['amount', selectedOrder.quote.total],
+                              ['captured', selectedOrder.capturedAmount],
+                              ['refunded', selectedOrder.refundedAmount],
+                            ] as const
+                          ).map(([key, value]) => (
+                            <div key={key}>
+                              <span>{at(l, key)}</span>
+                              <strong>{money(l, value)}</strong>
+                            </div>
+                          ))}
+                          <p>
+                            {at(l, 'payment')} · {statusText(l, selectedOrder.paymentStatus)}
+                          </p>
+                          <NoShowPanel
+                            locale={l}
+                            booking={selectedOrder}
+                            role="ADMIN"
+                            onUpdated={refresh}
+                          />
                           <Link
                             className="button secondary full"
-                            href={`${href('finance', selectedOrder.id)}&month=${new Date(selectedOrder.updatedAt + 9 * 3600000).toISOString().slice(0, 7)}`}
+                            href={href('safety', selectedOrder.id)}
                           >
-                            {at(l, 'finance')}
+                            {at(l, 'related')}
                             <ArrowUpRight size={16} />
                           </Link>
-                        )}
+                          {canAdmin(actor, 'finance.read') && (
+                            <Link
+                              className="button secondary full"
+                              href={`${href('finance', selectedOrder.id)}&month=${new Date(selectedOrder.updatedAt + 9 * 3600000).toISOString().slice(0, 7)}`}
+                            >
+                              {at(l, 'finance')}
+                              <ArrowUpRight size={16} />
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <p className="admin-privacy">
-                      <LockKeyhole size={15} />
-                      {at(l, 'privacy')}
-                    </p>
-                    <details className="admin-order-history">
-                      <summary>{at(l, 'timeline')}</summary>
-                      {data.audit
-                        .filter((a) => a.bookingId === selectedOrder.id)
-                        .slice(0, 10)
-                        .map((a) => (
-                          <p key={a.id}>
-                            <time>{dateTime(l, a.at)}</time>
-                            {auditLabel(l, a.action)}
-                          </p>
-                        ))}
-                    </details>
-                  </section>
+                      <p className="admin-privacy">
+                        <LockKeyhole size={15} />
+                        {at(l, 'privacy')}
+                      </p>
+                      <details className="admin-order-history" open>
+                        <summary>{at(l, 'timeline')}</summary>
+                        {data.audit
+                          .filter((a) => a.bookingId === selectedOrder.id)
+                          .slice(0, 10)
+                          .map((a) => (
+                            <p key={a.id}>
+                              <time>{dateTime(l, a.at)}</time>
+                              {auditLabel(l, a.action)}
+                            </p>
+                          ))}
+                      </details>
+                    </section>
+                  </MobileSheet>
                 )}
                 <p className="admin-footnote">{at(l, 'exportHelp')}</p>
               </>
             )}
+            {tab === 'customers' && <AdminCustomers locale={l} actor={actor} />}
             {tab === 'review' && (
               <>
-                {canAdmin(actor, 'supply.write') && (
+                <nav className="admin-section-tabs" aria-label={ot(l, 'reviewQueue')}>
+                  {availableSections.map((key) => (
+                    <Link
+                      href={`${href('review')}&section=${key}`}
+                      key={key}
+                      aria-current={reviewSection === key ? 'page' : undefined}
+                    >
+                      {key === 'services' ? mo(l, 'reviews') : ot(l, key)}
+                      {reviewCounts[key] > 0 && <b>{reviewCounts[key]}</b>}
+                    </Link>
+                  ))}
+                </nav>
+                {reviewSection === 'qualification' && canAdmin(actor, 'supply.write') && (
                   <OnboardingReview locale={l} onChanged={() => void refresh()} />
                 )}
-                {canAdmin(actor, 'supply.write') && <VenueReviews locale={l} />}
-                {canAdmin(actor, 'supply.write') && <MediaReview locale={l} />}
-                {canAdmin(actor, 'supply.write') && <StorefrontReviews key={actor.id} locale={l} />}
-                {canAdmin(actor, 'supply.read') && (
+                {reviewSection === 'services' && canAdmin(actor, 'supply.write') && (
+                  <ServiceProposalReviews locale={l} onChanged={() => void refresh()} />
+                )}
+                {reviewSection === 'venues' && canAdmin(actor, 'supply.write') && (
+                  <VenueReviews locale={l} />
+                )}
+                {reviewSection === 'media' && canAdmin(actor, 'supply.write') && (
+                  <MediaReview locale={l} />
+                )}
+                {reviewSection === 'storefront' && canAdmin(actor, 'supply.write') && (
+                  <StorefrontReviews key={actor.id} locale={l} />
+                )}
+                {reviewSection === 'aftercare' && canAdmin(actor, 'supply.read') && (
                   <SuspensionImpactPanel locale={l} orderHref={(id) => href('orders', id)} />
                 )}
-                {canAdmin(actor, 'supply.read') && <ShopQuality locale={l} />}
-                <div className="admin-toolbar">
-                  {searchInput()}
-                  {shopSelect()}
-                  <select
-                    value={targetType}
-                    onChange={(e) => setTargetType(e.target.value)}
-                    aria-label={at(l, 'type')}
-                  >
-                    <option value="all">{at(l, 'all')}</option>
-                    {(['STORE', 'LISTING', 'OFFERING'] as const).map((v) => (
-                      <option value={v} key={v}>
-                        {at(l, v)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={reviewFilter}
-                    onChange={(e) => setReviewFilter(e.target.value)}
-                    aria-label={at(l, 'status')}
-                  >
-                    {(['all', 'pending', 'live', 'paused'] as const).map((v) => (
-                      <option value={v} key={v}>
-                        {at(l, v)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <section className="admin-panel admin-supply-panel">
-                  <div className="admin-supply-list">
-                    {slice(reviewRows).map((target) => (
-                      <article key={`${target.type}-${target.id}`}>
-                        <span className={`admin-supply-symbol ${target.type.toLowerCase()}`}>
-                          {target.type === 'STORE' ? (
-                            <StoreIcon size={21} />
-                          ) : target.type === 'LISTING' ? (
-                            <ShieldCheck size={21} />
-                          ) : (
-                            <Leaf size={21} />
-                          )}
-                        </span>
-                        <div className="admin-supply-name">
-                          <small>{at(l, target.type)}</small>
-                          <h3>{target.name}</h3>
-                          <p>{target.subtitle}</p>
-                          <div className="admin-checks">
-                            {target.checks.map((c) => (
-                              <span key={c.label}>
-                                {c.ok ? <Check size={13} /> : <X size={13} />} {at(l, c.label)}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="admin-supply-status">
-                          <span
-                            className={`admin-pill ${!target.reviewed ? 'warning' : !target.visible ? 'neutral' : ''}`}
-                          >
-                            {at(
-                              l,
-                              !target.reviewed ? 'pending' : target.visible ? 'live' : 'paused',
-                            )}
-                          </span>
-                          <small>{at(l, target.reviewed ? 'approved' : 'notApproved')}</small>
-                        </div>
-                        <div className="admin-supply-actions">
-                          {canAdmin(actor, 'supply.write') && (
-                            <button
-                              className="button secondary small"
-                              disabled={busy}
-                              onClick={() =>
-                                openReview(target, target.visible ? 'SUSPEND' : 'APPROVE')
-                              }
-                            >
-                              {at(l, target.visible ? 'suspend' : 'approve')}
-                            </button>
-                          )}
-                          {canAdmin(actor, 'supply.write') && (
-                            <button
-                              className="admin-icon"
-                              disabled={busy}
-                              onClick={() => openReview(target, 'REJECT')}
-                              aria-label={`${at(l, 'reviewTitle')} · ${target.name}`}
-                            >
-                              <ClipboardCheck size={17} />
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                  {!reviewRows.length && (
-                    <div className="admin-empty">
-                      <FileCheck2 size={30} />
-                      <p>{at(l, 'empty')}</p>
+                {reviewSection === 'quality' && canAdmin(actor, 'supply.read') && (
+                  <ShopQuality locale={l} />
+                )}
+                {reviewSection === 'directory' && (
+                  <>
+                    <div className="admin-toolbar">
+                      {searchInput()}
+                      {shopSelect()}
+                      <select
+                        value={targetType}
+                        onChange={(e) => setTargetType(e.target.value)}
+                        aria-label={at(l, 'type')}
+                      >
+                        <option value="all">{at(l, 'all')}</option>
+                        {(['STORE', 'LISTING', 'OFFERING'] as const).map((v) => (
+                          <option value={v} key={v}>
+                            {at(l, v)}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={reviewFilter}
+                        onChange={(e) => setReviewFilter(e.target.value)}
+                        aria-label={at(l, 'status')}
+                      >
+                        {(['all', 'pending', 'live', 'paused'] as const).map((v) => (
+                          <option value={v} key={v}>
+                            {at(l, v)}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                  {pager(reviewRows.length)}
-                </section>
-                <section className="admin-panel admin-review-history">
-                  <div className="admin-panel-heading">
-                    <h2>{at(l, 'history')}</h2>
-                    <span>{data.reviews.length}</span>
-                  </div>
-                  {data.reviews.length ? (
-                    data.reviews.slice(0, historyLimit).map((r) => (
-                      <details key={r.id}>
-                        <summary>
-                          <span className="admin-pill">
-                            {at(
-                              l,
-                              r.decision === 'APPROVE'
-                                ? 'approve'
-                                : r.decision === 'SUSPEND'
-                                  ? 'suspend'
-                                  : 'reject',
-                            )}
-                          </span>
-                          <strong>
-                            {targets.find((x) => x.id === r.targetId && x.type === r.targetType)
-                              ?.name ?? r.targetId}
-                          </strong>
-                          <time>{dateTime(l, r.at)}</time>
-                        </summary>
-                        <p>{r.reason}</p>
-                      </details>
-                    ))
-                  ) : (
-                    <p className="admin-empty-copy">{at(l, 'empty')}</p>
-                  )}
-                  {data.reviews.length > historyLimit && (
-                    <button
-                      className="button secondary full"
-                      onClick={() => setHistoryLimit(data.reviews.length)}
-                    >
-                      {at(l, 'all')} · {data.reviews.length}
-                    </button>
-                  )}
-                </section>
+                    <section className="admin-panel admin-supply-panel">
+                      <div className="admin-supply-list">
+                        {slice(reviewRows).map((target) => (
+                          <article key={`${target.type}-${target.id}`}>
+                            <span className={`admin-supply-symbol ${target.type.toLowerCase()}`}>
+                              {target.type === 'STORE' ? (
+                                <StoreIcon size={21} />
+                              ) : target.type === 'LISTING' ? (
+                                <ShieldCheck size={21} />
+                              ) : (
+                                <Leaf size={21} />
+                              )}
+                            </span>
+                            <div className="admin-supply-name">
+                              <small>{at(l, target.type)}</small>
+                              <h3>
+                                <Link
+                                  scroll={false}
+                                  href={`${href('review')}&section=directory&entity=${encodeURIComponent(target.id)}&entityType=${target.type}`}
+                                >
+                                  {target.name} ↗
+                                </Link>
+                              </h3>
+                              <p>{target.subtitle}</p>
+                              <div className="admin-checks">
+                                {target.checks.map((c) => (
+                                  <span key={c.label}>
+                                    {c.ok ? <Check size={13} /> : <X size={13} />}{' '}
+                                    {c.label === 'routing' ? ot(l, 'routing') : at(l, c.label)} ·{' '}
+                                    {ot(l, c.ok ? 'ready' : 'incomplete')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="admin-supply-status">
+                              <span
+                                className={`admin-pill ${!target.reviewed ? 'warning' : !target.visible ? 'neutral' : ''}`}
+                              >
+                                {at(
+                                  l,
+                                  !target.reviewed ? 'pending' : target.visible ? 'live' : 'paused',
+                                )}
+                              </span>
+                              <small>{at(l, target.reviewed ? 'approved' : 'notApproved')}</small>
+                            </div>
+                            <details className="admin-supply-actions">
+                              <summary>{ot(l, 'moreActions')}</summary>
+                              <div>
+                                {canAdmin(actor, 'supply.write') && (
+                                  <button
+                                    className="button secondary small"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      openReview(target, target.visible ? 'SUSPEND' : 'APPROVE')
+                                    }
+                                  >
+                                    {at(l, target.visible ? 'suspend' : 'approve')}
+                                  </button>
+                                )}
+                                {canAdmin(actor, 'supply.write') && (
+                                  <button
+                                    className="admin-icon"
+                                    disabled={busy}
+                                    onClick={() => openReview(target, 'REJECT')}
+                                    aria-label={`${at(l, 'reviewTitle')} · ${target.name}`}
+                                  >
+                                    <ClipboardCheck size={17} />
+                                  </button>
+                                )}
+                              </div>
+                            </details>
+                          </article>
+                        ))}
+                      </div>
+                      {!reviewRows.length && (
+                        <div className="admin-empty">
+                          <FileCheck2 size={30} />
+                          <p>{at(l, 'empty')}</p>
+                        </div>
+                      )}
+                      {pager(reviewRows.length)}
+                    </section>
+                  </>
+                )}
+                {reviewSection === 'history' && (
+                  <section className="admin-panel admin-review-history">
+                    <div className="admin-panel-heading">
+                      <h2>{at(l, 'history')}</h2>
+                      <span>{data.reviews.length}</span>
+                    </div>
+                    {data.reviews.length ? (
+                      data.reviews.slice(0, historyLimit).map((r) => (
+                        <details key={r.id}>
+                          <summary>
+                            <span className="admin-pill">
+                              {at(
+                                l,
+                                r.decision === 'APPROVE'
+                                  ? 'approve'
+                                  : r.decision === 'SUSPEND'
+                                    ? 'suspend'
+                                    : 'reject',
+                              )}
+                            </span>
+                            <strong>
+                              {targets.find((x) => x.id === r.targetId && x.type === r.targetType)
+                                ?.name ?? r.targetId}
+                            </strong>
+                            <time>{dateTime(l, r.at)}</time>
+                          </summary>
+                          <p>{r.reason}</p>
+                        </details>
+                      ))
+                    ) : (
+                      <p className="admin-empty-copy">{at(l, 'empty')}</p>
+                    )}
+                    {data.reviews.length > historyLimit && (
+                      <button
+                        className="button secondary full"
+                        onClick={() => setHistoryLimit(data.reviews.length)}
+                      >
+                        {at(l, 'all')} · {data.reviews.length}
+                      </button>
+                    )}
+                  </section>
+                )}
               </>
             )}
             {tab === 'safety' && (
@@ -1314,7 +1492,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                     ))}
                   </select>
                   {canAdmin(actor, 'safety.write') && (
-                    <Link className="button secondary" href={`/${l}/admin/support`}>
+                    <Link className="button secondary" href={href('customers')}>
                       {at(l, 'restrictions')}
                       <ArrowUpRight size={16} />
                     </Link>
@@ -1333,7 +1511,9 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                   <ShieldAlert size={17} />
                   {at(l, 'localSafety')}
                 </p>
-                <div className="admin-safety-grid">
+                <div
+                  className={`admin-safety-grid ${requestedBooking && !safetyCases.length ? 'admin-safety-focused' : ''}`}
+                >
                   <section className="admin-panel">
                     <div className="admin-panel-heading">
                       <h2>{at(l, 'safetyEvent')}</h2>
@@ -1370,7 +1550,26 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                           <ArrowUpRight size={14} />
                         </Link>
                         {s.location && <SharedLocation locale={l} location={s.location} />}
-                        {s.status === 'OPEN' && <EmergencyLookup locale={l} eventId={s.id} />}
+
+                        {canAdmin(actor, 'safety.write') && (
+                          <SafetyHandlingPanel
+                            locale={l}
+                            actor={actor}
+                            event={s}
+                            assignees={data.assignees}
+                            onChanged={refresh}
+                          />
+                        )}
+                        <details className="admin-emergency-lookup">
+                          <summary>
+                            {l === 'ja'
+                              ? '緊急時の所在地確認'
+                              : l === 'en'
+                                ? 'Emergency location access'
+                                : '紧急查看服务地点'}
+                          </summary>
+                          {s.status === 'OPEN' && <EmergencyLookup locale={l} eventId={s.id} />}
+                        </details>
                         {s.resolution && <p className="admin-resolution">{s.resolution}</p>}
                         {s.status === 'OPEN' && (
                           <button
@@ -1395,14 +1594,16 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                     )}
                     {safetyEvents.length > 10 && pager(safetyEvents.length)}
                   </section>
-                  <AdminCaseQueue
-                    locale={l}
-                    cases={safetyCases}
-                    handling={data.caseHandling}
-                    actorId={actor!.id}
-                    assignees={data.assignees}
-                    shopName={shopName}
-                  />
+                  {(!requestedBooking || safetyCases.length > 0) && (
+                    <AdminCaseQueue
+                      locale={l}
+                      cases={safetyCases}
+                      handling={data.caseHandling}
+                      actorId={actor!.id}
+                      assignees={data.assignees}
+                      shopName={shopName}
+                    />
+                  )}
                 </div>
               </>
             )}
@@ -1447,10 +1648,9 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                           <tr key={a.id}>
                             <td>{dateTime(l, a.at)}</td>
                             <td>
-                              <strong>{auditLabel(l, a.action)}</strong>
-                              <small>{a.action}</small>
+                              <strong title={a.action}>{auditLabel(l, a.action)}</strong>
                             </td>
-                            <td>{at(l, operator(a.actorId))}</td>
+                            <td>{operator(a)}</td>
                             <td>
                               {a.bookingId ? (
                                 <Link
@@ -1547,6 +1747,62 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
           </>
         )}
       </div>
+      <MobileSheet
+        open={tab === 'review' && !!profileTarget}
+        locale={l}
+        title={ot(l, 'details')}
+        className="admin-order-drawer"
+        onClose={() => router.replace(`${href('review')}&section=directory`, { scroll: false })}
+      >
+        {profileTarget && data && (
+          <section className="admin-panel">
+            {reviewDetail(profileTarget)}
+            <div className="admin-section-tabs">
+              <Link
+                href={`/${l}/admin?${new URLSearchParams({ tab: 'orders', store: profileTarget.storeId })}`}
+              >
+                {at(l, 'orders')} ↗
+              </Link>
+              <Link href={`${href('review')}&section=quality`}>{ot(l, 'quality')} ↗</Link>
+              {canAdmin(actor, 'finance.read') && (
+                <Link href={`${href('finance')}&section=plans&storeId=${profileTarget.storeId}`}>
+                  {at(l, 'plan')} ↗
+                </Link>
+              )}
+            </div>
+            {profileTarget.type === 'STORE' && (
+              <>
+                <h3>{at(l, 'LISTING')}</h3>
+                <div className="admin-customer-records">
+                  {data.listings
+                    .filter((x) => x.storeId === profileTarget.id)
+                    .map((x) => (
+                      <Link
+                        key={x.id}
+                        href={`${href('review')}&section=directory&entity=${encodeURIComponent(x.id)}&entityType=LISTING`}
+                      >
+                        <strong>{x.name[l]}</strong>
+                      </Link>
+                    ))}
+                </div>
+              </>
+            )}
+            <h3>{ot(l, 'orders')}</h3>
+            {orderTable(
+              data.bookings
+                .filter((b) =>
+                  profileTarget.type === 'STORE'
+                    ? b.storeId === profileTarget.id
+                    : profileTarget.type === 'LISTING'
+                      ? b.assignedListingId === profileTarget.id
+                      : b.quote.offeringId === profileTarget.id,
+                )
+                .slice(0, 5),
+              true,
+            )}
+          </section>
+        )}
+      </MobileSheet>
       <MobileSheet
         open={!!review || !!resolution}
         onClose={() => {

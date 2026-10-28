@@ -1,5 +1,8 @@
+import { ot, type AdminOperationsKey } from './admin-operations-i18n';
 import { canAdmin, type Actor, type AdminPermission, type Locale } from '@hogulink/contracts';
 const words = {
+  todoServices: ['サービス申請', 'Service proposals', '服务项目审核'],
+  customers: ['顧客照会', 'Customer lookup', '顾客查询'],
   todoStorefronts: ['店舗ホームページ', 'Shop homepages', '店铺主页审核'],
   VERSION_CONFLICT: [
     '記録が更新されました。最新状態を再確認してください。',
@@ -307,6 +310,7 @@ export type AdminKey = keyof typeof words;
 export const adminTabs = [
   'overview',
   'orders',
+  'customers',
   'review',
   'safety',
   'finance',
@@ -318,6 +322,7 @@ export type AdminTab = (typeof adminTabs)[number];
 export const adminTabPermission: Record<AdminTab, AdminPermission> = {
   overview: 'overview.read',
   orders: 'orders.read',
+  customers: 'cases.read',
   review: 'supply.read',
   safety: 'cases.read',
   finance: 'finance.read',
@@ -331,6 +336,30 @@ export function at(l: Locale, key: AdminKey) {
   return words[key][l === 'ja' ? 0 : l === 'en' ? 1 : 2];
 }
 export function auditLabel(l: Locale, action: string) {
+  const merchantActions: Record<string, readonly [string, string, string]> = {
+    SERVICE_SUBMITTED: ['サービス申請', 'Service submitted', '提交服务项目'],
+    SERVICE_APPROVED: ['サービス承認', 'Service approved', '服务项目审核通过'],
+    SERVICE_REJECTED: ['サービス差戻し', 'Service rejected', '服务项目审核未通过'],
+    SHOP_INTAKE_PAUSED: ['新規受付を停止', 'New intake paused', '暂停新预约'],
+    SHOP_INTAKE_RESUMED: ['新規受付を再開', 'New intake resumed', '恢复新预约'],
+  };
+  if (merchantActions[action]) return merchantActions[action][l === 'ja' ? 0 : l === 'en' ? 1 : 2];
+  const actions: Record<string, AdminOperationsKey> = {
+    ORDER_ALERT_OPENED: 'alertOpened',
+    ORDER_ALERT_RECOVERED: 'alertRecovered',
+    ORDER_ALERT_FOLLOW_UP: 'alertFollowUp',
+    MEMBER_INVITED: 'memberInvited',
+    MEMBER_ACTIVATED: 'memberActivated',
+    MEMBER_UPDATED: 'memberUpdated',
+    SAFETY_ACKNOWLEDGE: 'safetyAck',
+    SAFETY_CONTACT: 'safetyContact',
+    SAFETY_HANDOVER: 'safetyHandover',
+    CUSTOMER_DIRECTORY_SEARCHED: 'lookupAction',
+    CUSTOMER_PROFILE_VIEWED: 'lookupAction',
+  };
+  if (actions[action]) return ot(l, actions[action]);
+  if (action.startsWith('MEMBER_')) return ot(l, 'staffAction');
+  if (action.startsWith('NOTIFICATION_')) return ot(l, 'notificationAction');
   const key: AdminKey =
     action === 'BOOKING_CREATED'
       ? 'bookingCreated'

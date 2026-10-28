@@ -96,9 +96,14 @@ export class ApiController {
     return this.engine.repo.transaction(async (tx) => {
       const actor = session.actor;
       if (actor.id === 'demo-admin') {
-        const member =
-          (await tx.get<import('@hogulink/contracts').AdminMember>('adminMembers', actor.id)) ??
-          bootstrapMember(Date.now());
+        let member = await tx.get<import('@hogulink/contracts').AdminMember>(
+          'adminMembers',
+          actor.id,
+        );
+        if (!member) {
+          member = bootstrapMember(Date.now());
+          await tx.put('adminMembers', member);
+        }
         return {
           ...actor,
           adminRole: member.adminRole,
@@ -708,6 +713,28 @@ export class ApiController {
         return res.json(await this.engine.assignmentCandidates(actor, match[1]));
       if (path === 'merchant/workspace' && method === 'GET')
         return res.json(await this.engine.merchant.snapshot(actor));
+      if (path === 'merchant/intake' && method === 'PUT')
+        return res.json(await this.engine.merchant.intake(actor, body));
+      match = path.match(/^merchant\/safety-events\/([^/]+)\/contact$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.merchant.safetyContact(actor, match[1], body));
+      if (path === 'merchant/service-proposals' && method === 'GET')
+        return res.json(await this.engine.merchantServices.list(actor));
+      if (path === 'merchant/service-proposals' && method === 'POST')
+        return res
+          .status(201)
+          .json(
+            await this.engine.merchantServices.submit(
+              actor,
+              body,
+              String(req.headers['idempotency-key'] || ''),
+            ),
+          );
+      if (path === 'admin/service-proposals' && method === 'GET')
+        return res.json(await this.engine.merchantServices.queue(actor));
+      match = path.match(/^admin\/service-proposals\/([^/]+)\/review$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.merchantServices.review(actor, match[1], body));
       if (path === 'merchant/storefront' && method === 'GET')
         return res.json(await this.engine.storefronts.workspace(actor));
       if (path === 'merchant/storefront' && method === 'PUT')
@@ -848,6 +875,8 @@ export class ApiController {
           );
       if (path === 'support-tickets' && method === 'GET')
         return res.json(await this.engine.care.list(actor));
+      if (path === 'admin/support-tickets/handling' && method === 'GET')
+        return res.json(await this.engine.admin.caseWork(actor));
       match = path.match(/^admin\/support-tickets\/([^/]+)\/handling$/);
       if (match && method === 'GET')
         return res.json(await this.engine.handling.detail(actor, match[1]));
@@ -902,6 +931,13 @@ export class ApiController {
         if (method === 'GET') return res.json(await this.engine.care.restrictions(actor));
         if (method === 'POST') return res.json(await this.engine.care.setRestriction(actor, body));
       }
+      if (path === 'admin/customers' && method === 'GET')
+        return res.json(
+          await this.engine.admin.customers(actor, { q: req.query.q, page: req.query.page ?? 1 }),
+        );
+      match = path.match(/^admin\/customers\/([^/]+)$/);
+      if (match && method === 'GET')
+        return res.json(await this.engine.admin.customer(actor, decodeURIComponent(match[1])));
       if (path === 'customer/restriction-appeals' && method === 'POST') {
         const data = z
           .object({
@@ -936,6 +972,9 @@ export class ApiController {
           await this.engine.care.resolveSafety(actor, match[1], data.version, data.text),
         );
       }
+      match = path.match(/^admin\/safety-events\/([^/]+)\/handling$/);
+      if (match && method === 'POST')
+        return res.json(await this.engine.care.handleSafety(actor, match[1], body));
       if (path === 'quotes' && method === 'POST')
         return res.status(201).json(await this.engine.quote(actor, body));
       if (path === 'booking-holds' && method === 'POST')

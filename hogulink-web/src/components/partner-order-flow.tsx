@@ -58,9 +58,7 @@ export function PartnerOrderFlow({
     <>
       <header className="partner-order-hero">
         <span className="partner-order-eyebrow">
-          {b.quote.fulfillmentMode === 'IN_STORE'
-            ? sv(l, 'IN_STORE')
-            : pf(l, role === 'MERCHANT' ? 'dispatch' : 'visit')}
+          {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')}
         </span>
         <h2>{b.quote.serviceName?.[l] ?? pf(l, 'service')}</h2>
         <div className="partner-order-meta">

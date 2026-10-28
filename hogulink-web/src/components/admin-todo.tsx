@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { AdminTodo, Locale } from '@hogulink/contracts';
 import { at, type AdminKey } from '@/lib/admin-i18n';
+import { ot } from '@/lib/admin-operations-i18n';
 
 type Card = {
   key: AdminKey;
@@ -35,7 +36,11 @@ export type TodoLinks = {
   finance: string;
 };
 
-/** Cards for every queue this person may work, so a zero means "checked and clear". */
+const destination = (href: string, key: string, value: string) => {
+  const [path, hash] = href.split('#');
+  return `${path}${path.includes('?') ? '&' : '?'}${key}=${value}${hash ? `#${hash}` : ''}`;
+};
+/** Counts describe individual queues; one business item may be in several queues. */
 export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] {
   const cards: Card[] = [];
   if (todo.safetyEvents !== undefined)
@@ -59,21 +64,21 @@ export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] 
     cards.push({
       key: 'todoEscalated',
       count: todo.cases.escalated,
-      href: links.cases,
+      href: destination(links.cases, 'queue', 'escalated'),
       Icon: BookOpen,
       urgent: true,
     });
     cards.push({
       key: 'todoOverdue',
       count: todo.cases.overdue,
-      href: links.cases,
+      href: destination(links.cases, 'queue', 'overdue'),
       Icon: BookOpen,
       urgent: true,
     });
     cards.push({
       key: 'todoUnassigned',
       count: todo.cases.unassigned,
-      href: links.cases,
+      href: destination(links.cases, 'queue', 'unassigned'),
       Icon: BookOpen,
     });
   }
@@ -81,27 +86,44 @@ export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] 
     cards.push({
       key: 'todoOnboarding',
       count: todo.onboarding,
-      href: links.review,
+      href: destination(links.review, 'section', 'qualification'),
       Icon: UserCheck,
     });
   if (todo.venues !== undefined)
-    cards.push({ key: 'todoVenues', count: todo.venues, href: links.review, Icon: Store });
+    cards.push({
+      key: 'todoVenues',
+      count: todo.venues,
+      href: destination(links.review, 'section', 'venues'),
+      Icon: Store,
+    });
   if (todo.storefronts !== undefined)
     cards.push({
       key: 'todoStorefronts',
       count: todo.storefronts,
-      href: `${links.review}#storefront-review`,
+      href: destination(links.review, 'section', 'storefront'),
       Icon: Store,
+    });
+  if (todo.services !== undefined)
+    cards.push({
+      key: 'todoServices',
+      count: todo.services,
+      href: destination(links.review, 'section', 'services'),
+      Icon: FileCheck2,
     });
   if (todo.media !== undefined)
     cards.push({
       key: 'todoMedia',
       count: todo.media,
-      href: `${links.review}#media-review`,
+      href: destination(links.review, 'section', 'media'),
       Icon: UserCheck,
     });
   if (todo.aftercare !== undefined)
-    cards.push({ key: 'todoAftercare', count: todo.aftercare, href: links.review, Icon: Store });
+    cards.push({
+      key: 'todoAftercare',
+      count: todo.aftercare,
+      href: destination(links.review, 'section', 'aftercare'),
+      Icon: Store,
+    });
   if (todo.experience !== undefined)
     cards.push({ key: 'todoExperience', count: todo.experience, href: links.quality, Icon: Star });
   if (todo.contentReviews !== undefined)
@@ -121,12 +143,12 @@ export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] 
     cards.push({
       key: 'todoInvoices',
       count: todo.finance.invoices,
-      href: links.finance,
+      href: destination(links.finance, 'section', 'invoices'),
       Icon: FileCheck2,
     });
   }
   // Waiting work first, urgent before routine; clear queues last.
-  const rank = (c: Card) => (c.count ? (c.urgent ? 0 : 1) : 2);
+  const rank = (c: Card) => (c.count ? (c.key === 'todoSafety' ? -1 : c.urgent ? 0 : 1) : 2);
   return cards.sort((a, b) => rank(a) - rank(b) || b.count - a.count);
 }
 
@@ -149,7 +171,9 @@ export function AdminTodoBoard({
           <h2 id="admin-todo-title">{at(l, 'todoTitle')}</h2>
           <p>{at(l, 'todoHelp')}</p>
         </div>
-        <span>{waiting.reduce((n, c) => n + c.count, 0)}</span>
+        <span>
+          {waiting.length} {ot(l, 'queueCount')}
+        </span>
       </div>
       {!waiting.length && (
         <p className="admin-todo-clear">
@@ -158,7 +182,7 @@ export function AdminTodoBoard({
         </p>
       )}
       <div className="admin-todo-grid">
-        {cards.map(({ key, count, href, Icon, urgent, note }) => (
+        {waiting.map(({ key, count, href, Icon, urgent, note }) => (
           <Link
             key={key}
             href={href}
@@ -175,6 +199,25 @@ export function AdminTodoBoard({
           </Link>
         ))}
       </div>
+      <p className="admin-footnote">{ot(l, 'queueNote')}</p>
+      {cards.some((c) => !c.count) && (
+        <details className="admin-clear-queues">
+          <summary>
+            {ot(l, 'clearQueues')} · {cards.length - waiting.length}
+          </summary>
+          <div className="admin-todo-grid">
+            {cards
+              .filter((c) => !c.count)
+              .map(({ key, href, Icon }) => (
+                <Link className="admin-todo-card clear" href={href} key={key}>
+                  <Icon size={18} />
+                  <strong>0</strong>
+                  <span>{at(l, key)}</span>
+                </Link>
+              ))}
+          </div>
+        </details>
+      )}
     </section>
   );
 }

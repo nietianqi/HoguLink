@@ -25,7 +25,7 @@ import { ensure } from './errors.js';
 import { loadEvidence, saveEvidence } from './evidence-storage.js';
 import { Repository, type Records } from './repository.js';
 import { syncTicketHandling } from './ticket-handling.js';
-import { adminCaseVisible, currentAdmin, requireAdmin } from './admin-access.js';
+import { adminCaseVisible, adminDirectory, currentAdmin, requireAdmin } from './admin-access.js';
 import { staffBookingAccess } from './staff-access.js';
 import { canAdmin, type TicketHandling } from '@hogulink/contracts';
 import { assertDecisionClosable, decisionDetail } from './governance.js';
@@ -67,6 +67,9 @@ export function safetyEventView(
     status: event.status,
     createdAt: event.createdAt,
     version: event.version ?? 1,
+    ...(actor.role === 'MERCHANT' && event.merchantContact
+      ? { merchantContact: event.merchantContact }
+      : {}),
     resolvedAt: event.resolvedAt,
   };
 }
@@ -123,6 +126,7 @@ export class CareService {
     await tx.put<Audit>('audit', {
       id: `audit_${randomUUID()}`,
       actorId: actor.id,
+      actorRole: actor.id === 'system' ? 'SYSTEM' : actor.role,
       action,
       bookingId: ticket?.bookingId,
       detail: ticket ? `${ticket.id}${detail ? `:${detail}` : ''}` : detail,
@@ -685,6 +689,7 @@ export class CareService {
     return this.run(async (tx) => {
       ensure(
         (await tx.count('bookings', { customerId: data.customerId })) > 0 ||
+          !!(await tx.get('customerAccounts', data.customerId)) ||
           (await tx.list<{ actor: Actor }>('sessions')).some(
             (x) => x.actor.role === 'CUSTOMER' && x.actor.id === data.customerId,
           ),
@@ -866,11 +871,96 @@ export class CareService {
       };
     });
   }
+  async handleSafety(actor: Actor, eventId: string, input: unknown) {
+    this.role(actor, 'ADMIN');
+    const data = z
+      .object({
+        version: z.number().int().positive(),
+        action: z.enum(['ACKNOWLEDGE', 'CONTACT', 'HANDOVER']),
+        note: z.string().trim().min(10).max(1000),
+        followUpAt: z.number().int().positive(),
+        ownerId: z.string().optional(),
+      })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'safety.write');
+      const event = await tx.get<SafetyEvent>('safety', eventId);
+      ensure(event, 'NOT_FOUND', 'Safety event not found.', 404);
+      this.version(event.version ?? 1, data.version);
+      ensure(event.status === 'OPEN', 'INVALID_STATE', 'This event is already resolved.', 409);
+      ensure(
+        data.followUpAt > this.now() && data.followUpAt <= this.now() + 24 * hour,
+        'INVALID_FOLLOW_UP',
+        'Choose a follow-up within 24 hours.',
+      );
+      const old = event.handling;
+      if (data.action === 'ACKNOWLEDGE')
+        ensure(
+          !old || old.ownerId === actor.id,
+          'ALREADY_ASSIGNED',
+          'This event is already assigned.',
+          409,
+        );
+      else
+        ensure(
+          old && (old.ownerId === actor.id || (actor.adminRole ?? 'OWNER') === 'OWNER'),
+          'FORBIDDEN',
+          'The owner or a platform owner must update this event.',
+          403,
+        );
+      let ownerId = old?.ownerId ?? actor.id;
+      let ownerName = old?.ownerName ?? actor.displayName ?? actor.id;
+      if (data.action === 'HANDOVER') {
+        const target = (await adminDirectory(tx, this.now())).find(
+          (m) =>
+            m.id === data.ownerId &&
+            canAdmin(
+              { id: m.id, role: 'ADMIN', verificationLevel: 3, adminRole: m.adminRole },
+              'safety.write',
+            ),
+        );
+        ensure(target, 'INVALID_ASSIGNEE', 'Choose an active safety employee.');
+        ownerId = target.id;
+        ownerName = target.name;
+      }
+      event.handling = {
+        ownerId,
+        ownerName,
+        acknowledgedAt: old?.acknowledgedAt ?? this.now(),
+        followUpAt: data.followUpAt,
+        history: [
+          ...(old?.history ?? []),
+          {
+            action: data.action,
+            actorId: actor.id,
+            at: this.now(),
+            note: data.note,
+            ownerId,
+            followUpAt: data.followUpAt,
+          },
+        ].slice(-50),
+      };
+      event.version = (event.version ?? 1) + 1;
+      await tx.put('safety', event);
+      const activityId = `safety_activity_${randomUUID()}`;
+      await tx.put('safetyHandlingActivity', {
+        id: activityId,
+        eventId: event.id,
+        ...event.handling.history.at(-1),
+      });
+      await this.event(tx, actor, `SAFETY_${data.action}`, undefined, `${event.id}:${activityId}`);
+      return event;
+    });
+  }
   async resolveSafety(actor: Actor, eventId: string, version: number, text: string) {
     this.role(actor, 'ADMIN');
     requireAdmin(actor, 'safety.write');
     const clean = z.string().trim().min(10).max(3000).parse(text);
     return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'safety.write');
       const event = await tx.get<SafetyEvent>('safety', eventId);
       ensure(event, 'NOT_FOUND', 'Safety event not found.', 404);
       this.version(event.version ?? 1, version);

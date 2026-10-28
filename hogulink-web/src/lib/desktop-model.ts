@@ -70,6 +70,12 @@ export function filterBookings(
       const closed = ['CANCELLED', 'EXPIRED', 'REJECTED'].includes(b.status);
       if (options.status === 'attention' && !needsAttention(b, options.role)) return false;
       if (options.status === 'active' && (closed || b.status === 'COMPLETED')) return false;
+      if (
+        options.role === 'MERCHANT' &&
+        options.status === 'active' &&
+        ['REQUESTED', 'ACCEPTED'].includes(b.status)
+      )
+        return false;
       if (options.status === 'completed' && b.status !== 'COMPLETED') return false;
       if (
         options.status === 'review' &&

@@ -20,6 +20,9 @@ import type {
   Offering,
   Store,
   StoreBookingRules,
+  SafetyEvent,
+  ExperienceReview,
+  ExperienceReply,
   TimeOffRequest,
 } from '@hogulink/contracts';
 import type { Records } from './repository.js';
@@ -55,6 +58,7 @@ export class MerchantService {
     await tx.put<Audit>('audit', {
       id: randomUUID(),
       actorId: actor.id,
+      actorRole: actor.role,
       action,
       detail: target,
       at: this.now(),
@@ -79,7 +83,21 @@ export class MerchantService {
       const captured = orders.reduce((n, b) => n + b.capturedAmount, 0),
         refunded = orders.reduce((n, b) => n + b.refundedAmount, 0),
         platform = feeEntries.reduce((n, f) => n + f.amount, 0);
+      const reviews = await tx.find<ExperienceReview>('experienceReviews', {
+        storeId: store.id,
+        status: 'APPROVED',
+      });
+      const replies = await tx.find<ExperienceReply>('experienceReplies', { storeId: store.id });
       return {
+        unrepliedReviews: reviews.filter(
+          (r) =>
+            !replies.some(
+              (reply) =>
+                reply.reviewId === r.id &&
+                reply.reviewRevision === r.revision &&
+                ['PENDING', 'APPROVED'].includes(reply.status),
+            ),
+        ).length,
         store,
         bookingRules: effectiveBookingRules(store),
         bookingRulesHistory: (await tx.list<BookingRulesHistory>('bookingRulesHistory'))
@@ -112,6 +130,49 @@ export class MerchantService {
           .sort((a, b) => a.startAt - b.startAt),
         feeEntries,
       };
+    });
+  }
+  /** Pauses only new intake; existing orders and platform restrictions are untouched. */
+  async intake(actor: Actor, input: unknown) {
+    const d = z
+      .object({ version: z.number().int().nonnegative(), paused: z.boolean() })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor);
+      ensure(
+        (store.intakeVersion ?? 0) === d.version,
+        'VERSION_CONFLICT',
+        'Intake status changed. Refresh first.',
+        409,
+      );
+      const next = { ...store, intakePaused: d.paused, intakeVersion: d.version + 1 };
+      await tx.put('stores', next);
+      await this.audit(
+        tx,
+        actor,
+        d.paused ? 'SHOP_INTAKE_PAUSED' : 'SHOP_INTAKE_RESUMED',
+        store.id,
+      );
+      return { paused: next.intakePaused, version: next.intakeVersion };
+    });
+  }
+  async safetyContact(actor: Actor, id: string, input: unknown) {
+    const d = z
+      .object({ version: z.number().int().positive(), note: z.string().trim().min(10).max(500) })
+      .strict()
+      .parse(input);
+    return this.run(async (tx) => {
+      const store = await this.shop(tx, actor),
+        event = await tx.get<SafetyEvent>('safety', id);
+      ensure(event?.storeId === store.id, 'NOT_FOUND', 'Safety event not found.', 404);
+      ensure((event.version ?? 1) === d.version, 'VERSION_CONFLICT', 'Safety event changed.', 409);
+      ensure(event.status === 'OPEN', 'INVALID_STATE', 'Safety event is closed.', 409);
+      event.merchantContact = { at: this.now(), note: d.note };
+      event.version = (event.version ?? 1) + 1;
+      await tx.put('safety', event);
+      await this.audit(tx, actor, 'SAFETY_SHOP_CONTACT_RECORDED', id);
+      return { version: event.version };
     });
   }
   async block(actor: Actor, input: unknown, key: string) {

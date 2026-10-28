@@ -10,6 +10,7 @@ import {
   type ExperienceModerationLog,
   type ExperienceSummary,
   type Locale,
+  type Listing,
   type MerchantExperienceRow,
   type PublicExperience,
   type SafetyCheckInView,
@@ -21,6 +22,7 @@ import { dateTime, money } from '@/lib/i18n';
 import { qt, qualityError, qualityStatus, type QualityText } from '@/lib/quality-i18n';
 import { FeedbackCard, FeedbackSummary } from './experience-ui';
 import { MobileSheet } from './mobile-ui';
+import { mo } from '@/lib/merchant-operations-i18n';
 import { useSession } from './booking-form';
 
 type Operator = 'MERCHANT' | 'STAFF' | 'ADMIN';
@@ -272,11 +274,13 @@ export function SafetyDeskPanel({
   role,
   bookingId,
   urgentOnly = false,
+  listings = [],
 }: {
   locale: Locale;
   role: Operator;
   bookingId?: string;
   urgentOnly?: boolean;
+  listings?: Listing[];
 }) {
   const [data, setData] = useState<SafetyDesk>(),
     [busy, setBusy] = useState(false),
@@ -319,7 +323,9 @@ export function SafetyDeskPanel({
   }
   if (urgentOnly && !checks.length && !events.length && !error) return null;
   return (
-    <section className="quality-section quality-safety">
+    <section
+      className={`quality-section quality-safety ${urgentOnly && role === 'MERCHANT' ? 'merchant-safety-compact' : ''}`}
+    >
       <div className="quality-section-heading">
         <div>
           <span className="quality-eyebrow">CARE / CHECK-IN</span>
@@ -334,8 +340,17 @@ export function SafetyDeskPanel({
           <RefreshCw size={17} />
         </button>
       </div>
-      <p>{qt(l, 'safetyHelp')}</p>
-      <small className="quality-local">{qt(l, 'delivery')}</small>
+      {urgentOnly ? (
+        <details className="merchant-safety-help">
+          <summary>{qt(l, 'safetyHelp')}</summary>
+          <small className="quality-local">{qt(l, 'delivery')}</small>
+        </details>
+      ) : (
+        <>
+          <p>{qt(l, 'safetyHelp')}</p>
+          <small className="quality-local">{qt(l, 'delivery')}</small>
+        </>
+      )}
       {data && !checks.length && !events.length && (
         <p className="quality-empty">{qt(l, 'empty')}</p>
       )}
@@ -401,9 +416,34 @@ export function SafetyDeskPanel({
             <strong>{qualityStatus(l, e.type)}</strong>
             <time>{dateTime(l, e.createdAt)}</time>
           </header>
+          {role === 'MERCHANT' && (
+            <p>
+              <strong>
+                {listings.find((x) => x.staffId === e.staffId)?.name[l] ??
+                  e.bookingId.slice(-8).toUpperCase()}
+              </strong>{' '}
+              ·{' '}
+              <Link
+                className="text-button"
+                href={`/${l}/merchant?tab=bookings&booking=${encodeURIComponent(e.bookingId)}`}
+              >
+                {mo(l, 'safetyOrder')}
+              </Link>
+            </p>
+          )}
           <small>
             {e.bookingId.slice(-10)} · {qualityStatus(l, e.status)}
           </small>
+          {role === 'MERCHANT' && (
+            <div className="button-row">
+              <Link
+                className="button secondary small"
+                href={`/${l}/merchant/support#merchant-safety-events`}
+              >
+                {mo(l, 'safetyContact')}
+              </Link>
+            </div>
+          )}
           {role === 'ADMIN' && (
             <button
               className="quality-button"

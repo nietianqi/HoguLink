@@ -22,6 +22,8 @@ import Link from 'next/link';
 import { sv } from '@/lib/service-mode-i18n';
 import { withServiceMode } from '@/lib/visit-model';
 import { at } from '@/lib/account-i18n';
+import { merchantBookingStatus } from '@/lib/merchant-model';
+import { mo } from '@/lib/merchant-operations-i18n';
 
 export function BookingQueue({
   locale: l,
@@ -75,6 +77,10 @@ export function BookingQueue({
       l
     ] ?? t(l, 'unassigned');
   function select(id: string) {
+    if (role === 'MERCHANT') {
+      router.push(`/${l}/merchant?tab=bookings&booking=${encodeURIComponent(id)}`);
+      return;
+    }
     if (role === 'CUSTOMER') {
       router.push(
         withServiceMode(
@@ -110,7 +116,7 @@ export function BookingQueue({
         staff(b),
         new Date(b.quote.startAt + 9 * 3600_000).toISOString().slice(0, 16).replace('T', ' ') +
           ' JST',
-        statusText(l, b.status),
+        role === 'MERCHANT' ? merchantBookingStatus(l, b) : statusText(l, b.status),
         b.quote.total,
         b.capturedAmount - b.refundedAmount,
       ]),
@@ -154,7 +160,11 @@ export function BookingQueue({
       <div className="queue-tabs" aria-label={t(l, 'status')}>
         {tabs.map((tab) => (
           <button key={tab} aria-pressed={tab === status} onClick={() => onStatus(tab)}>
-            {tab === 'review' ? at(l, 'review') : dt(l, tab)}
+            {tab === 'review'
+              ? at(l, 'review')
+              : role === 'MERCHANT' && tab === 'active'
+                ? mo(l, 'active')
+                : dt(l, tab)}
             <span>
               {tab === 'all'
                 ? allBookings.length
@@ -169,7 +179,18 @@ export function BookingQueue({
                     : tab === 'active'
                       ? allBookings.filter(
                           (b) =>
-                            !['COMPLETED', 'CANCELLED', 'EXPIRED', 'REJECTED'].includes(b.status),
+                            !(
+                              role === 'MERCHANT'
+                                ? [
+                                    'REQUESTED',
+                                    'ACCEPTED',
+                                    'COMPLETED',
+                                    'CANCELLED',
+                                    'EXPIRED',
+                                    'REJECTED',
+                                  ]
+                                : ['COMPLETED', 'CANCELLED', 'EXPIRED', 'REJECTED']
+                            ).includes(b.status),
                         ).length
                       : tab === 'completed'
                         ? allBookings.filter((b) => b.status === 'COMPLETED').length
@@ -251,7 +272,9 @@ export function BookingQueue({
                   >
                     <span className="mobile-booking-top">
                       <span className={`status-badge status-${b.status.toLowerCase()}`}>
-                        {statusText(l, b.status)}
+                        {role === 'MERCHANT'
+                          ? merchantBookingStatus(l, b)
+                          : statusText(l, b.status)}
                       </span>
                       <small>{b.id.slice(-8).toUpperCase()}</small>
                     </span>
@@ -316,7 +339,9 @@ export function BookingQueue({
                         </td>
                         <td>
                           <span className={`status-badge status-${b.status.toLowerCase()}`}>
-                            {statusText(l, b.status)}
+                            {role === 'MERCHANT'
+                              ? merchantBookingStatus(l, b)
+                              : statusText(l, b.status)}
                           </span>
                           {needsAttention(b, role) && (
                             <small className="attention-label">{dt(l, 'attention')}</small>
@@ -371,7 +396,9 @@ export function BookingQueue({
                           </small>
                         </span>
                         <span className={`status-badge status-${b.status.toLowerCase()}`}>
-                          {statusText(l, b.status)}
+                          {role === 'MERCHANT'
+                            ? merchantBookingStatus(l, b)
+                            : statusText(l, b.status)}
                         </span>
                         <ArrowUpRight size={16} />
                       </button>

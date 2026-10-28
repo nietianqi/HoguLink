@@ -124,13 +124,19 @@ export function authorizeAdminRoute(actor: Actor, path: string, method: string) 
   else if (path.startsWith('fulfillment/')) permission = 'safety.write';
   else if (path.startsWith('onboarding/')) permission = 'supply.write';
   else if (path.startsWith('admin/members')) permission = 'members.manage';
+  else if (path === 'admin/customers' || path.startsWith('admin/customers/'))
+    permission = 'cases.read';
   else if (path.startsWith('admin/support-tickets'))
     permission = method === 'GET' ? 'cases.read' : 'cases.write';
   else if (path.startsWith('support-tickets'))
     permission = method === 'GET' ? 'cases.read' : 'cases.write';
   else if (path === 'admin/reviews' || path === 'admin/enforcement-actions')
     permission = 'supply.write';
-  else if (path.startsWith('admin/venues') || path.startsWith('admin/storefronts'))
+  else if (
+    path.startsWith('admin/venues') ||
+    path.startsWith('admin/storefronts') ||
+    path.startsWith('admin/service-proposals')
+  )
     permission = method === 'GET' ? 'supply.read' : 'supply.write';
   else if (path === 'admin/shop-quality' || path === 'admin/suspension-impact')
     permission = 'supply.read';

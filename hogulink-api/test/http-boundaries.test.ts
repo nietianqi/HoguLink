@@ -11,6 +11,7 @@ import { Repository } from '../src/repository.js';
 import { seed } from '../src/seed.js';
 import { bootstrapAdmin } from '../src/employees.js';
 import { totpCode } from '../src/totp.js';
+import { nextDayNoonJst } from './helpers/visit-fixture.js';
 
 test('FULL-HTTP authentication, permissions, validation and membership revocation through a real server', async (t) => {
   const repo = new Repository(undefined, ':memory:');
@@ -65,7 +66,7 @@ test('FULL-HTTP authentication, permissions, validation and membership revocatio
         offeringId: 'store-nagi-60',
         bookingMode: 'SCHEDULED',
         nominationType: 'NOMINATED',
-        startAt: e.now() + 3 * 3600000,
+        startAt: nextDayNoonJst(e.now()),
         area: 'shinjuku',
         requiredLanguage: '',
       }),
@@ -97,7 +98,7 @@ test('FULL-HTTP authentication, permissions, validation and membership revocatio
       offeringId: 'store-nagi-60',
       bookingMode: 'SCHEDULED',
       nominationType: 'NOMINATED',
-      startAt: e.now() + 7 * 3600000,
+      startAt: nextDayNoonJst(e.now()) + 4 * 3600000,
       area: 'shinjuku',
       requiredLanguage: '',
     };

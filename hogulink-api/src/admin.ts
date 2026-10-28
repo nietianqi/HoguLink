@@ -19,6 +19,7 @@ import { adminCaseVisible, adminDirectory, currentAdmin, requireAdmin } from './
 import type { Records } from './repository.js';
 import { ensure } from './errors.js';
 import { config } from './config.js';
+import { customerProfile, searchCustomers } from './admin-customers.js';
 
 type FeeEntry = {
   id: string;
@@ -35,6 +36,36 @@ export class AdminService {
   ) {}
   private role(actor: Actor) {
     ensure(actor.role === 'ADMIN', 'FORBIDDEN', 'Administrator account required.', 403);
+  }
+  async customers(actor: Actor, input: unknown) {
+    this.role(actor);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'cases.read');
+      return searchCustomers(tx, actor, input, this.now());
+    });
+  }
+  async customer(actor: Actor, id: string) {
+    this.role(actor);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'cases.read');
+      return customerProfile(tx, actor, id, this.now());
+    });
+  }
+  async caseWork(actor: Actor) {
+    this.role(actor);
+    return this.run(async (tx) => {
+      actor = await currentAdmin(tx, actor);
+      requireAdmin(actor, 'cases.read');
+      const work: TicketHandling[] = [];
+      for (const ticket of await tx.list<SupportTicket>('supportTickets'))
+        if (await adminCaseVisible(tx, actor, ticket))
+          work.push(
+            (await tx.get<TicketHandling>('ticketHandling', ticket.id)) ?? initialHandling(ticket),
+          );
+      return work;
+    });
   }
   async snapshot(actor: Actor) {
     this.role(actor);
@@ -62,6 +93,21 @@ export class AdminService {
       const handling = new Map(
         (await tx.list<TicketHandling>('ticketHandling')).map((h) => [h.id, h]),
       );
+      const auditActors = new Map<string, Audit['actorRole']>([
+        ['system', 'SYSTEM'],
+        ['demo-admin', 'ADMIN'],
+        ['demo-finance', 'ADMIN'],
+        [actor.id, 'ADMIN'],
+      ]);
+      for (const member of await tx.list<{ id: string }>('adminMembers'))
+        auditActors.set(member.id, 'ADMIN');
+      for (const customer of await tx.list<{ id: string }>('customerAccounts'))
+        auditActors.set(customer.id, 'CUSTOMER');
+      for (const session of await tx.list<{ actor: Actor }>('sessions'))
+        if (session.actor) auditActors.set(session.actor.id, session.actor.role);
+      for (const account of await tx.list<{ id: string; role: Actor['role'] }>('partnerAccounts'))
+        if (account.role === 'MERCHANT' || account.role === 'STAFF')
+          auditActors.set(account.id, account.role);
       return {
         generatedAt: this.now(),
         actor,
@@ -130,7 +176,8 @@ export class AdminService {
           .slice(0, 100),
         audit: (canAdmin(actor, 'audit.read') ? await tx.list<Audit>('audit') : [])
           .sort((a, b) => b.at - a.at)
-          .slice(0, 500),
+          .slice(0, 500)
+          .map((a) => ({ ...a, actorRole: a.actorRole ?? auditActors.get(a.actorId) })),
         system: {
           mode: 'demo',
           payments: 'demo',

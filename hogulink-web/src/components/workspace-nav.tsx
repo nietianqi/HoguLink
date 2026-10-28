@@ -26,9 +26,17 @@ import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { t } from '@/lib/i18n';
 import { st } from '@/lib/merchant-i18n';
+import { MerchantNavigation } from './merchant-navigation';
 import { ft } from '@/lib/staff-i18n';
 import { at, adminTabs, adminTabAllowed } from '@/lib/admin-i18n';
-export function WorkspaceNav({
+export function WorkspaceNav(props: Parameters<typeof LegacyWorkspaceNav>[0]) {
+  return props.role === 'MERCHANT' ? (
+    <MerchantNavigation locale={props.locale} />
+  ) : (
+    <LegacyWorkspaceNav {...props} />
+  );
+}
+function LegacyWorkspaceNav({
   locale,
   role,
   active,
@@ -40,58 +48,7 @@ export function WorkspaceNav({
   actor?: Actor | null;
 }) {
   const base = `/${locale}/${role === 'CUSTOMER' ? 'account' : role.toLowerCase()}`;
-  if (role === 'ADMIN') {
-    const icons = {
-      overview: LayoutDashboard,
-      orders: ListChecks,
-      review: FileCheck2,
-      safety: ShieldCheck,
-      finance: Wallet,
-      audit: History,
-      system: Server,
-      members: UsersRound,
-    };
-    return (
-      <nav className="workspace-nav" data-role="ADMIN" aria-label={at(locale, 'portal')}>
-        <div className="workspace-brand">
-          <span>
-            <Leaf size={22} />
-          </span>
-          <strong>
-            HoguLink<small>{at(locale, 'portal')}</small>
-          </strong>
-        </div>
-        {adminTabs
-          .filter((tab) => !actor || adminTabAllowed(actor, tab))
-          .map((tab) => {
-            const Icon = icons[tab];
-            return (
-              <Link href={`${base}?tab=${tab}`} key={tab}>
-                <Icon size={16} />
-                {at(locale, tab)}
-              </Link>
-            );
-          })}
-        {(!actor || canAdmin(actor, 'cases.read')) && (
-          <Link
-            href={`${base}/support`}
-            className={active === 'support' ? 'active' : ''}
-            aria-current={active === 'support' ? 'page' : undefined}
-          >
-            <LifeBuoy size={16} />
-            {at(locale, 'support')}
-          </Link>
-        )}
-        <div className="workspace-nav-bottom">
-          <small>{dt(locale, 'timezone')}</small>
-          <Link href={`/${locale}`}>
-            <ArrowUpRight size={16} />
-            {dt(locale, 'back')}
-          </Link>
-        </div>
-      </nav>
-    );
-  }
+  if (role === 'ADMIN') return null;
   return (
     <nav className="workspace-nav" data-role={role} aria-label={ct(locale, 'center')}>
       <div className="workspace-brand">

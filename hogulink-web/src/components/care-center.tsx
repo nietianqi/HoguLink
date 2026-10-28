@@ -1,4 +1,5 @@
 'use client';
+import { mo } from '@/lib/merchant-operations-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { goCustomerAccess } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,7 +29,7 @@ import {
   type TicketMessage,
 } from '@hogulink/contracts';
 import { api, ClientError } from '@/lib/api';
-import { EmergencyLookup, SharedLocation } from './safety-help';
+import { SharedLocation } from './safety-help';
 import { CaseAttachments } from './case-attachments';
 import { dateTime, errorText, t } from '@/lib/i18n';
 import { ct, categoryLabel, caseStatus, isCareKey } from '@/lib/care-i18n';
@@ -38,6 +39,8 @@ import { WorkspaceNav } from './workspace-nav';
 import { dt } from '@/lib/desktop-i18n';
 import { TicketHandlingPanel } from './ticket-handling-panel';
 import Link from 'next/link';
+import { ot } from '@/lib/admin-operations-i18n';
+import { at } from '@/lib/admin-i18n';
 import { et } from '@/lib/member-i18n';
 import { ht, isHandlingKey } from '@/lib/handling-i18n';
 import { RefundCasePanel } from './order-care';
@@ -61,12 +64,14 @@ export function CareCenter({
   initialBookingId = '',
   initialTicketId = '',
   initialCategory,
+  initialQueue = 'all',
 }: {
   locale: Locale;
   role: Role;
   initialBookingId?: string;
   initialTicketId?: string;
   initialCategory?: string;
+  initialQueue?: string;
 }) {
   const router = useRouter();
   const { actor, setActor, loading } = useSession();
@@ -83,7 +88,10 @@ export function CareCenter({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [caseSearch, setCaseSearch] = useState('');
-  const [caseFilter, setCaseFilter] = useState('all');
+  const [caseFilter, setCaseFilter] = useState(
+    ['unassigned', 'overdue', 'escalated'].includes(initialQueue) ? initialQueue : 'all',
+  );
+  const [caseWork, setCaseWork] = useState<import('@hogulink/contracts').TicketHandling[]>([]);
   const [selected, setSelected] = useState('');
   const preferredTicket = useRef(initialTicketId);
   const missingInitialTicket = useRef(false);
@@ -104,11 +112,6 @@ export function CareCenter({
   const [blockCustomer, setBlockCustomer] = useState('');
   const [blockReason, setBlockReason] = useState('');
   const [blockEnabled, setBlockEnabled] = useState(true);
-  const [restrictedCustomer, setRestrictedCustomer] = useState('');
-  const [restrictionReason, setRestrictionReason] = useState('');
-  const [restrictionEnabled, setRestrictionEnabled] = useState(true);
-  const [duration, setDuration] = useState(24);
-  const [safetyNotes, setSafetyNotes] = useState<Record<string, string>>({});
   const loadVersion = useRef(0);
   const creationRetry = useRef({ body: '', key: '' });
   const creationLock = useRef(false);
@@ -151,7 +154,7 @@ export function CareCenter({
     if (actor?.role !== role) return;
     if (role === 'ADMIN' && !canAdmin(actor, 'cases.read')) return;
     const generation = ++loadVersion.current;
-    const [b, cases, shopBlocks, accountRestrictions, safety] = await Promise.all([
+    const [b, cases, shopBlocks, accountRestrictions, safety, work] = await Promise.all([
       api<Booking[]>('bookings'),
       api<SupportTicket[]>('support-tickets'),
       role === 'MERCHANT' ? api<CustomerBlock[]>('merchant/customer-blocks') : Promise.resolve([]),
@@ -160,8 +163,11 @@ export function CareCenter({
         : role === 'ADMIN' && canAdmin(actor, 'safety.write')
           ? api<CustomerRestriction[]>('admin/customer-restrictions')
           : Promise.resolve([]),
-      role !== 'CUSTOMER' && (role !== 'ADMIN' || canAdmin(actor, 'safety.write'))
+      role !== 'CUSTOMER' && role !== 'ADMIN'
         ? api<SafetyEvent[]>('safety-events')
+        : Promise.resolve([]),
+      role === 'ADMIN'
+        ? api<import('@hogulink/contracts').TicketHandling[]>('admin/support-tickets/handling')
         : Promise.resolve([]),
     ]);
     if (generation !== loadVersion.current) return;
@@ -170,6 +176,7 @@ export function CareCenter({
     setBlocks(shopBlocks);
     setRestrictions(accountRestrictions);
     setEvents(safety);
+    setCaseWork(work);
     const preferred = preferredTicket.current;
     preferredTicket.current = '';
     if (preferred && !cases.some((x) => x.id === preferred)) {
@@ -283,9 +290,7 @@ export function CareCenter({
       setDraft('');
       setAppeal('');
       setBlockReason('');
-      setRestrictionReason('');
       setBlockCustomer('');
-      setRestrictedCustomer('');
       setActor(
         await api<Actor>('auth/demo', {
           role,
@@ -350,8 +355,6 @@ export function CareCenter({
   }
   const customers = [...new Map(bookings.map((b) => [b.customerId, b])).values()];
   const currentBlock = blocks.find((x) => x.customerId === blockCustomer);
-  const currentRestriction = restrictions.find((x) => x.id === restrictedCustomer) as
-    CustomerRestriction | undefined;
   const privateIssue = [
     'MERCHANT_UNREACHABLE',
     'QUALIFICATION',
@@ -369,6 +372,13 @@ export function CareCenter({
         : value.subject;
   }
   const visibleTickets = tickets.filter((item) => {
+    if (
+      caseFilter === 'unassigned' &&
+      (!activeCase(item) || caseWork.find((w) => w.id === item.id)?.ownerId)
+    )
+      return false;
+    if (caseFilter === 'overdue' && (!activeCase(item) || item.dueAt > Date.now())) return false;
+    if (caseFilter === 'escalated' && item.status !== 'PLATFORM_ESCALATED') return false;
     if (caseFilter === 'open' && !activeCase(item)) return false;
     if (caseFilter === 'high' && (item.priority !== 'HIGH' || !activeCase(item))) return false;
     if (caseFilter === 'resolved' && activeCase(item)) return false;
@@ -382,17 +392,25 @@ export function CareCenter({
       const next = visibleTickets[0]?.id ?? '';
       if (next !== selected) setSelected(next);
     }
-  }, [caseSearch, caseFilter, tickets, selected]);
+  }, [caseSearch, caseFilter, tickets, selected, caseWork]);
   return (
-    <div className="workspace-layout">
+    <div
+      className={
+        role === 'ADMIN'
+          ? 'admin-embedded-workspace'
+          : role === 'MERCHANT'
+            ? 'merchant-layout workday-merchant'
+            : 'workspace-layout'
+      }
+    >
       <WorkspaceNav locale={l} role={role} active="support" actor={actor} />
-      <div className="workspace-content">
+      <div className={`workspace-content ${role === 'MERCHANT' ? 'merchant-content' : ''}`}>
         <div className="workspace-title">
           <div>
             {role !== 'CUSTOMER' && <span className="eyebrow small">HOGULINK / CARE</span>}
             <h1>
               <LifeBuoy size={26} />
-              {ct(l, 'center')}
+              {role === 'ADMIN' ? at(l, 'support') : ct(l, 'center')}
             </h1>
             <p>{ct(l, 'subtitle')}</p>
           </div>
@@ -432,7 +450,7 @@ export function CareCenter({
             </strong>
             <p>{ct(l, 'demoNote')}</p>
           </div>
-          {demoAccess && role === 'MERCHANT' && (
+          {demoAccess && role === 'MERCHANT' && !signedIn && (
             <select
               aria-label={t(l, 'shop')}
               value={account}
@@ -458,12 +476,11 @@ export function CareCenter({
               ))}
             </select>
           )}
-          {!(role === 'ADMIN' && actor?.adminRole && actor.id !== 'demo-admin') &&
-            (role !== 'CUSTOMER' || !signedIn) && (
-              <button className="button small" disabled={busy || loading} onClick={login}>
-                {role === 'CUSTOMER' ? ca(l, 'login') : ct(l, 'login')}
-              </button>
-            )}
+          {!signedIn && (
+            <button className="button small" disabled={busy || loading} onClick={login}>
+              {role === 'CUSTOMER' ? ca(l, 'login') : ct(l, 'login')}
+            </button>
+          )}
           {role === 'ADMIN' && (
             <Link className="button secondary small" href={`/${l}/admin`}>
               {et(l, 'back')}
@@ -635,6 +652,13 @@ export function CareCenter({
                     onChange={(e) => setCaseFilter(e.target.value)}
                   >
                     <option value="all">{dt(l, 'allCases')}</option>
+                    {role === 'ADMIN' && (
+                      <>
+                        <option value="unassigned">{at(l, 'todoUnassigned')}</option>
+                        <option value="overdue">{at(l, 'todoOverdue')}</option>
+                        <option value="escalated">{at(l, 'todoEscalated')}</option>
+                      </>
+                    )}
                     <option value="open">{dt(l, 'openCases')}</option>
                     <option value="high">{dt(l, 'highPriority')}</option>
                     <option value="resolved">{dt(l, 'resolvedCases')}</option>
@@ -724,6 +748,14 @@ export function CareCenter({
                     {ticket.bookingId && (
                       <p className="muted">
                         {ct(l, 'related')}: {ticket.bookingId.slice(-8)}
+                        {role === 'ADMIN' && (
+                          <Link
+                            className="governance-link"
+                            href={`/${l}/admin?tab=orders&booking=${encodeURIComponent(ticket.bookingId)}`}
+                          >
+                            {ct(l, 'openBooking')} ↗
+                          </Link>
+                        )}
                         {role === 'CUSTOMER' && (
                           <Link
                             className="governance-link"
@@ -953,7 +985,9 @@ export function CareCenter({
                           <option value="">{ct(l, 'customer')}</option>
                           {customers.map((b) => (
                             <option key={b.customerId} value={b.customerId}>
-                              {b.customerId}
+                              {b.address?.name ??
+                                (l === 'ja' ? 'お客様' : l === 'en' ? 'Customer' : '顾客')}{' '}
+                              · {b.id.slice(-8).toUpperCase()}
                             </option>
                           ))}
                         </select>
@@ -991,7 +1025,16 @@ export function CareCenter({
                   {blocks.map((block) => (
                     <div key={block.id}>
                       <div>
-                        <strong>{block.customerId}</strong>
+                        <strong>
+                          {customers.find((b) => b.customerId === block.customerId)?.address
+                            ?.name ??
+                            (l === 'ja' ? 'お客様' : l === 'en' ? 'Customer' : '顾客')}{' '}
+                          ·{' '}
+                          {customers
+                            .find((b) => b.customerId === block.customerId)
+                            ?.id.slice(-8)
+                            .toUpperCase() ?? block.customerId.slice(-6)}
+                        </strong>
                         <p>{block.reviewRequired ? ct(l, 'reviewRequired') : block.reason}</p>
                         <small>
                           {ct(l, block.active ? 'active' : 'inactive')} · v{block.version}
@@ -1013,126 +1056,13 @@ export function CareCenter({
               </section>
             )}
             {role === 'ADMIN' && canAdmin(actor, 'safety.write') && (
-              <section className="form-card top-space">
-                <h2>{ct(l, 'restrictions')}</h2>
-                <p className="muted">{ct(l, 'restrictionHelp')}</p>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void task(() =>
-                      api('admin/customer-restrictions', {
-                        customerId: restrictedCustomer,
-                        active: restrictionEnabled,
-                        reason: restrictionReason,
-                        expiresAt: Date.now() + duration * 60 * 60_000,
-                        version: currentRestriction?.version ?? 0,
-                      }),
-                    );
-                  }}
-                >
-                  <fieldset disabled={busy}>
-                    <div className="field-grid">
-                      <label className="field">
-                        {ct(l, 'customer')}
-                        <select
-                          aria-label={ct(l, 'customer')}
-                          required
-                          value={restrictedCustomer}
-                          onChange={(e) => {
-                            setRestrictedCustomer(e.target.value);
-                            const value = restrictions.find((x) => x.id === e.target.value) as
-                              CustomerRestriction | undefined;
-                            setRestrictionReason(value?.reason ?? '');
-                            setRestrictionEnabled(value?.active ?? true);
-                          }}
-                        >
-                          <option value="">{ct(l, 'customer')}</option>
-                          {[
-                            ...new Set([
-                              ...customers.map((b) => b.customerId),
-                              ...restrictions.map((r) => r.id),
-                            ]),
-                          ].map((value) => (
-                            <option key={value} value={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="field">
-                        {ct(l, 'duration')}
-                        <select
-                          aria-label={ct(l, 'duration')}
-                          value={duration}
-                          onChange={(e) => setDuration(Number(e.target.value))}
-                        >
-                          {[1, 24, 72, 168, 720].map((value) => (
-                            <option key={value} value={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <label className="field">
-                      {ct(l, 'privateReason')}
-                      <textarea
-                        aria-label={ct(l, 'privateReason')}
-                        value={restrictionReason}
-                        minLength={3}
-                        maxLength={1000}
-                        required
-                        onChange={(e) => setRestrictionReason(e.target.value)}
-                      />
-                    </label>
-                    <label className="checkbox">
-                      <input
-                        type="checkbox"
-                        checked={restrictionEnabled}
-                        onChange={(e) => setRestrictionEnabled(e.target.checked)}
-                      />
-                      {ct(l, 'enabled')}
-                    </label>
-                    <button className="button small" disabled={busy || !restrictedCustomer}>
-                      {ct(l, 'saveRestriction')}
-                    </button>
-                  </fieldset>
-                </form>
-                <div className="care-records">
-                  {(restrictions as CustomerRestriction[]).map((r) => (
-                    <div key={r.id}>
-                      <div>
-                        <strong>{r.id}</strong>
-                        <p>{r.reason}</p>
-                        <small>
-                          {ct(
-                            l,
-                            !r.active
-                              ? 'inactive'
-                              : r.expiresAt <= Date.now()
-                                ? 'expired'
-                                : 'active',
-                          )}{' '}
-                          · {dateTime(l, r.expiresAt)} · v{r.version}
-                        </small>
-                      </div>
-                      <button
-                        className="text-button"
-                        onClick={() => {
-                          setRestrictedCustomer(r.id);
-                          setRestrictionReason(r.reason);
-                          setRestrictionEnabled(r.active);
-                        }}
-                      >
-                        {ct(l, 'editing')}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              <nav className="admin-section-tabs">
+                <Link href={`/${l}/admin?tab=customers`}>{ot(l, 'customers')} ↗</Link>
+                <Link href={`/${l}/admin?tab=safety`}>{at(l, 'safety')} ↗</Link>
+              </nav>
             )}
-            {role !== 'CUSTOMER' && (role !== 'ADMIN' || canAdmin(actor, 'safety.write')) && (
-              <section className="form-card top-space">
+            {role !== 'CUSTOMER' && role !== 'ADMIN' && (
+              <section className="form-card top-space" id="merchant-safety-events">
                 <h2>{ct(l, 'safetyEvents')}</h2>
                 <p className="muted">{ct(l, 'safetyNote')}</p>
                 {!events.length && <p>{ct(l, 'noSafety')}</p>}
@@ -1155,44 +1085,43 @@ export function CareCenter({
                       </small>
                     </div>
                     {event.location && <SharedLocation locale={l} location={event.location} />}
-                    {role === 'ADMIN' && event.status === 'OPEN' && (
-                      <EmergencyLookup locale={l} eventId={event.id} />
-                    )}
-                    {role === 'ADMIN' && event.resolution && (
-                      <p className="case-description">{event.resolution}</p>
-                    )}
-                    {role === 'ADMIN' && event.status === 'OPEN' && (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          void task(() =>
-                            api(`admin/safety-events/${event.id}/resolve`, {
-                              version: event.version ?? 1,
-                              text: safetyNotes[event.id] ?? '',
-                            }),
-                          );
-                        }}
-                      >
-                        <label className="field">
-                          {ct(l, 'safetyResolution')}
-                          <textarea
-                            aria-label={`${ct(l, 'safetyResolution')} ${event.id.slice(-8)}`}
-                            value={safetyNotes[event.id] ?? ''}
-                            minLength={10}
-                            maxLength={3000}
-                            required
-                            onChange={(e) =>
-                              setSafetyNotes((previous) => ({
-                                ...previous,
-                                [event.id]: e.target.value,
-                              }))
-                            }
-                          />
-                        </label>
-                        <button className="button secondary small" disabled={busy}>
-                          {ct(l, 'resolveSafety')}
-                        </button>
-                      </form>
+                    {role === 'MERCHANT' && (
+                      <>
+                        <Link
+                          className="text-button"
+                          href={`/${l}/merchant?tab=bookings&booking=${encodeURIComponent(event.bookingId)}`}
+                        >
+                          {mo(l, 'safetyOrder')}
+                        </Link>
+                        {event.merchantContact && (
+                          <p>
+                            {dateTime(l, event.merchantContact.at)} · {event.merchantContact.note}
+                          </p>
+                        )}
+                        {event.status === 'OPEN' && (
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const f = e.currentTarget,
+                                note = String(new FormData(f).get('note'));
+                              await task(() =>
+                                api(`merchant/safety-events/${event.id}/contact`, {
+                                  version: event.version ?? 1,
+                                  note,
+                                }),
+                              );
+                            }}
+                          >
+                            <label className="field">
+                              {mo(l, 'safetyContact')}
+                              <textarea name="note" required minLength={10} maxLength={500} />
+                            </label>
+                            <button className="button secondary small" disabled={busy}>
+                              {qt(l, 'contact')}
+                            </button>
+                          </form>
+                        )}
+                      </>
                     )}
                   </article>
                 ))}

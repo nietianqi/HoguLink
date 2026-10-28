@@ -112,6 +112,7 @@ export class EmployeeService {
       id: `audit_${randomUUID()}`,
       actorId: actor.id,
       action: `MEMBER_${action}`,
+      actorRole: 'ADMIN',
       detail: event.id,
       at: this.now(),
     });

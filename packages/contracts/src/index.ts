@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { FulfillmentMode, Venue, VenueSnapshot, PublicVenue } from './service-mode.js';
 export type * from './service-mode.js';
+export type * from './admin-operations.js';
+export type * from './merchant-operations.js';
 
 export const locales = ['ja', 'en', 'zh-cn'] as const;
 export type Locale = (typeof locales)[number];
@@ -172,6 +174,9 @@ export type Store = {
   /** Reviewed facts (address, photos, ...) awaiting platform review; the live venue keeps serving. */
   venueDraft?: Venue;
   homeVisitsEnabled?: boolean;
+  /** Shop-owned intake switch, independent of platform suspension and existing orders. */
+  intakePaused?: boolean;
+  intakeVersion?: number;
 };
 export type Offering = {
   fulfillmentMode?: FulfillmentMode;
@@ -466,11 +471,14 @@ export type Audit = {
   bookingId?: string;
   bookingVersion?: number;
   actorId: string;
+  actorRole?: import('./admin-operations.js').AuditActorRole;
   action: string;
   at: number;
   detail: string;
 };
 export type SafetyEvent = {
+  /** Shop follow-up is shared only with that shop and the platform safety team. */
+  merchantContact?: { at: number; note: string };
   id: string;
   bookingId: string;
   staffId: string;
@@ -482,6 +490,8 @@ export type SafetyEvent = {
   resolvedAt?: number;
   resolvedBy?: string;
   resolution?: string;
+  /** Internal safety-team work; omitted from merchant and therapist views. */
+  handling?: import('./admin-operations.js').SafetyHandling;
   /** Shared once by the therapist after raising the event; shown to the shop and safety team while open. */
   location?: SafetyLocation;
   /** View only: the shop's emergency number, shown to the therapist who raised the event. */

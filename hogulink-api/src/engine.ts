@@ -60,6 +60,7 @@ import { DomainError, ensure } from './errors.js';
 import { Repository, type Records } from './repository.js';
 import { CareService, assertCanBook, safetyEventView } from './care.js';
 import { MerchantService, type TimeBlock } from './merchant.js';
+import { MerchantServiceCatalog } from './merchant-services.js';
 import { StaffService } from './staff.js';
 import { AdminService } from './admin.js';
 import { TicketHandlingService } from './ticket-handling.js';
@@ -152,6 +153,7 @@ export class Engine {
   readonly contentReview: ContentReviewService;
   readonly care: CareService;
   readonly merchant: MerchantService;
+  readonly merchantServices: MerchantServiceCatalog;
   readonly staff: StaffService;
   readonly admin: AdminService;
   readonly quality: QualityService;
@@ -195,6 +197,7 @@ export class Engine {
     this.contentReview = new ContentReviewService(repo, now);
     this.care = new CareService(repo, now);
     this.merchant = new MerchantService((fn) => this.run(fn), now);
+    this.merchantServices = new MerchantServiceCatalog((fn) => this.run(fn), now);
     this.staff = new StaffService((fn) => this.run(fn), now);
     this.admin = new AdminService((fn) => this.run(fn), now);
     this.quality = new QualityService((fn) => this.read(fn), now);
@@ -255,6 +258,7 @@ export class Engine {
     await tx.put<Audit>('audit', {
       id: id('audit'),
       actorId: actor.id,
+      actorRole: actor.id === 'system' ? 'SYSTEM' : actor.role,
       action,
       bookingId,
       bookingVersion: bookingId
@@ -298,7 +302,7 @@ export class Engine {
       409,
     );
     ensure(
-      existingOrder || !store.billingBlocked,
+      existingOrder || (!store.billingBlocked && !store.intakePaused),
       'LISTING_UNAVAILABLE',
       'This shop is temporarily unavailable for new bookings.',
       409,
@@ -499,6 +503,7 @@ export class Engine {
           x.active &&
           x.approved &&
           !x.billingBlocked &&
+          !x.intakePaused &&
           (allModes ||
             (selectedMode === 'IN_STORE'
               ? venueAvailable(x) && filters.mode !== 'INSTANT'
@@ -1480,6 +1485,7 @@ export class Engine {
         ).length;
         todo.media = await this.media.pendingCount(tx);
         todo.storefronts = await tx.count('storefrontDrafts', { status: 'PENDING' });
+        todo.services = await tx.count('serviceProposals', { status: 'PENDING' });
         // Same queue as the review moderation page: new reviews, replies and open appeals.
         const reviews = await tx.list<ExperienceReview>('experienceReviews'),
           replies = await tx.list<ExperienceReply>('experienceReplies'),

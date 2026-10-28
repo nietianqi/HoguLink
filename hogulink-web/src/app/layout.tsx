@@ -31,6 +31,7 @@ import './service-mode.css';
 import './therapist-media.css';
 import './storefront.css';
 import './account.css';
+import './merchant-operations.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

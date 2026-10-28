@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { mo } from '@/lib/merchant-operations-i18n';
 import type { Locale, ShiftWindow, StaffShifts } from '@hogulink/contracts';
 import { ClientError } from '@/lib/api';
 import { errorText } from '@/lib/i18n';
@@ -44,6 +45,11 @@ export function ShiftEditor({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
+  const [custom, setCustom] = useState(!!shifts),
+    [confirmOff, setConfirmOff] = useState(false);
+  const initial = useRef(JSON.stringify({ weekly, dates }));
+  const changed = custom && (!shifts || JSON.stringify({ weekly, dates }) !== initial.current);
+  const allOff = !weekly.some((r) => r.on);
   const day = (d: number) =>
     new Intl.DateTimeFormat(l, { weekday: 'short', timeZone: 'UTC' }).format(
       Date.UTC(2026, 9, 25 + d),
@@ -53,6 +59,7 @@ export function ShiftEditor({
       className="shift-editor"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (!changed || (allOff && !confirmOff)) return;
         setBusy(true);
         setError('');
         setNotice('');
@@ -65,7 +72,17 @@ export function ShiftEditor({
             ),
             exceptions: dates
               .filter((x) => x.date)
-              .map((x) => ({ date: x.date, windows: x.on ? [toWindow(x)] : [] })),
+              .map((x) => ({
+                date: x.date,
+                windows: x.on
+                  ? [
+                      toWindow(x),
+                      ...(shifts?.exceptions
+                        .find((original) => original.date === x.date)
+                        ?.windows.slice(1) ?? []),
+                    ]
+                  : [],
+              })),
           });
           setNotice(sh(l, 'saved'));
         } catch (e) {
@@ -79,7 +96,14 @@ export function ShiftEditor({
       <p className="flow-muted">
         {shifts ? sh(l, 'help') : `${sh(l, 'notSet')} · ${sh(l, 'help')}`}
       </p>
-      <fieldset disabled={busy}>
+      {!shifts && (
+        <label className="checkbox">
+          <input type="checkbox" checked={custom} onChange={(e) => setCustom(e.target.checked)} />
+          {mo(l, 'custom')}
+        </label>
+      )}
+      {!custom && <p className="notice">{mo(l, 'inherited')}</p>}
+      <fieldset disabled={busy || !custom} hidden={!custom}>
         {weekly.map((r, d) => (
           <div className="shift-row" key={d}>
             <label className="checkbox">
@@ -180,6 +204,16 @@ export function ShiftEditor({
             </button>
           </div>
         ))}
+        {allOff && (
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={confirmOff}
+              onChange={(e) => setConfirmOff(e.target.checked)}
+            />
+            {mo(l, 'allOff')}
+          </label>
+        )}
         <div className="button-row">
           <button
             type="button"
@@ -190,7 +224,9 @@ export function ShiftEditor({
           >
             {sh(l, 'addDate')}
           </button>
-          <button className="button small">{sh(l, 'save')}</button>
+          <button className="button small" disabled={!changed || (allOff && !confirmOff)}>
+            {sh(l, 'save')}
+          </button>
         </div>
       </fieldset>
       {error && (

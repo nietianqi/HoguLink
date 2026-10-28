@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { Actor, Booking } from '@hogulink/contracts';
 import type { Engine } from '../../src/engine.js';
+/** Tomorrow at 12:00 JST: a daytime appointment independent of the test runner's clock. */
+export const nextDayNoonJst = (now: number) =>
+  Math.floor((now + 9 * 3600000) / 86400000) * 86400000 + 86400000 + 3 * 3600000;
 const clocks = new WeakMap<Engine, (at: number) => void>();
 export function registerClock(e: Engine, set: (at: number) => void) {
   clocks.set(e, set);

@@ -1,5 +1,26 @@
-import type { Booking } from '@hogulink/contracts';
-import { japanDay } from './desktop-model';
+import type { Booking, Locale } from '@hogulink/contracts';
+import { statusText } from './i18n';
+import { mo } from './merchant-operations-i18n';
+export function merchantBookingStatus(l: Locale, b: Booking) {
+  return b.status === 'ACCEPTED' && !b.assignedStaffId ? mo(l, 'assign') : statusText(l, b.status);
+}
+import { japanDay, needsAttention } from './desktop-model';
+export function merchantAttentionKeys(bookings: Booking[], now = Date.now()) {
+  return new Set(
+    bookings
+      .filter((b) => needsAttention(b, 'MERCHANT'))
+      .map(
+        (b) =>
+          `${b.id}:${b.status}:${b.staffTaskStatus}:${b.replacementConsent}:${['REQUESTED', 'ACCEPTED'].includes(b.status) && b.deadline > now && b.deadline - now <= 300000 ? 'due' : 'open'}`,
+      ),
+  );
+}
+export function merchantNewAttention(
+  previous: ReadonlySet<string> | null,
+  next: ReadonlySet<string>,
+) {
+  return previous === null ? 0 : [...next].filter((id) => !previous.has(id)).length;
+}
 export type FeeEntry = {
   id: string;
   storeId: string;

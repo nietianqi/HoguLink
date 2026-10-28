@@ -143,21 +143,65 @@ export function filterAdminOrders(
     storeId: string;
     status: string;
     period: string;
+    fulfillmentMode?: string;
+    from?: string;
+    to?: string;
+    sort?: string;
     now?: number;
     describe: (b: AdminBooking) => string;
   },
 ) {
   const today = japanDay(input.now ?? Date.now()),
     query = input.search.trim().toLowerCase();
-  return bookings.filter(
-    (b) =>
-      (!input.storeId || b.storeId === input.storeId) &&
-      (input.status === 'all' ||
-        (input.status === 'attention' ? orderNeedsAttention(b) : b.status === input.status)) &&
-      (!query || `${b.id} ${input.describe(b)}`.toLowerCase().includes(query)) &&
-      (input.period === 'all' ||
-        (input.period === 'today'
-          ? japanDay(b.quote.startAt) === today
-          : openOrder(b) && b.quote.startAt >= (input.now ?? Date.now()))),
-  );
+  return bookings
+    .filter(
+      (b) =>
+        (!input.storeId || b.storeId === input.storeId) &&
+        (!input.fulfillmentMode ||
+          (b.quote.fulfillmentMode ?? 'HOME_VISIT') === input.fulfillmentMode) &&
+        (!input.from || japanDay(b.quote.startAt) >= input.from) &&
+        (!input.to || japanDay(b.quote.startAt) <= input.to) &&
+        (input.status === 'all' ||
+          (input.status === 'attention' ? orderNeedsAttention(b) : b.status === input.status)) &&
+        (!query || `${b.id} ${input.describe(b)}`.toLowerCase().includes(query)) &&
+        (input.period === 'all' ||
+          (input.period === 'today'
+            ? japanDay(b.quote.startAt) === today
+            : input.period === 'custom' ||
+              (openOrder(b) && b.quote.startAt >= (input.now ?? Date.now())))),
+    )
+    .sort((a, b) =>
+      input.sort === 'visit'
+        ? a.quote.startAt - b.quote.startAt
+        : input.sort === 'amount'
+          ? b.quote.total - a.quote.total
+          : b.createdAt - a.createdAt,
+    );
+}
+
+export function adminPeriodMetrics(
+  bookings: AdminBooking[],
+  fees: AdminFee[],
+  period: 'today' | 'week' | 'month',
+  now = Date.now(),
+) {
+  const jst = new Date(now + 9 * 3600000);
+  let start = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate()) - 9 * 3600000;
+  if (period === 'week') start -= ((jst.getUTCDay() + 6) % 7) * 86400000;
+  if (period === 'month')
+    start = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), 1) - 9 * 3600000;
+  const rows = bookings.filter((b) => b.createdAt >= start && b.createdAt <= now);
+  const completed = rows.filter((b) => b.status === 'COMPLETED').length;
+  const cancelled = rows.filter((b) => b.status === 'CANCELLED').length;
+  return {
+    start,
+    count: rows.length,
+    value: rows.reduce((n, b) => n + b.quote.total, 0),
+    completed,
+    completionRate: rows.length ? completed / rows.length : null,
+    cancelRate: rows.length ? cancelled / rows.length : null,
+    fees: fees
+      .filter((f) => f.createdAt !== undefined && f.createdAt >= start && f.createdAt <= now)
+      .reduce((n, f) => n + f.amount, 0),
+  };
 }

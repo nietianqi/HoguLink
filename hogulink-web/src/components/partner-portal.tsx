@@ -1332,6 +1332,80 @@ function EvidenceUploader({
   );
 }
 
+export function MerchantTeamManagement({
+  locale: l,
+  onChanged,
+}: {
+  locale: Locale;
+  onChanged: () => Promise<unknown>;
+}) {
+  const [data, setData] = useState<PartnerSnapshot>(),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [notice, setNotice] = useState('');
+  const load = useCallback(
+    async () => setData(await api<PartnerSnapshot>('onboarding/workspace')),
+    [],
+  );
+  useEffect(() => {
+    let live = true;
+    void api<PartnerSnapshot>('onboarding/workspace')
+      .then((d) => {
+        if (live) setData(d);
+      })
+      .catch((e) => {
+        if (live) setError(onboardingError(l, e instanceof ClientError ? e.code : undefined));
+      });
+    return () => {
+      live = false;
+    };
+  }, [l]);
+  const action: Action = async (fn) => {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await fn();
+      await load();
+      await onChanged();
+      return true;
+    } catch (e) {
+      setError(onboardingError(l, e instanceof ClientError ? e.code : undefined));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <details className="merchant-team-management">
+      <summary>
+        {l === 'ja'
+          ? '招待・所属管理'
+          : l === 'en'
+            ? 'Invitations and membership'
+            : '邀请与合作管理'}
+      </summary>
+      {notice && <p role="status">{notice}</p>}
+      {error && (
+        <p role="alert" className="error-message">
+          {error}
+        </p>
+      )}
+      {data && (
+        <PartnerTeam
+          locale={l}
+          data={data}
+          busy={busy}
+          action={action}
+          onError={setError}
+          onNotice={setNotice}
+          error={error}
+        />
+      )}
+    </details>
+  );
+}
+
 function PartnerTeam({
   locale: l,
   data,

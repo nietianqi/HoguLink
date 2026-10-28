@@ -1,4 +1,7 @@
 'use client';
+import { useLiveRefresh } from '@/lib/use-live-refresh';
+import { merchantBookingStatus } from '@/lib/merchant-model';
+import { mo } from '@/lib/merchant-operations-i18n';
 import { sv } from '@/lib/service-mode-i18n';
 import { InStoreOrder } from './in-store-order';
 import { useDemoAccess } from '@/lib/use-runtime';
@@ -152,6 +155,11 @@ export function Operations({
       if (generation === loadVersion.current) setCatalog(c);
     }
   }, [actor, role, bookingId]);
+  useLiveRefresh(
+    refresh,
+    role === 'MERCHANT' && actor?.role === 'MERCHANT' && !busy && !loading,
+    `${actor?.id}:${actor?.storeId}`,
+  );
   useEffect(() => {
     let current = true;
     messageVersion.current++;
@@ -348,7 +356,7 @@ export function Operations({
       data-focused={!!initialSelected}
       data-consent={customerDecision}
     >
-      <WorkspaceNav locale={l} role={role} active="bookings" />
+      {!embedded && <WorkspaceNav locale={l} role={role} active="bookings" />}
       <div className="workspace-content">
         <div className="workspace-title">
           <div>
@@ -523,7 +531,7 @@ export function Operations({
               <>
                 {embedded && role === 'MERCHANT' && initialSelected && (
                   <Link className="workday-task-back" href={`/${l}/merchant?tab=bookings`}>
-                    {st(l, 'bookings')}
+                    {mo(l, 'back')}
                     <ArrowRight size={15} />
                   </Link>
                 )}
@@ -640,7 +648,9 @@ export function Operations({
                             b.replacementConsent === 'PENDING' &&
                             b.proposedListingId
                               ? wt(l, 'consentPending')
-                              : statusText(l, b.status)}
+                              : role === 'MERCHANT'
+                                ? merchantBookingStatus(l, b)
+                                : statusText(l, b.status)}
                           </span>
                           <span className="booking-ref">
                             {b.id.slice(-8).toUpperCase()}

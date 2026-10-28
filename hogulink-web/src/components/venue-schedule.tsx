@@ -7,9 +7,16 @@ import { dateTime, errorText, statusText, t } from '@/lib/i18n';
 import { japanDay } from '@/lib/desktop-model';
 import { sv, serviceModeError } from '@/lib/service-mode-i18n';
 
-export function VenueSchedule({ locale: l }: { locale: Locale }) {
-  const [date, setDate] = useState(() => japanDay(Date.now())),
-    [data, setData] = useState<VenueCalendar>(),
+export function VenueSchedule({
+  locale: l,
+  date,
+  onDateChange,
+}: {
+  locale: Locale;
+  date: string;
+  onDateChange: (day: string) => void;
+}) {
+  const [data, setData] = useState<VenueCalendar>(),
     [error, setError] = useState(''),
     [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -32,7 +39,7 @@ export function VenueSchedule({ locale: l }: { locale: Locale }) {
     };
   }, [date, retry, l]);
   const step = (days: number) =>
-    setDate(japanDay(Date.parse(`${date}T12:00:00+09:00`) + days * 86400000));
+    onDateChange(japanDay(Date.parse(`${date}T12:00:00+09:00`) + days * 86400000));
   return (
     <section className="merchant-panel venue-schedule">
       <h2>{sv(l, 'calendar')}</h2>
@@ -47,7 +54,7 @@ export function VenueSchedule({ locale: l }: { locale: Locale }) {
             value={date}
             required
             onChange={(e) => {
-              if (e.target.value) setDate(e.target.value);
+              if (e.target.value) onDateChange(e.target.value);
             }}
           />
         </label>

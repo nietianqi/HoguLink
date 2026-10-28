@@ -75,6 +75,14 @@ import { WorkdayTools } from './workday-tools';
 import { MerchantPromotion } from './merchant-promotion';
 import { StorefrontEditor } from './storefront-editor';
 import { sf } from '@/lib/storefront-i18n';
+import { sv } from '@/lib/service-mode-i18n';
+import { MerchantNavigation } from './merchant-navigation';
+import { MerchantServiceProposals } from './merchant-services';
+import { MerchantAlerts } from './merchant-alerts';
+import { useLiveRefresh } from '@/lib/use-live-refresh';
+import { mo } from '@/lib/merchant-operations-i18n';
+import { merchantBookingStatus } from '@/lib/merchant-model';
+import { MerchantTeamManagement } from './partner-portal';
 
 type Block = {
   id: string;
@@ -88,6 +96,7 @@ type Block = {
   active: boolean;
 };
 type Workspace = {
+  unrepliedReviews?: number;
   billingRates: Record<Store['plan'], number>;
   store: Omit<Store, 'pspAccount'>;
   listings: Listing[];
@@ -114,6 +123,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
   const query = useSearchParams(),
     requested = query.get('tab') as MerchantTab;
   const tab = merchantTabs.includes(requested) ? requested : 'overview';
+  const settingsSection = query.get('section') ?? 'business';
   const { actor, setActor, loading } = useSession();
   const demoAccess = useDemoAccess();
   const [demoShops, setDemoShops] = useState<Pick<Store, 'id' | 'name'>[]>([]),
@@ -170,6 +180,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       if (version === generation.current) setFetching(false);
     }
   }, [actor, l]);
+  useLiveRefresh(refresh, hasRole && !busy, `${actor?.id}:${actor?.storeId}`);
   useEffect(() => {
     if (demoAccess)
       api<Pick<Store, 'id' | 'name'>[]>('auth/demo-shops')
@@ -308,7 +319,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
               </small>
             </span>
             <span className={`status-badge status-${b.status.toLowerCase()}`}>
-              {statusText(l, b.status)}
+              {merchantBookingStatus(l, b)}
             </span>
             <ArrowUpRight size={17} />
           </Link>
@@ -323,60 +334,33 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
   }
   return (
     <div className="merchant-layout workday-merchant" data-tab={tab}>
-      <aside className="merchant-sidebar">
-        <Link className="merchant-wordmark" href={href('overview')}>
-          <span>
-            <Leaf size={22} />
-          </span>
-          <strong>
-            HoguLink<small>BUSINESS</small>
-          </strong>
-        </Link>
-        <div className="merchant-shop-stamp">
-          <StoreIcon size={18} />
-          <span>
-            {data?.store.name[l] ?? t(l, 'merchant')}
-            <small>TOKYO / JAPAN</small>
-          </span>
-        </div>
-        <nav aria-label={t(l, 'merchant')}>
-          {merchantTabs.map((key) => {
-            const Icon = icons[key];
-            return (
-              <Link key={key} href={href(key)} aria-current={key === tab ? 'page' : undefined}>
-                <Icon size={18} />
-                {st(l, key)}
-                {key === 'bookings' && attention.length > 0 && <span>{attention.length}</span>}
-              </Link>
-            );
-          })}
-          <Link href={`/${l}/merchant/support`}>
-            <LifeBuoy size={18} />
-            {st(l, 'support')}
-            {openCases > 0 && <span>{openCases}</span>}
-          </Link>
-        </nav>
-        <div className="merchant-sidebar-note">
-          <ShieldCheck size={20} />
-          <p>{t(l, 'demo')}</p>
-          <Link href={`/${l}`}>
-            {t(l, 'explore')}
-            <ArrowUpRight size={14} />
-          </Link>
-        </div>
-      </aside>
+      <MerchantNavigation
+        locale={l}
+        name={data?.store.name}
+        count={attention.length}
+        cases={openCases}
+      />
       <div className="merchant-content">
         {hasRole && (
+          <MerchantAlerts
+            key={`alerts:${actor.id}:${actor.storeId}`}
+            locale={l}
+            bookings={bookings}
+            loaded={!!data}
+          />
+        )}
+        {hasRole && (
           <SafetyDeskPanel
-            key={`${actor.id}:${actor.storeId}`}
+            key={`safety:${actor.id}:${actor.storeId}`}
             locale={l}
             role="MERCHANT"
             urgentOnly
+            listings={data?.listings}
           />
         )}
         <header className="merchant-heading">
           <div>
-            <span className="eyebrow small">HOGULINK BUSINESS / TOKYO</span>
+            <span className="eyebrow small">{data?.store.name[l] ?? st(l, 'overview')}</span>
             <h1>{st(l, tab)}</h1>
             <p>
               {tab === 'overview'
@@ -416,62 +400,64 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             </button>
           </div>
         </header>
-        <details className="workday-account-switch" open={!hasRole}>
-          <summary>{data?.store.name[l] ?? wt(l, 'switchIdentity')}</summary>
-          <div className="merchant-account">
-            <span className="merchant-account-icon">
-              <StoreIcon size={21} />
-            </span>
-            <div>
-              <strong>
-                {data?.store.name[l] ??
-                  (hasRole
-                    ? (data?.store.name[l] ??
-                      demoShops.find((s) => s.id === actor?.storeId)?.name[l] ??
-                      st(l, 'loading'))
-                    : t(l, 'loginRequired'))}
-              </strong>
-              <small>
-                {data
-                  ? `${acceptanceLabel(l, data.store.acceptanceMode)} · ${data.store.areas.length} ${t(l, 'area')}`
-                  : t(l, 'signInHelp')}
-              </small>
+        {(!hasRole || demoAccess) && (
+          <details className="workday-account-switch" open={!hasRole}>
+            <summary>{data?.store.name[l] ?? wt(l, 'switchIdentity')}</summary>
+            <div className="merchant-account">
+              <span className="merchant-account-icon">
+                <StoreIcon size={21} />
+              </span>
+              <div>
+                <strong>
+                  {data?.store.name[l] ??
+                    (hasRole
+                      ? (data?.store.name[l] ??
+                        demoShops.find((s) => s.id === actor?.storeId)?.name[l] ??
+                        st(l, 'loading'))
+                      : t(l, 'loginRequired'))}
+                </strong>
+                <small>
+                  {data
+                    ? `${acceptanceLabel(l, data.store.acceptanceMode)} · ${data.store.areas.length} ${t(l, 'area')}`
+                    : t(l, 'signInHelp')}
+                </small>
+              </div>
+              <label hidden={!!actor?.partnerAccountId || !demoAccess}>
+                <span className="sr-only">{st(l, 'selectShop')}</span>
+                <select
+                  aria-label={st(l, 'selectShop')}
+                  value={shop}
+                  disabled={busy || fetching}
+                  onChange={(e) => {
+                    setShop(e.target.value);
+                    if (hasRole) void login(e.target.value);
+                  }}
+                >
+                  {demoShops.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name[l]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {!hasRole && demoAccess && (
+                <button
+                  className="button small"
+                  disabled={loading || busy || !demoShops.length}
+                  onClick={() => void login()}
+                >
+                  {st(l, 'enter')}
+                  <ArrowRight size={15} />
+                </button>
+              )}
+              {!hasRole && (
+                <Link className="button secondary small" href={`/${l}/onboarding?role=MERCHANT`}>
+                  {rt(l, 'partnerLogin')}
+                </Link>
+              )}
             </div>
-            <label hidden={!!actor?.partnerAccountId || !demoAccess}>
-              <span className="sr-only">{st(l, 'selectShop')}</span>
-              <select
-                aria-label={st(l, 'selectShop')}
-                value={shop}
-                disabled={busy || fetching}
-                onChange={(e) => {
-                  setShop(e.target.value);
-                  if (hasRole) void login(e.target.value);
-                }}
-              >
-                {demoShops.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name[l]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!hasRole && demoAccess && (
-              <button
-                className="button small"
-                disabled={loading || busy || !demoShops.length}
-                onClick={() => void login()}
-              >
-                {st(l, 'enter')}
-                <ArrowRight size={15} />
-              </button>
-            )}
-            {!hasRole && (
-              <Link className="button secondary small" href={`/${l}/onboarding?role=MERCHANT`}>
-                {rt(l, 'partnerLogin')}
-              </Link>
-            )}
-          </div>
-        </details>
+          </details>
+        )}
         {(error || readError) && !editor && !blockOpen && (
           <p className="error-message" role="alert">
             {error || readError}
@@ -517,6 +503,30 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'overview' && (
               <>
+                <section className="merchant-intake">
+                  <div>
+                    <strong>{mo(l, data.store.intakePaused ? 'paused' : 'operating')}</strong>
+                    <p>{mo(l, 'intakeHelp')}</p>
+                  </div>
+                  <button
+                    className={`button small ${data.store.intakePaused ? '' : 'secondary'}`}
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(() =>
+                        api(
+                          'merchant/intake',
+                          {
+                            version: data.store.intakeVersion ?? 0,
+                            paused: !data.store.intakePaused,
+                          },
+                          'PUT',
+                        ),
+                      )
+                    }
+                  >
+                    {mo(l, data.store.intakePaused ? 'resume' : 'pause')}
+                  </button>
+                </section>
                 <section className="workday-action-center" aria-label={wt(l, 'actions')}>
                   <div className="workday-focus-heading">
                     <span>{wt(l, 'overview')}</span>
@@ -545,6 +555,13 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                     </Link>
                   </div>
                   {attention.length > 0 && orderRows(attention, 2)}
+                  {!!data.unrepliedReviews && (
+                    <p>
+                      <Link className="text-button" href={`/${l}/merchant/quality`}>
+                        {mo(l, 'unreplied')} · {data.unrepliedReviews}
+                      </Link>
+                    </p>
+                  )}
                   {!attention.length && waitingStaff.length > 0 && orderRows(waitingStaff, 1)}
                   {waitingCustomer.length > 0 && (
                     <div className="workday-waiting">
@@ -555,20 +572,6 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                     </div>
                   )}
                 </section>
-                <WorkdayTools
-                  locale={l}
-                  items={[
-                    { href: href('bookings'), label: st(l, 'bookings'), icon: ListChecks },
-                    { href: href('schedule'), label: st(l, 'schedule'), icon: CalendarDays },
-                    { href: href('finance'), label: st(l, 'finance'), icon: ReceiptText },
-                    {
-                      href: `/${l}/merchant/support`,
-                      label: st(l, 'support'),
-                      icon: LifeBuoy,
-                      count: openCases,
-                    },
-                  ]}
-                />
                 <div className="merchant-metrics">
                   {[
                     [CalendarDays, st(l, 'today'), stats.today, 'JST'],
@@ -624,27 +627,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                       ))}
                     </div>
                   </section>
-                  <section className="merchant-panel">
-                    <div className="merchant-panel-heading">
-                      <h2>{st(l, 'attention')}</h2>
-                      <Link href={href('bookings')}>
-                        {st(l, 'manage')}
-                        <ArrowUpRight size={16} />
-                      </Link>
-                    </div>
-                    {orderRows(attention, 3)}
-                    <Link className="merchant-support-link" href={`/${l}/merchant/support`}>
-                      <LifeBuoy size={19} />
-                      <span>
-                        {st(l, 'support')}
-                        <small>
-                          {openCases}{' '}
-                          {l === 'ja' ? '件の対応中' : l === 'en' ? 'open cases' : '个待处理工单'}
-                        </small>
-                      </span>
-                      <ArrowUpRight size={16} />
-                    </Link>
-                  </section>
+
                   <section className="merchant-panel merchant-wide">
                     <div className="merchant-panel-heading">
                       <h2>{st(l, 'upcoming')}</h2>
@@ -653,7 +636,15 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                         <ArrowUpRight size={16} />
                       </Link>
                     </div>
-                    {orderRows(upcoming, 5)}
+                    {orderRows(
+                      upcoming.filter(
+                        (b) =>
+                          !attention.some((a) => a.id === b.id) &&
+                          !waitingStaff.some((a) => a.id === b.id) &&
+                          !waitingCustomer.some((a) => a.id === b.id),
+                      ),
+                      5,
+                    )}
                   </section>
                 </div>
               </>
@@ -669,7 +660,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'schedule' && (
               <>
-                {data.store.venue && <VenueSchedule locale={l} />}
+                {data.store.venue && <VenueSchedule locale={l} date={day} onDateChange={setDay} />}
                 {data.timeOffRequests.some((r) => r.status === 'PENDING') && (
                   <section className="merchant-panel" style={{ marginBottom: 24 }}>
                     <div className="merchant-panel-heading">
@@ -835,6 +826,20 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
               </>
             )}
             {tab === 'team' && <MediaPendingNotice locale={l} />}
+            {tab === 'team' && actor && <MerchantTeamManagement locale={l} onChanged={refresh} />}
+            {tab === 'team' && (
+              <details className="merchant-team-management">
+                <summary>{sv(l, 'staffModes')}</summary>
+                <VenueSettings
+                  section="team"
+                  locale={l}
+                  store={data.store}
+                  listings={data.listings}
+                  offerings={data.offerings}
+                  onChanged={refresh}
+                />
+              </details>
+            )}
             {tab === 'team' && (
               <div className="merchant-team-grid">
                 {data.listings.map((x) => {
@@ -875,12 +880,17 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                           </span>
                         ))}
                       </div>
-                      <p className="merchant-team-services">
-                        {data.offerings
-                          .filter((o) => x.offeringIds.includes(o.id))
-                          .map((o) => `${o.name[l]} ${o.durationMinutes}${t(l, 'minutes')}`)
-                          .join(' / ')}
-                      </p>
+                      <details className="merchant-team-services">
+                        <summary>
+                          {mo(l, 'selectedServices')} · {x.offeringIds.length}
+                        </summary>
+                        <p>
+                          {data.offerings
+                            .filter((o) => x.offeringIds.includes(o.id))
+                            .map((o) => `${o.name[l]} ${o.durationMinutes}${t(l, 'minutes')}`)
+                            .join(' / ')}
+                        </p>
+                      </details>
                       {(x.safetyConditions || x.safetyRequest) && (
                         <div className="merchant-safety-conditions">
                           <strong>{sh(l, 'conditions')}</strong>
@@ -936,50 +946,70 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
               </div>
             )}
             {tab === 'services' && (
-              <section className="merchant-panel">
-                <div className="merchant-panel-heading">
-                  <h2>{st(l, 'services')}</h2>
-                  <span>
-                    {data.offerings.length} {st(l, 'total')}
-                  </span>
-                </div>
-                <div className="merchant-service-list">
-                  {data.offerings.map((o) => (
-                    <article key={o.id}>
-                      <span className="merchant-duration">
-                        {o.durationMinutes}
-                        <small>{t(l, 'minutes')}</small>
-                      </span>
-                      <div>
-                        <h2>{o.name[l]}</h2>
-                        <p>
-                          {st(l, 'travel')} {money(l, o.transportFee)} · v{o.version}
-                        </p>
-                        <span className={`merchant-pill ${o.active === false ? 'muted' : ''}`}>
-                          {st(l, o.active === false ? 'paused' : 'live')}
+              <>
+                <MerchantServiceProposals
+                  locale={l}
+                  store={data.store}
+                  listings={data.listings}
+                  onChanged={refresh}
+                />
+                <details className="merchant-team-management">
+                  <summary>{sv(l, 'price')}</summary>
+                  <VenueSettings
+                    section="services"
+                    locale={l}
+                    store={data.store}
+                    listings={data.listings}
+                    offerings={data.offerings}
+                    onChanged={refresh}
+                  />
+                </details>
+                <section className="merchant-panel">
+                  <div className="merchant-panel-heading">
+                    <h2>{st(l, 'services')}</h2>
+                    <span>
+                      {data.offerings.length} {st(l, 'total')}
+                    </span>
+                  </div>
+                  <div className="merchant-service-list">
+                    {data.offerings.map((o) => (
+                      <article key={o.id}>
+                        <span className="merchant-duration">
+                          {o.durationMinutes}
+                          <small>{t(l, 'minutes')}</small>
                         </span>
-                        <MerchantPromotion
-                          locale={l}
-                          offering={o}
-                          disabled={busy}
-                          onChanged={() => mutate(async () => {})}
-                        />
-                      </div>
-                      <strong>{money(l, o.price)}</strong>
-                      <button
-                        className="button secondary small"
-                        disabled={busy || !o.approved || o.regulatoryCategory !== 'RELAXATION'}
-                        onClick={() => {
-                          setError('');
-                          setEditor(o);
-                        }}
-                      >
-                        {st(l, 'edit')}
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              </section>
+                        <div>
+                          <h2>{o.name[l]}</h2>
+                          <p>
+                            {sv(l, o.fulfillmentMode ?? 'HOME_VISIT')} · {st(l, 'travel')}{' '}
+                            {money(l, o.transportFee)} · v{o.version}
+                          </p>
+                          <span className={`merchant-pill ${o.active === false ? 'muted' : ''}`}>
+                            {st(l, o.active === false ? 'paused' : 'live')}
+                          </span>
+                          <MerchantPromotion
+                            locale={l}
+                            offering={o}
+                            disabled={busy}
+                            onChanged={() => mutate(async () => {})}
+                          />
+                        </div>
+                        <strong>{money(l, o.price)}</strong>
+                        <button
+                          className="button secondary small"
+                          disabled={busy || !o.approved || o.regulatoryCategory !== 'RELAXATION'}
+                          onClick={() => {
+                            setError('');
+                            setEditor(o);
+                          }}
+                        >
+                          {st(l, 'edit')}
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </>
             )}
             {tab === 'storefront' && actor && (
               <StorefrontEditor key={`${actor.id}:${actor.storeId}`} locale={l} />
@@ -993,72 +1023,109 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                     actor={actor}
                     initialBookingId={query.get('booking') ?? ''}
                     initialMonth={query.get('month') ?? undefined}
-                    initialSection={query.get('section') ?? undefined}
+                    initialSection={
+                      query.get('section') ??
+                      (query.get('booking') || query.get('invoiceSource') ? undefined : 'reports')
+                    }
                     initialInvoiceSource={query.get('invoiceSource') ?? undefined}
                   />
                 )}
               </>
             )}
             {tab === 'settings' && (
-              <div className="merchant-settings-grid">
-                <div className="merchant-settings-stack">
-                  <VenueSettings
-                    locale={l}
-                    store={data.store}
-                    listings={data.listings}
-                    offerings={data.offerings}
-                    onChanged={refresh}
-                  />
-                  <BookingRulesSettings
-                    key={`${data.store.id}:prices:${data.bookingRules.version}`}
-                    rules={data.bookingRules}
-                    areas={data.store.areas}
-                    history={data.bookingRulesHistory ?? []}
-                    locale={l}
-                    busy={busy}
-                    onSave={(input) => mutate(() => api('merchant/booking-rules', input, 'PUT'))}
-                  />
-                  <section className="merchant-panel">
-                    <div className="merchant-panel-heading">
-                      <h2>{st(l, 'shopInfo')}</h2>
-                      <ShieldCheck size={19} />
-                    </div>
-                    <dl className="merchant-business-info">
-                      <div>
-                        <dt>{t(l, 'shop')}</dt>
-                        <dd>{data.store.name[l]}</dd>
-                      </div>
-                      <div>
-                        <dt>{t(l, 'legal')}</dt>
-                        <dd>{data.store.legalName}</dd>
-                      </div>
-                      <div>
-                        <dt>{t(l, 'address')}</dt>
-                        <dd>{data.store.legalAddress}</dd>
-                      </div>
-                      <div>
-                        <dt>{t(l, 'coverage')}</dt>
-                        <dd>{data.store.areas.map((a) => areaName(l, a)).join(' · ')}</dd>
-                      </div>
-                    </dl>
-                  </section>
+              <>
+                <nav className="merchant-setting-tabs" aria-label={st(l, 'settings')}>
+                  {(['business', 'venue', 'acceptance', 'company'] as const).map((s) => (
+                    <Link
+                      key={s}
+                      href={`${href('settings')}&section=${s}`}
+                      aria-current={settingsSection === s ? 'page' : undefined}
+                    >
+                      {mo(l, s)}
+                    </Link>
+                  ))}
+                </nav>
+                <div className="merchant-settings-grid">
+                  <div className="merchant-settings-stack">
+                    {settingsSection === 'venue' && (
+                      <>
+                        <VenueSettings
+                          section="venue"
+                          locale={l}
+                          store={data.store}
+                          listings={data.listings}
+                          offerings={data.offerings}
+                          onChanged={refresh}
+                        />
+                      </>
+                    )}
+                    {settingsSection === 'business' && (
+                      <>
+                        <p className="merchant-panel-copy">
+                          {sv(l, 'HOME_VISIT')} ·{' '}
+                          <Link className="text-button" href={`${href('settings')}&section=venue`}>
+                            {sv(l, 'IN_STORE')} ↗
+                          </Link>
+                        </p>
+                        <BookingRulesSettings
+                          key={`${data.store.id}:prices:${data.bookingRules.version}`}
+                          rules={data.bookingRules}
+                          areas={data.store.areas}
+                          history={data.bookingRulesHistory ?? []}
+                          locale={l}
+                          busy={busy}
+                          onSave={(input) =>
+                            mutate(() => api('merchant/booking-rules', input, 'PUT'))
+                          }
+                        />
+                      </>
+                    )}
+                    {settingsSection === 'company' && (
+                      <section className="merchant-panel">
+                        <div className="merchant-panel-heading">
+                          <h2>{st(l, 'shopInfo')}</h2>
+                          <ShieldCheck size={19} />
+                        </div>
+                        <dl className="merchant-business-info">
+                          <div>
+                            <dt>{t(l, 'shop')}</dt>
+                            <dd>{data.store.name[l]}</dd>
+                          </div>
+                          <div>
+                            <dt>{t(l, 'legal')}</dt>
+                            <dd>{data.store.legalName}</dd>
+                          </div>
+                          <div>
+                            <dt>{t(l, 'address')}</dt>
+                            <dd>{data.store.legalAddress}</dd>
+                          </div>
+                          <div>
+                            <dt>{t(l, 'coverage')}</dt>
+                            <dd>{data.store.areas.map((a) => areaName(l, a)).join(' · ')}</dd>
+                          </div>
+                        </dl>
+                      </section>
+                    )}
+                  </div>
+                  {settingsSection === 'acceptance' && (
+                    <AcceptanceSettings
+                      key={`${data.store.id}:${data.store.ruleVersion}`}
+                      store={data.store}
+                      offerings={data.offerings}
+                      listings={data.listings}
+                      history={data.acceptanceHistory ?? []}
+                      locale={l}
+                      busy={busy}
+                      onSave={(input) => mutate(() => api('merchant/settings', input, 'PUT'))}
+                    />
+                  )}
                 </div>
-                <AcceptanceSettings
-                  key={`${data.store.id}:${data.store.ruleVersion}`}
-                  store={data.store}
-                  offerings={data.offerings}
-                  listings={data.listings}
-                  history={data.acceptanceHistory ?? []}
-                  locale={l}
-                  busy={busy}
-                  onSave={(input) => mutate(() => api('merchant/settings', input, 'PUT'))}
-                />
-              </div>
+              </>
             )}
           </>
         )}
         <details className="workday-resources">
-          <summary>{wt(l, 'resources')}</summary>
+          <summary>{mo(l, 'resources')}</summary>
           <PartnerEntry locale={l} role="MERCHANT" />
           <QualityEntry locale={l} role="MERCHANT" />
         </details>

@@ -5,10 +5,13 @@ import { canAdmin, type Actor, type Locale } from '@hogulink/contracts';
 import { api } from '@/lib/api';
 import { dateTime } from '@/lib/i18n';
 import { rt } from '@/lib/runtime-i18n';
+import { auditLabel } from '@/lib/admin-i18n';
+import { ot } from '@/lib/admin-operations-i18n';
 type Snapshot = {
   configured: boolean;
+  deliveryScope: 'customer-auth' | 'all';
   counts: Record<string, number>;
-  jobs: { id: string; type: string; status: string; createdAt: number }[];
+  jobs: { id: string; type: string; status: string; createdAt: number; bookingId?: string }[];
 };
 export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Actor }) {
   const [data, setData] = useState<Snapshot>(),
@@ -63,6 +66,21 @@ export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Ac
       <p className="runtime-help">{rt(l, 'help')}</p>
       {data && (
         <div className="runtime-counts">
+          <span>
+            {ot(l, 'accountMail')} ·{' '}
+            <strong>{ot(l, data.configured ? 'enabled' : 'disabled')}</strong>
+          </span>
+          <span>
+            {ot(l, 'businessMail')} ·{' '}
+            <strong>
+              {ot(l, data.configured && data.deliveryScope === 'all' ? 'enabled' : 'disabled')}
+            </strong>
+          </span>
+        </div>
+      )}
+      <p className="runtime-help">{ot(l, 'scopeHelp')}</p>
+      {data && (
+        <div className="runtime-counts">
           {['PENDING', 'RETRY', 'SENT', 'FAILED', 'BLOCKED'].map((status) => (
             <span key={status}>
               {rt(l, status)} <strong>{data.counts[status] ?? 0}</strong>
@@ -75,15 +93,17 @@ export function SystemDelivery({ locale: l, actor }: { locale: Locale; actor: Ac
           <article key={job.id}>
             <div>
               <strong>
-                {rt(
-                  l,
-                  job.type === 'CUSTOMER_VERIFY'
-                    ? 'verify'
-                    : job.type === 'CUSTOMER_RESET'
-                      ? 'reset'
-                      : 'update',
-                )}
+                {job.type === 'CUSTOMER_VERIFY'
+                  ? rt(l, 'verify')
+                  : job.type === 'CUSTOMER_RESET'
+                    ? rt(l, 'reset')
+                    : auditLabel(l, job.type)}
               </strong>
+              {job.bookingId && (
+                <Link href={`/${l}/admin?tab=orders&booking=${encodeURIComponent(job.bookingId)}`}>
+                  {job.bookingId.slice(-8).toUpperCase()} ↗
+                </Link>
+              )}
               <small>{dateTime(l, job.createdAt)}</small>
             </div>
             <span>{rt(l, job.status)}</span>

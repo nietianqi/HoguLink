@@ -563,3 +563,144 @@
     width: 100%;
   }
 }
+.customer-state-card {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  margin: 18px 0 24px;
+  background: var(--h5-primary-soft, #e4f7ef);
+  border: 1px solid var(--hl-line);
+  border-radius: 16px;
+  color: var(--hl-ink);
+}
+.customer-state-card h2 {
+  margin: 12px 0 6px;
+  font: 700 22px/1.4 var(--font-sans);
+}
+.customer-state-card p {
+  margin: 6px 0;
+}
+.customer-state-shop {
+  color: var(--hl-ink-secondary);
+}
+.customer-state-message {
+  font-weight: 600;
+  line-height: 1.7;
+}
+.customer-state-deadline {
+  font-size: 13px;
+}
+.customer-state-facts {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.customer-state-facts div {
+  display: grid;
+  gap: 5px;
+}
+.customer-state-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--hl-muted);
+  font-size: 13px;
+}
+.customer-state-facts dd {
+  margin: 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.customer-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.visit-service-picker > .change-service {
+  min-height: 36px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  display: block;
+  text-align: right;
+  font-size: 13px;
+}
+.visit-location-fields {
+  margin: 18px 0;
+}
+.preference-fee small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.consumer-queue-tools {
+  position: relative;
+}
+.consumer-queue-tools summary {
+  cursor: pointer;
+  font-size: 13px;
+  padding: 10px;
+}
+.consumer-queue-tools[open] .button {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 3;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px #102c1d12;
+}
+.consumer-service-photo,
+.consumer-desktop-nav-label {
+  display: none;
+}
+.customer-main-nav a.consumer-desktop-nav {
+  display: none;
+}
+@media (min-width: 1101px) {
+  .customer-state-card {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+  .customer-state-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+.consumer-advanced-entry {
+  display: none;
+}
+.booking-preview .visit-service-picker.compact .service-choice-name {
+  display: block;
+  min-width: 0;
+  font-size: 14px;
+}
+.booking-preview .visit-service-picker.compact .service-duration {
+  flex: 0 0 auto;
+}
+.booking-preview .visit-service-picker.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1101px) {
+  .consumer-advanced-entry {
+    display: block;
+    text-align: right;
+    margin: -40px 0 22px;
+    font-size: 13px;
+  }
+  body:has(.customer-header) .customer-home-services .h5-home-sections {
+    margin-top: 0;
+  }
+}
+
+.consumer-directory-link {
+  display: none;
+}
+
+.consumer-empty-stats {
+  display: none;
+}
+.customer-state-actions .button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+}

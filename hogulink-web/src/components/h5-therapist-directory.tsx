@@ -259,6 +259,12 @@ export function H5TherapistDirectory({
   return (
     <main id="main" className="h5-directory h5-directory-v2 h5-surface wrap" aria-busy={pending}>
       <h1 className="h5-desktop-title">{t(l, 'explore')}</h1>
+      <Link
+        className="consumer-advanced-entry"
+        href={`/${l}/therapists?${new URLSearchParams({ ...q, filters: 'advanced' })}`}
+      >
+        {ht(l, 'homeAdvanced')}
+      </Link>
       <div className="h5-directory-header">
         <form
           action={`/${l}/therapists`}

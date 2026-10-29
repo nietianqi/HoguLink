@@ -161,6 +161,11 @@ await call(
 b = await call(staff, `staff/tasks/${b.id}/ack`, { version: b.version });
 for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
   await advanceVisit(b, event);
+  // Advancing a five-day booking also runs its scheduled pre-authorization.
+  // Read the resulting version instead of submitting the old pre-authorization snapshot.
+  b = await call(customer, `bookings/${b.id}`);
+  if (event === 'EN_ROUTE')
+    check(b.paymentStatus === 'AUTHORIZED', 'Far-future guarantee is authorized before travel');
   b = await call(staff, `staff/tasks/${b.id}/events`, { version: b.version, event });
 }
 b = await confirmVisit(customer, b);

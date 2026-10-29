@@ -1,3 +1,4 @@
+import { AdvancedTherapistResults } from '@/components/advanced-therapist-results';
 import { H5TherapistDirectory } from '@/components/h5-therapist-directory';
 import { Suspense } from 'react';
 import { serverApi } from '@/lib/api';
@@ -21,6 +22,17 @@ export default async function Page({
   const l = asLocale((await params).locale),
     raw = await searchParams;
   const q = directoryQuery(raw);
+  const advanced = Object.fromEntries(
+    Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  );
+  if (
+    advanced.filters === 'advanced' ||
+    advanced.date ||
+    advanced.maxTotal ||
+    advanced.acceptance ||
+    advanced.view
+  )
+    return <AdvancedTherapistResults locale={l} q={advanced} />;
   try {
     const [initial, bootstrap] = await Promise.all([
       serverApi<MobileTherapists>(

@@ -6,6 +6,11 @@ import {
 } from '@hogulink/contracts';
 import type { Address, Listing, Offering } from '@hogulink/contracts';
 
+/** An absent or incompatible browsing area must never become a billable default. */
+export function selectedHomeArea(areas: string[], raw: string | null | undefined) {
+  return raw && areas.includes(raw) ? raw : '';
+}
+
 /** Carry only the public service-mode preference through normal customer navigation. */
 export function withServiceMode(href: string, mode: string | null | undefined) {
   if (mode !== 'IN_STORE' || !href.startsWith('/') || href.startsWith('//')) return href;

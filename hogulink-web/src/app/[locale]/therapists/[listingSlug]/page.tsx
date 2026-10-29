@@ -1,4 +1,5 @@
 import { sv } from '@/lib/service-mode-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { browseServiceChoices, choiceModePrices } from '@/lib/consumer-model';
 import { ModePrices } from '@/components/service-mode';
 import { VenueInfo } from '@/components/service-mode';
@@ -121,7 +122,13 @@ export default async function Page({
     `/${l}/book/${listing.slug}?${new URLSearchParams({ ...carry, ...(offering ? { offering } : {}) })}`;
   const portrait = h5Portrait(listing, catalog.demo);
   const modes = (['HOME_VISIT', 'IN_STORE'] as const).filter((mode) =>
-    priced.some((x) => fulfillmentMode(x.o) === mode),
+    choices.some((choice) =>
+      choice.variants.some(
+        (variant) =>
+          fulfillmentMode(variant.offering) === mode &&
+          variant.members.some((member) => member.id === listing.id),
+      ),
+    ),
   );
   const fromTotal = priced.length ? Math.min(...priced.map((x) => x.total)) : undefined;
   return (
@@ -190,7 +197,17 @@ export default async function Page({
               instantNow={instantNow}
               freeTravel={offerings.some((o) => travel(o) === 0)}
             />
-            <dl className="h5-detail-stats" aria-label={ht(l, 'realStats')}>
+            {stats && stats.reviewCount === 0 && (
+              <p className="consumer-empty-stats">
+                {pc(l, 'noReviews')} · {ht(l, 'statCompleted')} {stats.completed90d} ·{' '}
+                {ht(l, 'statFavorites')} {stats.favorites}
+              </p>
+            )}
+            <dl
+              className="h5-detail-stats"
+              data-empty={stats?.reviewCount === 0}
+              aria-label={ht(l, 'realStats')}
+            >
               <div>
                 <dt>{ht(l, 'statRating')}</dt>
                 <dd>{stats?.rating == null ? '—' : stats.rating.toFixed(1)}</dd>
@@ -221,7 +238,6 @@ export default async function Page({
             <a href="#shop-info">{vt(l, 'business')}</a>
           </nav>
           <section className="detail-section" id="services">
-            <span className="eyebrow small">THE SERVICE MENU</span>
             <h2>{md(l, 'serviceTitle')}</h2>
             <p className="detail-muted">{vt(l, 'totalNote')}</p>
             {!!store.bookingRules?.timeSurcharges?.length && (
@@ -259,7 +275,6 @@ export default async function Page({
             <PublicReviews locale={l} listingId={listing.id} />
           </div>
           <section className="detail-section therapist-profile" id="profile">
-            <span className="eyebrow small">ABOUT</span>
             <h2>{md(l, 'profileTitle')}</h2>
             <p className="profile-description">{listing.description[l]}</p>
             <dl className="detail-facts">
@@ -273,7 +288,6 @@ export default async function Page({
             </dl>
           </section>
           <section className="detail-section therapist-shop" id="shop-info">
-            <span className="eyebrow small">THE SHOP</span>
             <h2>{md(l, 'shopTitle')}</h2>
             <Link className="affiliated-shop detail-panel" href={shopHref}>
               <span className="affiliated-monogram">{store.name.en.slice(0, 1)}</span>
@@ -310,6 +324,7 @@ export default async function Page({
               store={baseStore}
               offerings={allCatalog.offerings}
               team={allCatalog.listings.filter((x) => x.storeId === store.id)}
+              demo={catalog.demo}
               rules={catalog.bookingRules}
             />
           </Suspense>
@@ -324,7 +339,6 @@ export default async function Page({
         <section className="detail-section related-team">
           <div className="section-heading">
             <div>
-              <span className="eyebrow small">FROM THE SAME SHOP</span>
               <h2>{vt(l, 'team')}</h2>
             </div>
             <Link href={shopHref}>

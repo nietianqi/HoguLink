@@ -55,7 +55,7 @@ export function DetailBreadcrumb({
       className="detail-breadcrumb"
       aria-label={l === 'en' ? 'Breadcrumb' : l === 'ja' ? 'パンくず' : '面包屑导航'}
     >
-      <Link href={`/${l}${browse ? `?${browse}` : ''}#discover`}>
+      <Link href={`/${l}/therapists${browse ? `?${browse}` : ''}`}>
         <ArrowLeft size={14} />
         {t(l, 'explore')}
       </Link>
@@ -85,7 +85,6 @@ export function VisitNotes({
 }) {
   return (
     <section className="detail-section visit-notes" id="visit-info">
-      <span className="eyebrow small">BEFORE YOUR VISIT</span>
       <h2>{vt(l, 'visitInfo')}</h2>
       <div className="visit-note-grid">
         <div>

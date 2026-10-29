@@ -12,6 +12,7 @@ import {
   House,
   Compass,
   CalendarDays,
+  Store as StoreIcon,
   MessageCircle,
 } from 'lucide-react';
 import { mt } from '@/lib/mobile-i18n';
@@ -21,6 +22,7 @@ import type { Locale } from '@hogulink/contracts';
 import { localeMap, locales, t } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { ht } from '@/lib/h5-i18n';
 import { visitPreferences, visitSelection, withServiceMode } from '@/lib/visit-model';
 export function Header({ locale }: { locale: Locale }) {
@@ -106,34 +108,68 @@ export function Header({ locale }: { locale: Locale }) {
                 href: `/${locale}`,
                 label: ht(locale, 'home'),
                 Icon: House,
+                desktopOnly: false,
                 active: path === `/${locale}`,
               },
               {
-                href: `/${locale}/discover`,
-                label: xt(locale, 'discover'),
-                Icon: Compass,
-                active: path.startsWith(`/${locale}/discover`),
+                href: `/${locale}/services`,
+                label: pc(locale, 'services'),
+                Icon: Leaf,
+                desktopOnly: true,
+                active: path.startsWith(`/${locale}/services`),
               },
               {
                 href: `/${locale}/therapists`,
                 label: ht(locale, 'booking'),
                 Icon: CalendarDays,
-                active: /\/(therapists|shops|book|services)(\/|$)/.test(path),
+                desktopOnly: false,
+                active: /\/(therapists|book)(\/|$)/.test(path),
+              },
+              {
+                href: `/${locale}/discover?tab=shops`,
+                label: pc(locale, 'shops'),
+                Icon: StoreIcon,
+                desktopOnly: true,
+                active:
+                  path.startsWith(`/${locale}/shops`) ||
+                  (path.startsWith(`/${locale}/discover`) && query.get('tab') === 'shops'),
+              },
+              {
+                href: `/${locale}/discover`,
+                label: xt(locale, 'discover'),
+                Icon: Compass,
+                desktopOnly: false,
+                active: path.startsWith(`/${locale}/discover`) && query.get('tab') !== 'shops',
               },
               {
                 href: `/${locale}/account/messages`,
                 label: xt(locale, 'inbox'),
                 Icon: MessageCircle,
+                desktopOnly: false,
                 active: path.startsWith(`/${locale}/account/messages`),
               },
-            ].map(({ href, label, Icon, active }) => (
+            ].map(({ href, label, Icon, active, desktopOnly }) => (
               <Link
                 key={href}
-                href={withServiceMode(href, query.get('fulfillmentMode'))}
+                className={desktopOnly ? 'consumer-desktop-nav' : undefined}
+                href={(() => {
+                  const target = new URL(href, 'http://hogulink.local');
+                  if (!href.includes('/account'))
+                    for (const [key, value] of Object.entries(preferences))
+                      target.searchParams.set(key, value);
+                  return `${target.pathname}${target.searchParams.size ? `?${target.searchParams}` : ''}`;
+                })()}
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon size={17} aria-hidden="true" />
-                {label}
+                {href === `/${locale}/therapists` ? (
+                  <>
+                    <span className="consumer-desktop-nav-label">{pc(locale, 'therapists')}</span>
+                    <span className="consumer-mobile-nav-label">{label}</span>
+                  </>
+                ) : (
+                  label
+                )}
               </Link>
             ))}
           </nav>

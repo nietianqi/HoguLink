@@ -62,6 +62,9 @@ import { br } from '@/lib/booking-rules-i18n';
 import { policyText, vt } from '@/lib/visit-i18n';
 import { visitTimeRange } from '@/lib/booking-presentation';
 import { CustomerOrderProgress } from './customer-order-progress';
+import { CustomerOrderSummary } from './customer-order-summary';
+import { customerNextStep } from '@/lib/customer-order-model';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { MapPin, MessageCircle, LifeBuoy } from 'lucide-react';
 import { ca } from '@/lib/customer-auth-i18n';
 import { loadCustomerBookings } from '@/lib/customer-booking-data';
@@ -393,7 +396,6 @@ export function Operations({
             </button>
           )}
         </div>
-        {role === 'CUSTOMER' && hasRole && !bookingId && !customerDecision && customerTools}
         {(role !== 'CUSTOMER' || !hasRole) && (
           <div className="account-panel">
             {role === 'CUSTOMER' && (
@@ -457,7 +459,7 @@ export function Operations({
         )}
         {hasRole && (
           <>
-            {ordersLoaded && (role !== 'CUSTOMER' || !bookingId) && (
+            {ordersLoaded && role !== 'CUSTOMER' && (
               <div className="workspace-stats">
                 <div>
                   <span>{t(l, 'orders')}</span>
@@ -669,6 +671,20 @@ export function Operations({
                       </div>
                       {role === 'CUSTOMER' && bookingId && (
                         <>
+                          <CustomerOrderSummary
+                            locale={l}
+                            booking={b}
+                            storeName={
+                              stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot
+                            }
+                            therapistName={
+                              b.staffTaskStatus === 'ACKNOWLEDGED'
+                                ? listingName(b.assignedListingId)
+                                : b.selectedStaffListingId
+                                  ? listingName(b.selectedStaffListingId)
+                                  : pc(l, 'notAssigned')
+                            }
+                          />
                           <CustomerOrderProgress locale={l} booking={b} />
                           <nav className="order-detail-nav" aria-label={vt(l, 'orderDetails')}>
                             <a href={`#order-overview-${b.id}`}>{af(l, 'orderOverview')}</a>
@@ -695,43 +711,14 @@ export function Operations({
                           </nav>
                         </>
                       )}
-                      {role === 'CUSTOMER' &&
-                        bookingId &&
-                        !(b.replacementConsent === 'PENDING' && b.proposedListingId) && (
-                          <div className="workday-order-next">
-                            <span>{wt(l, 'currentVisit')}</span>
-                            <strong>{ot(l, nextWork(b))}</strong>
-                            {active &&
-                              ![
-                                'visit',
-                                'closed',
-                                'completionPending',
-                                'completionReview',
-                              ].includes(nextWork(b)) && (
-                                <small>
-                                  {wt(l, 'responseBy')} ·{' '}
-                                  {dateTime(
-                                    l,
-                                    b.replacementConsent === 'PENDING'
-                                      ? (b.replacementDeadline ?? b.deadline)
-                                      : b.deadline,
-                                  )}{' '}
-                                  JST
-                                </small>
-                              )}
-                            {b.refundedAmount > 0 && (
-                              <small>
-                                {t(l, 'refunded')} {money(l, b.refundedAmount)} ·{' '}
-                                {dt(l, 'netCaptured')}{' '}
-                                {money(l, b.capturedAmount - b.refundedAmount)}
-                              </small>
-                            )}
-                          </div>
-                        )}
                       {b.paymentStatus === 'FAILED' &&
                         b.paymentActionBy !== undefined &&
                         !['IN_SERVICE', 'AWAITING_COMPLETION'].includes(b.status) && (
-                          <div className="replacement-panel" role="status">
+                          <div
+                            className="replacement-panel"
+                            role="status"
+                            id={`customer-guarantee-${b.id}`}
+                          >
                             <h3>{xt(l, 'guaranteeTitle')}</h3>
                             <p>
                               {xt(l, role === 'CUSTOMER' ? 'guaranteeText' : 'guaranteeProvider')}
@@ -753,7 +740,7 @@ export function Operations({
                           </div>
                         )}
                       {role === 'CUSTOMER' && b.replacementConsent === 'PENDING' && (
-                        <div className="replacement-panel">
+                        <div className="replacement-panel" id={`customer-replacement-${b.id}`}>
                           <h3>{t(l, 'replacement')}</h3>
                           <p>
                             {b.proposedListingId ? (
@@ -900,12 +887,14 @@ export function Operations({
                         </section>
                       )}
                       {customerDecision && !bookingId && customerTools}
-                      <CompletionPanel
-                        locale={l}
-                        booking={b}
-                        role={role}
-                        onUpdated={() => void task(refresh)}
-                      />
+                      <div id={`customer-completion-${b.id}`}>
+                        <CompletionPanel
+                          locale={l}
+                          booking={b}
+                          role={role}
+                          onUpdated={() => void task(refresh)}
+                        />
+                      </div>
                       <div className="booking-card-main" id={`order-overview-${b.id}`}>
                         <div className="booking-facts">
                           <h3>
@@ -932,14 +921,18 @@ export function Operations({
                               </dd>
                             </div>
                             <div>
-                              <dt>{t(l, 'assigned')}</dt>
+                              <dt>{role === 'CUSTOMER' ? pc(l, 'therapist') : t(l, 'assigned')}</dt>
                               <dd>
                                 {listingName(b.assignedListingId)} ·{' '}
                                 {statusText(l, b.staffTaskStatus)}
                               </dd>
                             </div>
                             <div>
-                              <dt>{t(l, 'area')}</dt>
+                              <dt>
+                                {b.quote.fulfillmentMode === 'IN_STORE'
+                                  ? pc(l, 'venueArea')
+                                  : t(l, 'area')}
+                              </dt>
                               <dd>{areaName(l, b.quote.area)}</dd>
                             </div>
                             <div>
@@ -985,7 +978,9 @@ export function Operations({
                               ].includes(nextWork(b)) &&
                               `${dateTime(l, b.replacementConsent === 'PENDING' ? (b.replacementDeadline ?? b.deadline) : b.deadline)} · `}
                             {active
-                              ? ot(l, nextWork(b))
+                              ? role === 'CUSTOMER'
+                                ? pc(l, customerNextStep(b).key)
+                                : ot(l, nextWork(b))
                               : b.cancelReason === 'CUSTOMER_NO_SHOW'
                                 ? xt(l, 'closed')
                                 : b.cancelReason === 'MERCHANT_UNABLE' ||

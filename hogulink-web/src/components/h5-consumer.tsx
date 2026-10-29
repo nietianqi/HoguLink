@@ -174,7 +174,15 @@ export function HomeRecommendations({
   listingStats = {},
   desktop = false,
 }: HomeProps) {
-  const [dimension, setDimension] = useState<'services' | 'therapists' | 'shops'>('services');
+  const [dimension, updateDimension] = useState<'services' | 'therapists' | 'shops'>(
+    q.browse === 'therapists' || q.browse === 'shops' ? q.browse : 'services',
+  );
+  function setDimension(value: 'services' | 'therapists' | 'shops') {
+    updateDimension(value);
+    const url = new URL(window.location.href);
+    url.searchParams.set('browse', value);
+    window.history.replaceState(null, '', url);
+  }
   const browseId = useId();
   const carry = Object.fromEntries(
     ['area', 'language', 'mode', 'fulfillmentMode'].flatMap((k) => (q[k] ? [[k, q[k]]] : [])),

@@ -24,7 +24,7 @@ export function InStoreOrder({
   if (fulfillmentMode(b.quote) !== 'IN_STORE' || !b.quote.venue) return null;
   const active = !['CANCELLED', 'REJECTED', 'EXPIRED', 'COMPLETED'].includes(b.status);
   return (
-    <section className="in-store-order">
+    <section className="in-store-order" id={`customer-venue-${b.id}`}>
       {role !== 'CUSTOMER' && b.resourceId && (
         <p>
           {sv(l, 'resourceAssigned')}: <strong>{b.resourceName ?? b.resourceId}</strong>

@@ -319,6 +319,7 @@ export default async function Page({
           {booking ? (
             <Suspense fallback={<p>{t(l, 'waiting')}</p>}>
               <BookingPreview
+                demo={catalog.demo}
                 locale={l}
                 listing={booking}
                 store={s}

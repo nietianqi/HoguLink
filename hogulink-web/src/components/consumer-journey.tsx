@@ -1,4 +1,5 @@
 'use client';
+import { h5ServiceImage } from '@/lib/h5-media';
 import { sv } from '@/lib/service-mode-i18n';
 import { ModePrices } from './service-mode';
 import { choiceModePrices } from '@/lib/consumer-model';
@@ -264,7 +265,6 @@ export function ServiceCatalog({
           </p>
         )}
       <div className="consumer-intro">
-        <span className="quality-eyebrow">YOUR TIME / YOUR CHOICE</span>
         <h1>{ut(l, 'serviceTitle')}</h1>
         <p>{ut(l, 'serviceIntro')}</p>
       </div>
@@ -323,6 +323,14 @@ export function ServiceCatalog({
       <div className="consumer-service-grid">
         {choices.map((item) => (
           <article className="consumer-service-card" key={item.offering.id}>
+            <img
+              className="consumer-service-photo"
+              src={h5ServiceImage(item.offering, catalog.demo)}
+              alt={ht(l, 'serviceIllustration')}
+              loading="lazy"
+              width={160}
+              height={130}
+            />
             <div className={`consumer-service-art duration-${item.offering.durationMinutes}`}>
               <Leaf size={34} strokeWidth={1} />
               <span>

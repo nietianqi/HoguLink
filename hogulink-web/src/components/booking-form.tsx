@@ -1,5 +1,7 @@
 'use client';
 import { ca } from '@/lib/customer-auth-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
+import { h5Portrait } from '@/lib/h5-media';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -49,6 +51,7 @@ import {
   visitTotal,
   visitSelection,
   withServiceMode,
+  selectedHomeArea,
 } from '@/lib/visit-model';
 import { japanDay } from '@/lib/desktop-model';
 import { PriceLines } from './catalog';
@@ -105,6 +108,7 @@ export type PlannerProps = {
   rules?: BookingRules;
   defaultNomination?: 'NOMINATED' | 'FREE';
   dock?: boolean;
+  demo?: boolean;
 };
 export function VisitBackLink({
   locale,
@@ -169,9 +173,7 @@ function useVisit(props: PlannerProps) {
   const languages = [...new Set(members.flatMap((x) => x.languages))];
   const [language, setLanguage] = useState(query.get('language') ?? '');
   const safeLanguage = languages.includes(language) ? language : '';
-  const [homeArea, setArea] = useState(
-    store.areas.includes(query.get('area') ?? '') ? query.get('area')! : store.areas[0],
-  );
+  const [homeArea, setArea] = useState(selectedHomeArea(store.areas, query.get('area')));
   const area = inStore && store.venue ? store.venue.area : homeArea;
   const [start, setStart] = useState(query.get('start') ?? '');
   const [day, setDay] = useState(
@@ -199,7 +201,7 @@ function useVisit(props: PlannerProps) {
   const pending = availability.key !== key || availability.state === 'loading';
   useEffect(() => {
     let cancelled = false;
-    if (!serviceMode || !offering) return;
+    if (!serviceMode || !offering || !area) return;
     setAvailability({ key, slots: [], state: 'loading' });
     setError('');
     const params = new URLSearchParams({
@@ -241,6 +243,7 @@ function useVisit(props: PlannerProps) {
       .length > 0;
   const validStart =
     !!serviceMode &&
+    !!area &&
     ready &&
     slots.includes(Number(start)) &&
     (mode !== 'INSTANT' || instantAllowed);
@@ -264,6 +267,7 @@ function useVisit(props: PlannerProps) {
     window.history.replaceState(null, '', url);
   }, [mode, nomination, offering?.id, area, safeLanguage, start, validStart, serviceMode]);
   function chooseService(id: string) {
+    if (id === offeringId) return;
     setOfferingId(id);
     setStart('');
     setSlotChanged(false);
@@ -319,9 +323,22 @@ function useVisit(props: PlannerProps) {
     offering,
     languages,
     language: safeLanguage,
-    setLanguage,
+    setLanguage: (value: string) => {
+      if (value !== safeLanguage) {
+        setStart('');
+        setSlotChanged(false);
+      }
+      setLanguage(value);
+    },
     area,
-    setArea,
+    setArea: (value: string) => {
+      if (value !== homeArea) {
+        setStart('');
+        setDay('');
+        setSlotChanged(false);
+      }
+      setArea(value);
+    },
     start,
     setStart: chooseStart,
     day,
@@ -339,23 +356,26 @@ function useVisit(props: PlannerProps) {
     href,
     reload: () => setRetry((n) => n + 1),
     chooseService,
-    estimated: offering
-      ? visitTotal(
-          offering,
-          nomination,
-          pricingRules?.nominationFee ?? props.rules?.nominationFee ?? 500,
-          Date.now(),
-          validStart ? timeSurchargeAt(pricingRules, Number(start)) : 0,
-          inStore ? 0 : travelFeeFor(offering, pricingRules, area),
-        )
-      : undefined,
+    estimated:
+      offering && area
+        ? visitTotal(
+            offering,
+            nomination,
+            pricingRules?.nominationFee ?? props.rules?.nominationFee ?? 500,
+            Date.now(),
+            validStart ? timeSurchargeAt(pricingRules, Number(start)) : 0,
+            inStore ? 0 : travelFeeFor(offering, pricingRules, area),
+          )
+        : undefined,
   };
 }
 type Visit = ReturnType<typeof useVisit>;
 const visitPriceNote = (v: Visit) =>
-  v.inStore
-    ? sv(v.locale, v.nomination === 'FREE' ? 'inStoreFreePriceNote' : 'inStorePriceNote')
-    : vt(v.locale, v.nomination === 'FREE' ? 'freeTotalNote' : 'totalNote');
+  !v.inStore && !v.area
+    ? pc(v.locale, 'areaPrice')
+    : v.inStore
+      ? sv(v.locale, v.nomination === 'FREE' ? 'inStoreFreePriceNote' : 'inStorePriceNote')
+      : vt(v.locale, v.nomination === 'FREE' ? 'freeTotalNote' : 'totalNote');
 function VisitModeChoice({ visit: v }: { visit: Visit }) {
   const l = v.locale;
   const can = (mode: FulfillmentMode) =>
@@ -392,18 +412,28 @@ function VisitModeChoice({ visit: v }: { visit: Visit }) {
 }
 function ServicePicker({ visit: v, compact = false }: { visit: Visit; compact?: boolean }) {
   const l = v.locale;
+  const [expanded, setExpanded] = useState(false);
+  const summarized = !!v.offering && !expanded;
   return (
     <div
       className={`visit-service-picker ${compact ? 'compact' : ''}`}
       role="group"
       aria-label={t(l, 'services')}
     >
-      {v.options.map((o) => (
+      {summarized && (
+        <button className="change-service" type="button" onClick={() => setExpanded(true)}>
+          {pc(l, 'changeService')}
+        </button>
+      )}
+      {(summarized ? [v.offering!] : v.options).map((o) => (
         <button
           type="button"
           key={o.id}
           className={o.id === v.offering?.id ? 'selected' : ''}
-          onClick={() => v.chooseService(o.id)}
+          onClick={() => {
+            v.chooseService(o.id);
+            setExpanded(false);
+          }}
           aria-pressed={o.id === v.offering?.id}
         >
           <span className="service-duration">
@@ -415,22 +445,57 @@ function ServicePicker({ visit: v, compact = false }: { visit: Visit; compact?: 
             <small>{visitPriceNote(v)}</small>
           </span>
           <strong>
-            {money(
-              l,
-              visitTotal(
-                o,
-                v.nomination,
-                v.store.bookingRules?.nominationFee ?? v.rules?.nominationFee ?? 500,
-                Date.now(),
-                0,
-                travelFeeFor(o, v.store.bookingRules, v.area),
-              ).total,
-            )}
+            {!v.area && !v.inStore
+              ? '—'
+              : money(
+                  l,
+                  visitTotal(
+                    o,
+                    v.nomination,
+                    v.store.bookingRules?.nominationFee ?? v.rules?.nominationFee ?? 500,
+                    Date.now(),
+                    0,
+                    travelFeeFor(o, v.store.bookingRules, v.area),
+                  ).total,
+                )}
           </strong>
           <span className="selection-dot">{o.id === v.offering?.id && <Check size={12} />}</span>
         </button>
       ))}
       {!v.options.length && <p className="notice">{vt(l, 'noService')}</p>}
+    </div>
+  );
+}
+function VisitLocationFields({ visit: v }: { visit: Visit }) {
+  const l = v.locale;
+  return (
+    <div className="field-grid visit-location-fields" id="visit-location">
+      {!v.inStore && (
+        <label className="field">
+          {t(l, 'area')}
+          <select required value={v.area} onChange={(e) => v.setArea(e.target.value)}>
+            <option value="" disabled>
+              {pc(l, 'chooseArea')}
+            </option>
+            {v.store.areas.map((a) => (
+              <option key={a} value={a}>
+                {areaName(l, a)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="field">
+        {t(l, 'language')}
+        <select value={v.language} onChange={(e) => v.setLanguage(e.target.value)}>
+          <option value="">{t(l, 'allLanguages')}</option>
+          {v.languages.map((lang) => (
+            <option key={lang} value={lang}>
+              {languageNames[lang] ?? lang}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -449,6 +514,7 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
     }).format(slot);
   if (!v.offering)
     return <p className="notice">{vt(l, v.options.length ? 'selectSession' : 'noService')}</p>;
+  if (!v.area) return <p className="notice">{pc(l, 'areaFirst')}</p>;
   return (
     <div className="visit-availability" aria-busy={v.pending}>
       <div className="availability-label">
@@ -586,24 +652,36 @@ function AvailabilityPicker({ visit: v, compact = false }: { visit: Visit; compa
 export function BookingPreview(props: PlannerProps) {
   const v = useVisit(props),
     l = props.locale;
+  const { actor, loading, busy, login, submit } = usePlannerCheckout(v);
   return (
     <section className="booking-preview" id="reserve">
-      <span className="eyebrow small">YOUR MOMENT OF CALM</span>
-      <h2>{vt(l, 'plan')}</h2>
+      <h2>{pc(l, 'bookingTitle')}</h2>
       <p className="preview-subtitle">{vt(l, 'preview')}</p>
       <VisitModeChoice visit={v} />
       {v.inStore && v.store.venue && <VenueInfo locale={l} venue={v.store.venue} />}
       <div hidden={!v.serviceMode}>
+        <VisitLocationFields visit={v} />
         <div className="preview-context">
           <MapPin size={15} />
           <span>
-            {areaName(l, v.area)}
+            {v.area ? areaName(l, v.area) : pc(l, 'chooseArea')}
             {v.language ? ` · ${languageNames[v.language]}` : ''}
           </span>
           <span className="preview-nomination">
             {t(l, v.nomination === 'FREE' ? 'free' : 'nominated')}
           </span>
         </div>
+        <label className="field preview-personnel">
+          {pc(l, 'preference')}
+          <select value={v.nomination} onChange={(e) => v.setNomination(e.target.value)}>
+            <option value="NOMINATED">
+              {v.listing.name[l]} · {t(l, 'nominated')}
+            </option>
+            <option value="FREE">
+              {t(l, 'free')} · {pc(l, 'noNomination')}
+            </option>
+          </select>
+        </label>
         <ServicePicker visit={v} compact />
         <AvailabilityPicker visit={v} compact />
         <div className="preview-checkout">
@@ -617,10 +695,17 @@ export function BookingPreview(props: PlannerProps) {
             </div>
           )}
           {v.validStart ? (
-            <Link className="button full" href={v.href}>
-              {t(l, 'book')}
-              <ArrowRight size={16} />
-            </Link>
+            <button
+              type="button"
+              className="button full"
+              disabled={busy || loading}
+              onClick={(e) => void submit(e)}
+            >
+              {busy ? <LoaderCircle className="spin" size={16} /> : <ArrowRight size={16} />}
+              {actor?.role === 'CUSTOMER'
+                ? t(l, 'getQuote')
+                : `${ca(l, 'login')} / ${ca(l, 'register')}`}
+            </button>
           ) : (
             <button className="button full" disabled>
               {vt(l, 'selectTime')}
@@ -629,6 +714,11 @@ export function BookingPreview(props: PlannerProps) {
           )}
         </div>
       </div>
+      {v.error && (
+        <p className="error-message" role="alert">
+          {v.error}
+        </p>
+      )}
       <p className="preview-assurance">
         <ShieldCheck size={14} />
         {vt(l, 'paymentHelp')}
@@ -636,10 +726,18 @@ export function BookingPreview(props: PlannerProps) {
       {props.dock !== false && v.estimated && (
         <MobilePriceDock locale={l} quote={v.estimated} note={vt(l, 'estimate')}>
           {v.validStart ? (
-            <Link className="button" href={v.href}>
-              {t(l, 'book')}
+            <button
+              type="button"
+              className="button"
+              disabled={busy || loading}
+              onClick={(e) => void submit(e)}
+            >
+              {busy ? <LoaderCircle className="spin" size={16} /> : null}
+              {actor?.role === 'CUSTOMER'
+                ? t(l, 'getQuote')
+                : `${ca(l, 'login')} / ${ca(l, 'register')}`}
               <ArrowRight size={17} />
-            </Link>
+            </button>
           ) : (
             <a className="button" href="#reserve">
               {mt(l, 'chooseTime')}
@@ -651,23 +749,24 @@ export function BookingPreview(props: PlannerProps) {
     </section>
   );
 }
-export function BookingForm(props: PlannerProps) {
-  const query = useSearchParams();
-  const v = useVisit(props),
-    l = props.locale;
+function usePlannerCheckout(v: Visit) {
+  const l = v.locale;
   const router = useRouter();
-  const { actor, setActor, loading } = useSession();
+  const { actor, loading } = useSession();
   const [busy, setBusy] = useState(false);
   const submitLock = useRef(false);
   async function login() {
-    const returnTo = v.href;
+    const source = window.location.pathname;
+    const returnTo = /^\/(ja|en|zh-cn)\/(therapists|shops)\//.test(source)
+      ? `${source}?${v.href.split('?')[1]}`
+      : v.href;
     router.push(`/${l}/account/access?${new URLSearchParams({ returnTo })}`);
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (submitLock.current || !v.serviceMode || !v.validStart || !v.offering) return;
+    if (loading || submitLock.current || !v.serviceMode || !v.validStart || !v.offering) return;
     if (actor?.role !== 'CUSTOMER') {
-      v.setError(t(l, 'loginRequired'));
+      login();
       return;
     }
     submitLock.current = true;
@@ -697,6 +796,13 @@ export function BookingForm(props: PlannerProps) {
       setBusy(false);
     }
   }
+  return { actor, loading, busy, login, submit };
+}
+export function BookingForm(props: PlannerProps) {
+  const query = useSearchParams();
+  const v = useVisit(props),
+    l = props.locale;
+  const { actor, loading, busy, login, submit } = usePlannerCheckout(v);
   return (
     <div className="booking-layout visit-booking-layout">
       <form id="visit-form" className="form-card visit-form" onSubmit={submit}>
@@ -711,6 +817,7 @@ export function BookingForm(props: PlannerProps) {
           <VisitModeChoice visit={v} />
           {v.inStore && v.store.venue && <VenueInfo locale={l} venue={v.store.venue} />}
           <div hidden={!v.serviceMode}>
+            <VisitLocationFields visit={v} />
             <div className="visit-form-section" id="visit-service">
               <div className="visit-form-heading">
                 <span>01</span>
@@ -730,7 +837,12 @@ export function BookingForm(props: PlannerProps) {
                   aria-pressed={v.nomination === 'NOMINATED'}
                   onClick={() => v.setNomination('NOMINATED')}
                 >
-                  <img src={v.listing.photo} alt="" width="46" height="46" />
+                  <img
+                    src={h5Portrait(v.listing, props.demo === true)}
+                    alt=""
+                    width="46"
+                    height="46"
+                  />
                   <span>
                     <strong>
                       {v.listing.name[l]} · {t(l, 'nominated')}
@@ -738,8 +850,8 @@ export function BookingForm(props: PlannerProps) {
                     <small>{vt(l, 'nominatedHelp')}</small>
                   </span>
                   <span className="preference-fee">
-                    +{' '}
                     {money(l, v.store.bookingRules?.nominationFee ?? v.rules?.nominationFee ?? 500)}
+                    <small>{pc(l, 'feeIncluded')}</small>
                   </span>
                 </button>
                 <button
@@ -796,31 +908,6 @@ export function BookingForm(props: PlannerProps) {
                   {v.inStore ? sv(l, 'scheduleOnly') : vt(l, 'noInstant')}
                 </p>
               )}
-              <div className="field-grid">
-                {!v.inStore && (
-                  <label className="field">
-                    {t(l, 'area')}
-                    <select value={v.area} onChange={(e) => v.setArea(e.target.value)}>
-                      {v.store.areas.map((a) => (
-                        <option key={a} value={a}>
-                          {areaName(l, a)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label className="field">
-                  {t(l, 'language')}
-                  <select value={v.language} onChange={(e) => v.setLanguage(e.target.value)}>
-                    <option value="">{t(l, 'allLanguages')}</option>
-                    {v.languages.map((lang) => (
-                      <option key={lang} value={lang}>
-                        {languageNames[lang] ?? lang}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
               <AvailabilityPicker visit={v} />
             </div>
             <div className="login-panel">
@@ -862,7 +949,7 @@ export function BookingForm(props: PlannerProps) {
         <span className="eyebrow small">{vt(l, 'session')}</span>
         <div className="mini-profile">
           {v.nomination === 'NOMINATED' ? (
-            <img src={v.listing.photo} width="64" height="64" alt="" />
+            <img src={h5Portrait(v.listing, props.demo === true)} width="64" height="64" alt="" />
           ) : (
             <span className="summary-shop-icon">
               <StoreIcon size={27} />
@@ -907,7 +994,11 @@ export function BookingForm(props: PlannerProps) {
             <div>
               <dt>{v.inStore ? sv(l, 'venue') : vt(l, 'location')}</dt>
               <dd>
-                {v.inStore ? v.store.venue?.address : areaName(l, v.area)}
+                {v.inStore
+                  ? v.store.venue?.address
+                  : v.area
+                    ? areaName(l, v.area)
+                    : pc(l, 'chooseArea')}
                 {v.language ? ` · ${languageNames[v.language]}` : ''}
               </dd>
             </div>
@@ -926,8 +1017,11 @@ export function BookingForm(props: PlannerProps) {
           <p className="summary-estimate">{vt(l, 'estimate')}</p>
           <div className="booking-desktop-action">
             {!v.validStart ? (
-              <a className="button full" href={v.offering ? '#visit-time' : '#visit-service'}>
-                {vt(l, v.offering ? 'selectTime' : 'selectSession')}
+              <a
+                className="button full"
+                href={!v.area ? '#visit-location' : v.offering ? '#visit-time' : '#visit-service'}
+              >
+                {!v.area ? pc(l, 'chooseArea') : vt(l, v.offering ? 'selectTime' : 'selectSession')}
                 <ArrowRight size={16} />
               </a>
             ) : actor?.role !== 'CUSTOMER' ? (
@@ -1001,7 +1095,7 @@ export function BookingForm(props: PlannerProps) {
                 <LoaderCircle className="spin" size={17} />
               ) : (
                 <>
-                  {mt(l, 'continue')}
+                  {t(l, 'getQuote')}
                   <ArrowRight size={17} />
                 </>
               )}

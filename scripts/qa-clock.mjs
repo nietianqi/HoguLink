@@ -27,6 +27,12 @@ await clock();
 // Only this test child process uses the fixture's clock. Application clocks are unchanged.
 Date.now = () => realNow() + offset;
 export async function advanceVisit(b, event) {
+  if (
+    ['EN_ROUTE', 'ARRIVED'].includes(event) &&
+    b.quote.bookingMode === 'SCHEDULED' &&
+    b.quote.fulfillmentMode !== 'IN_STORE'
+  )
+    await clock(Math.max(Date.now(), b.quote.startAt - 90 * 60000));
   if (event === 'START') await clock(Math.max(Date.now(), b.quote.startAt));
   if (event === 'COMPLETE')
     await clock(Math.max(Date.now(), b.startedAt + b.quote.endAt - b.quote.startAt));

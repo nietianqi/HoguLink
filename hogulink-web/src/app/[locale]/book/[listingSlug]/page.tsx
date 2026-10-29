@@ -7,6 +7,7 @@ import { serverApi, type Catalog } from '@/lib/api';
 import { asLocale, t } from '@/lib/i18n';
 import { vt } from '@/lib/visit-i18n';
 import { VisitSteps } from '@/components/visit-shared';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { sv } from '@/lib/service-mode-i18n';
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   return {
@@ -43,7 +44,7 @@ export default async function Page({
       <VisitSteps locale={l} step={1} inStore={inStore} />
       <div className="visit-page-heading">
         <span className="eyebrow small">{vt(l, 'step1')}</span>
-        <h1>{vt(l, 'bookingTitle')}</h1>
+        <h1>{pc(l, 'bookingTitle')}</h1>
         <p>{sv(l, 'modeBookingIntro')}</p>
       </div>
       <Suspense fallback={<p>{t(l, 'waiting')}</p>}>
@@ -54,6 +55,7 @@ export default async function Page({
           store={store}
           offerings={catalog.offerings.filter((x) => x.storeId === store.id)}
           team={catalog.listings.filter((x) => x.storeId === store.id)}
+          demo={catalog.demo}
           rules={catalog.bookingRules}
         />
       </Suspense>

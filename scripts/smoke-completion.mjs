@@ -72,8 +72,10 @@ async function book() {
   if (b.status === 'REQUESTED')
     b = await call(m, `merchant/bookings/${b.id}/accept`, { version: b.version });
   b = await call(s, `staff/tasks/${b.id}/ack`, { version: b.version });
-  for (const event of ['EN_ROUTE', 'ARRIVED'])
+  for (const event of ['EN_ROUTE', 'ARRIVED']) {
+    await advanceVisit(b, event);
     b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event });
+  }
   return b;
 }
 const action = (actor, b, action, extra = {}, status = 200, key = randomUUID()) =>

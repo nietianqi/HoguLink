@@ -1,4 +1,5 @@
 'use client';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, ClipboardCheck, Clock3, RefreshCw } from 'lucide-react';
@@ -234,7 +235,7 @@ export function OrderCoordination({
       <header className="flow-section-head">
         <h3>
           <ClipboardCheck size={19} />
-          {ot(l, 'title')}
+          {actor.role === 'CUSTOMER' ? pc(l, 'records') : ot(l, 'title')}
         </h3>
         <button
           className="quality-link"

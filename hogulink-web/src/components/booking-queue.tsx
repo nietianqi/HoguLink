@@ -1,4 +1,5 @@
 'use client';
+import { pc } from '@/lib/pc-consumer-i18n';
 import { useEffect, useState } from 'react';
 import {
   Search,
@@ -14,6 +15,7 @@ import {
 import type { Booking, Locale, Role } from '@hogulink/contracts';
 import type { Catalog } from '@/lib/api';
 import { dt } from '@/lib/desktop-i18n';
+import { ut } from '@/lib/consumer-i18n';
 import { csvCell, japanDay, needsAttention, type BookingFilter } from '@/lib/desktop-model';
 import { dateTime, money, statusText, t } from '@/lib/i18n';
 import { ht } from '@/lib/h5-i18n';
@@ -144,6 +146,7 @@ export function BookingQueue({
   return (
     <section
       className="queue-panel"
+      data-role={role}
       aria-label={role === 'CUSTOMER' ? ht(l, 'bookingRecords') : dt(l, 'worklist')}
       id="worklist"
     >
@@ -152,19 +155,39 @@ export function BookingQueue({
           {role !== 'CUSTOMER' && <span className="eyebrow small">DAILY OPERATIONS</span>}
           <h2>{role === 'CUSTOMER' ? ht(l, 'bookingRecords') : dt(l, 'worklist')}</h2>
         </div>
-        <button className="button secondary small" onClick={exportCsv} disabled={!bookings.length}>
-          <Download size={15} />
-          {dt(l, 'export')}
-        </button>
+        {role === 'CUSTOMER' ? (
+          <details className="consumer-queue-tools">
+            <summary>{pc(l, 'moreTools')}</summary>{' '}
+            <button
+              className="button secondary small"
+              onClick={exportCsv}
+              disabled={!bookings.length}
+            >
+              <Download size={15} />
+              {dt(l, 'export')}
+            </button>
+          </details>
+        ) : (
+          <button
+            className="button secondary small"
+            onClick={exportCsv}
+            disabled={!bookings.length}
+          >
+            <Download size={15} />
+            {dt(l, 'export')}
+          </button>
+        )}
       </div>
       <div className="queue-tabs" aria-label={t(l, 'status')}>
         {tabs.map((tab) => (
           <button key={tab} aria-pressed={tab === status} onClick={() => onStatus(tab)}>
             {tab === 'review'
               ? at(l, 'review')
-              : role === 'MERCHANT' && tab === 'active'
-                ? mo(l, 'active')
-                : dt(l, tab)}
+              : role === 'CUSTOMER' && tab === 'active'
+                ? ut(l, 'active')
+                : role === 'MERCHANT' && tab === 'active'
+                  ? mo(l, 'active')
+                  : dt(l, tab)}
             <span>
               {tab === 'all'
                 ? allBookings.length
@@ -264,11 +287,7 @@ export function BookingQueue({
                     className="mobile-booking-row"
                     key={b.id}
                     aria-pressed={role === 'CUSTOMER' ? undefined : b.id === selectedId}
-                    onClick={() =>
-                      role === 'CUSTOMER'
-                        ? router.push(`/${l}/account/bookings/${b.id}`)
-                        : select(b.id)
-                    }
+                    onClick={() => select(b.id)}
                   >
                     <span className="mobile-booking-top">
                       <span className={`status-badge status-${b.status.toLowerCase()}`}>

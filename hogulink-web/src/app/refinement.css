@@ -7070,3 +7070,450 @@ body:has(.h5-consumer-demo) .h5-settings-session > button {
     scroll-margin-top: 20px;
   }
 }
+
+/* PC consumer flow, 2026-10-29. Keep the approved H5 theme and its mobile layout. */
+@media (min-width: 1101px) {
+  body:has(.customer-header) .customer-header {
+    min-height: 82px;
+    padding-block: 18px;
+    gap: 20px;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav {
+    gap: 6px;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a {
+    padding: 10px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  body:has(.customer-header) .customer-header a.consumer-desktop-nav {
+    display: inline-flex;
+  }
+  body:has(.customer-header) .consumer-desktop-nav-label {
+    display: inline;
+  }
+  body:has(.customer-header) .consumer-mobile-nav-label {
+    display: none;
+  }
+  body:has(.customer-header) .market-page .hero {
+    min-height: 0;
+    margin-top: 24px;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+  }
+  body:has(.customer-header) .market-page .hero-copy {
+    padding: 28px 32px 40px;
+  }
+  body:has(.customer-header) .market-page .hero h1 {
+    margin: 12px 0;
+    font-size: clamp(32px, 3.2vw, 44px);
+    line-height: 1.3;
+  }
+  body:has(.customer-header) .market-page .hero h1 em {
+    display: block;
+    font-size: 22px;
+    font-style: normal;
+    margin-top: 4px;
+  }
+  body:has(.customer-header) .market-page .hero-copy > p {
+    max-width: 440px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  body:has(.customer-header) .market-page .hero-art {
+    min-height: 260px;
+  }
+  body:has(.customer-header) .market-page .hero-art img {
+    object-fit: cover;
+    object-position: 78% center;
+    height: 100%;
+  }
+  body:has(.customer-header) .market-page .hero-location {
+    font-size: 12px;
+    margin-top: 16px;
+  }
+  body:has(.customer-header) .market-page .search-position {
+    margin-top: -22px;
+    position: relative;
+    z-index: 1;
+  }
+  body:has(.customer-header) .market-page .search-panel {
+    padding: 12px 24px 16px;
+    border-radius: 16px;
+  }
+  body:has(.customer-header) .market-page .mode-tabs {
+    margin-bottom: 10px;
+  }
+  body:has(.customer-header) .market-page .search-fields {
+    padding-top: 4px;
+  }
+  body:has(.customer-header) .customer-home-services {
+    margin-top: 24px;
+  }
+  body:has(.customer-header) .customer-home-services .h5-home-entrances {
+    min-height: 76px;
+    padding: 8px;
+  }
+  body:has(.customer-header) .customer-home-services .h5-home-entrances button {
+    padding: 12px;
+    gap: 10px;
+    font-size: 18px;
+  }
+  body:has(.customer-header)
+    .customer-home-services
+    :is(small, .h5-home-fee, .h5-home-section-head > p) {
+    font-size: 12px;
+  }
+  body:has(.customer-header) .customer-home-services .h5-home-service-name {
+    font-size: 18px;
+  }
+  body:has(.customer-header) .consumer-directory-link {
+    padding-block: 20px 36px;
+    text-align: right;
+  }
+  body:has(.customer-header) .consumer-page > .consumer-intro {
+    padding-top: 24px;
+    margin-bottom: 24px;
+  }
+  body:has(.customer-header) .consumer-intro h1 {
+    font-size: 32px;
+    margin: 8px 0;
+  }
+  body:has(.customer-header) .consumer-service-filter {
+    padding: 20px;
+    gap: 14px;
+  }
+  body:has(.customer-header) .consumer-service-grid {
+    gap: 20px;
+  }
+  body:has(.customer-header) .consumer-service-card {
+    padding: 18px;
+    gap: 18px;
+    align-items: center;
+  }
+  body:has(.customer-header) .consumer-service-card .consumer-service-art {
+    display: none;
+  }
+  body:has(.customer-header) .consumer-service-photo {
+    display: block;
+    width: 140px;
+    height: 140px;
+    flex: 0 0 140px;
+    border-radius: 12px;
+    object-fit: cover;
+  }
+  body:has(.customer-header) .consumer-service-info {
+    min-width: 0;
+  }
+  body:has(.customer-header) .consumer-service-info h3 {
+    font-size: 20px;
+  }
+  body:has(.customer-header) .consumer-service-info :is(p, small) {
+    font-size: 13px;
+  }
+  body:has(.customer-header) .advanced-therapist-results {
+    padding-block: 28px 48px;
+  }
+  body:has(.customer-header) .advanced-therapist-results .discovery-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  body:has(.customer-header) .advanced-therapist-results .therapist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body:has(.customer-header) :is(.detail-page, .visit-page) {
+    padding-top: 26px;
+  }
+  body:has(.customer-header) .therapist-detail-page .detail-columns {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 32px;
+    align-items: start;
+  }
+  body:has(.customer-header) .therapist-detail-page .therapist-basics {
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  body:has(.customer-header) .therapist-detail-page .therapist-basics h1 {
+    font-size: 32px;
+  }
+  body:has(.customer-header) .therapist-detail-page .therapist-basics-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body:has(.customer-header) .therapist-detail-page .therapist-media-stage {
+    max-height: 420px;
+  }
+  body:has(.customer-header) .booking-preview {
+    padding: 24px;
+    font-size: 14px;
+  }
+  body:has(.customer-header) .booking-preview h2 {
+    font-size: 24px;
+    margin-top: 0;
+  }
+  body:has(.customer-header) .booking-preview .preview-context {
+    display: none;
+  }
+  body:has(.customer-header) .booking-preview .field-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  body:has(.customer-header) .booking-preview .field {
+    margin-bottom: 10px;
+  }
+  body:has(.customer-header) .booking-preview .visit-service-picker.compact button {
+    min-width: 0;
+  }
+  body:has(.customer-header) .booking-preview .visit-service-picker .service-choice-name small {
+    font-size: 12px;
+  }
+  body:has(.customer-header) .booking-preview .visit-day-picker {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+  body:has(.customer-header) .booking-preview .visit-day-picker button {
+    flex: 0 0 76px;
+  }
+  body:has(.customer-header) .booking-preview .preview-assurance {
+    font-size: 12px;
+  }
+  body:has(.customer-header) .visit-page-heading {
+    margin: 20px 0 24px;
+  }
+  body:has(.customer-header) .visit-page-heading h1 {
+    font-size: 32px;
+    line-height: 1.3;
+  }
+  body:has(.customer-header) .visit-page-heading .eyebrow {
+    display: none;
+  }
+  body:has(.customer-header) .visit-booking-layout {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 28px;
+  }
+  body:has(.customer-header) .visit-booking-layout .visit-form {
+    padding: 24px;
+  }
+  body:has(.customer-header) .visit-booking-layout .visit-summary {
+    align-self: start;
+    grid-column: 2;
+    grid-row: 1;
+    top: 24px;
+    overflow: auto;
+    max-height: calc(100dvh - 48px);
+  }
+  body:has(.customer-header) .checkout-layout .mobile-checkout-recap {
+    display: none;
+  }
+  body:has(.customer-header) .visit-form .visit-form-heading {
+    margin-bottom: 16px;
+  }
+  body:has(.customer-header) .visit-form .visit-form-heading h2 {
+    font-size: 20px;
+  }
+  body:has(.customer-header) .visit-form .preference-picker {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  body:has(.customer-header) .visit-form .preference-picker > button {
+    padding: 16px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  body:has(.customer-header) .visit-form .preference-picker .preference-fee {
+    margin-left: 0;
+  }
+  body:has(.customer-header) .visit-form .visit-form-section {
+    padding-block: 20px;
+  }
+  body:has(.customer-header) .workday-orders .workspace-title {
+    padding-block: 8px 20px;
+  }
+  body:has(.customer-header)
+    .workday-orders
+    .queue-panel[data-role='CUSTOMER']
+    .mobile-booking-queue {
+    display: grid;
+    gap: 16px;
+  }
+  body:has(.customer-header) .workday-orders .queue-panel[data-role='CUSTOMER'] .queue-table {
+    display: none;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 22px;
+    text-align: left;
+    font-size: 14px;
+    gap: 10px 24px;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-top {
+    grid-column: 1/-1;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-bottom {
+    grid-column: 1/-1;
+    margin-top: 4px;
+  }
+  body:has(.customer-header) .customer-order-detail .booking-card-heading {
+    padding-bottom: 12px;
+  }
+  body:has(.customer-header) .customer-order-detail .customer-order-progress {
+    padding-block: 12px;
+    margin-bottom: 14px;
+  }
+  body:has(.customer-header) .customer-order-detail .order-detail-nav {
+    padding-block: 12px;
+  }
+  body:has(.customer-header) :is(.care-refund-summary, .order-care-amounts, .price-lines) dd {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (min-width: 1101px) {
+  body:has(.customer-header) .therapist-detail-page .detail-main {
+    display: flex;
+    flex-direction: column;
+  }
+  body:has(.customer-header) .therapist-detail-page .therapist-basics {
+    order: -1;
+  }
+}
+
+@media (min-width: 1101px) {
+  body:has(.customer-header) .consumer-directory-link {
+    display: block;
+  }
+  body:has(.customer-header) .market-page .hero-copy > .eyebrow {
+    display: none;
+  }
+  body:has(.customer-header) .visit-page:has(.checkout-layout) .visit-steps {
+    margin-bottom: 16px;
+    padding-block: 8px;
+  }
+  body:has(.customer-header) .visit-page:has(.checkout-layout) .checkout-section-nav {
+    display: none;
+  }
+  body:has(.customer-header) .visit-page:has(.checkout-layout) .visit-page-heading {
+    margin: 12px 0 20px;
+  }
+  body:has(.customer-header) .visit-page:has(.checkout-layout) .visit-page-heading p {
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  body:has(.customer-header) .visit-page:has(.checkout-layout) > .service-mode-summary {
+    padding: 12px 16px;
+    margin-bottom: 18px;
+  }
+  body:has(.customer-header) .checkout-summary {
+    display: flex;
+    flex-direction: column;
+    padding: 22px;
+  }
+  body:has(.customer-header) .checkout-summary > * {
+    order: 8;
+  }
+  body:has(.customer-header) .checkout-summary > .eyebrow {
+    order: 0;
+    font-size: 12px;
+  }
+  body:has(.customer-header) .checkout-summary > .mini-profile {
+    order: 1;
+    margin-block: 12px 18px;
+  }
+  body:has(.customer-header) .checkout-summary > .price-lines {
+    order: 2;
+    margin: 0;
+    padding-top: 16px;
+  }
+  body:has(.customer-header) .checkout-summary > .booking-desktop-action {
+    order: 3;
+    margin: 18px 0;
+  }
+  body:has(.customer-header) .checkout-summary > .visit-summary-facts {
+    order: 4;
+    margin: 0;
+    gap: 12px;
+    padding-top: 16px;
+  }
+  body:has(.customer-header) .checkout-summary > .summary-estimate {
+    order: 5;
+  }
+  body:has(.customer-header) .mini-profile img {
+    object-fit: cover;
+    object-position: top;
+  }
+}
+
+@media (min-width: 1101px) {
+  body:has(.customer-header) .consumer-empty-stats {
+    display: block;
+    font-size: 14px;
+    margin-top: 18px;
+    color: var(--hl-muted);
+  }
+  body:has(.customer-header) .therapist-basics .h5-detail-stats[data-empty='true'] {
+    display: none;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row {
+    background: #fff;
+    color: var(--hl-ink);
+    border: 1px solid var(--hl-line);
+    border-radius: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row:hover {
+    background: var(--h5-primary-soft, #e4f7ef);
+    border-color: var(--h5-primary, #00865b);
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row:focus-visible {
+    outline: 2px solid var(--h5-primary, #00865b);
+    outline-offset: 3px;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-top small {
+    font-size: 12px;
+    color: var(--hl-muted);
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row > strong {
+    font-size: 18px;
+    grid-row: 2;
+  }
+  body:has(.customer-header)
+    .workday-orders
+    .mobile-booking-row
+    > span:not(.mobile-booking-top):not(.mobile-booking-bottom) {
+    grid-row: 3;
+    grid-column: 1 / -1;
+    color: var(--hl-muted);
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-row > time {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    grid-row: 2;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  body:has(.customer-header) .workday-orders .mobile-booking-bottom > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--h5-primary, #00865b);
+  }
+}

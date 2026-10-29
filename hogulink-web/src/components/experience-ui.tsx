@@ -134,7 +134,6 @@ export function PublicReviews({
     <section className="quality-section">
       <div className="quality-section-heading">
         <div>
-          <span className="quality-eyebrow">HOGULINK / FEEDBACK</span>
           <h2>{qt(l, 'reviews')}</h2>
         </div>
         <ShieldCheck size={26} />

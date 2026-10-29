@@ -10,19 +10,23 @@ import { mt } from '@/lib/mobile-i18n';
 import { MobileSheet } from './mobile-ui';
 import { japanDay } from '@/lib/desktop-model';
 import { sv } from '@/lib/service-mode-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
 export function DiscoveryFilters({
   locale: l,
   q,
   mode,
   duration,
+  standalone = false,
 }: {
   locale: Locale;
   q: Record<string, string>;
   mode: string;
   duration: number;
+  standalone?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draftMode, setDraftMode] = useState(mode);
+  const [draftFulfillment, setDraftFulfillment] = useState(q.fulfillmentMode ?? '');
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const count =
@@ -31,58 +35,75 @@ export function DiscoveryFilters({
     Number(Number(q.maxTotal) > 0);
   const form = (mobile = false) => (
     <form
-      action={`/${l}#discover`}
+      action={standalone ? `/${l}/therapists` : `/${l}#discover`}
       key={JSON.stringify(q)}
       onSubmit={
-        mobile
+        mobile || standalone
           ? (event) => {
               event.preventDefault();
               const values = new URLSearchParams();
               new FormData(event.currentTarget).forEach((value, key) => {
                 if (typeof value === 'string' && value) values.set(key, value);
               });
+              if (values.get('fulfillmentMode') === 'IN_STORE') values.set('mode', 'SCHEDULED');
               if (values.get('mode') === 'INSTANT') {
                 values.delete('date');
                 if (values.get('sort') === 'earliest') values.delete('sort');
               }
               setOpen(false);
-              startTransition(() => router.push(`/${l}?${values}#discover`));
+              startTransition(() =>
+                router.push(standalone ? `/${l}/therapists?${values}` : `/${l}?${values}#discover`),
+              );
             }
           : undefined
       }
     >
+      {standalone && <input type="hidden" name="filters" value="advanced" />}
       {!mobile && (
         <h3>
           <SlidersHorizontal size={17} />
           {dt(l, 'refine')}
         </h3>
       )}
-      {(mobile ? ['view'] : ['mode', 'area', 'language', 'view']).map((key) => (
+      {(mobile || standalone ? ['view'] : ['mode', 'area', 'language', 'view']).map((key) => (
         <input type="hidden" key={key} name={key} value={key === 'mode' ? mode : (q[key] ?? '')} />
       ))}
       <label className="field">
         {sv(l, 'mode')}
-        <select name="fulfillmentMode" defaultValue={q.fulfillmentMode ?? ''}>
+        <select
+          name="fulfillmentMode"
+          value={draftFulfillment}
+          onChange={(event) => {
+            setDraftFulfillment(event.target.value);
+            if (event.target.value === 'IN_STORE') setDraftMode('SCHEDULED');
+          }}
+        >
           <option value="">{t(l, 'all')}</option>
           <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
           <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
         </select>
       </label>
-      {mobile && (
+      {(mobile || standalone) && (
         <>
           <label className="field">
             {t(l, 'mode')}
             <select
               name="mode"
-              defaultValue={mode}
+              value={draftMode}
               onChange={(event) => setDraftMode(event.target.value)}
             >
               <option value="SCHEDULED">{t(l, 'scheduled')}</option>
-              <option value="INSTANT">{t(l, 'instant')}</option>
+              <option value="INSTANT" disabled={draftFulfillment === 'IN_STORE'}>
+                {t(l, 'instant')}
+              </option>
             </select>
           </label>
           <label className="field">
-            {t(l, 'area')}
+            {draftFulfillment === 'IN_STORE'
+              ? pc(l, 'venueArea')
+              : draftFulfillment === 'HOME_VISIT'
+                ? t(l, 'area')
+                : pc(l, 'searchArea')}
             <select name="area" defaultValue={q.area ?? ''}>
               <option value="">{mt(l, 'area')}</option>
               {Object.keys(areas).map((area) => (
@@ -113,7 +134,7 @@ export function DiscoveryFilters({
           ))}
         </select>
       </label>
-      {(mobile ? draftMode : mode) === 'SCHEDULED' && (
+      {(mobile || standalone ? draftMode : mode) === 'SCHEDULED' && (
         <label className="field">
           {dt(l, 'date')}
           <input
@@ -143,7 +164,7 @@ export function DiscoveryFilters({
         <select name="acceptance" defaultValue={q.acceptance ?? ''} aria-label={dt(l, 'provider')}>
           <option value="">{dt(l, 'anyProvider')}</option>
           <option value="auto">{dt(l, 'auto')}</option>
-          <option value="manual" disabled={mobile && draftMode === 'INSTANT'}>
+          <option value="manual" disabled={(mobile || standalone) && draftMode === 'INSTANT'}>
             {dt(l, 'manual')}
           </option>
         </select>
@@ -161,7 +182,7 @@ export function DiscoveryFilters({
           <option value="price">
             {l === 'ja' ? '総額が安い順' : l === 'en' ? 'Total price: low to high' : '总价从低到高'}
           </option>
-          {(mobile ? draftMode : mode) === 'SCHEDULED' && (
+          {(mobile || standalone ? draftMode : mode) === 'SCHEDULED' && (
             <option value="earliest">{dt(l, 'next')}</option>
           )}
         </select>
@@ -170,7 +191,7 @@ export function DiscoveryFilters({
         <button className="button full">{mobile ? mt(l, 'show') : dt(l, 'apply')}</button>
         <Link
           className="filter-reset"
-          href={`/${l}?mode=${mode}#discover`}
+          href={standalone ? `/${l}/therapists?mode=${mode}` : `/${l}?mode=${mode}#discover`}
           onClick={() => setOpen(false)}
         >
           {dt(l, 'reset')}
@@ -186,7 +207,11 @@ export function DiscoveryFilters({
             <Link
               key={n}
               aria-current={duration === n ? 'true' : undefined}
-              href={`/${l}?${new URLSearchParams({ ...q, duration: String(n) })}#discover`}
+              href={
+                standalone
+                  ? `/${l}/therapists?${new URLSearchParams({ ...q, duration: String(n), filters: 'advanced' })}`
+                  : `/${l}?${new URLSearchParams({ ...q, duration: String(n) })}#discover`
+              }
             >
               {n}
               <small>{t(l, 'minutes')}</small>
@@ -198,6 +223,7 @@ export function DiscoveryFilters({
           className="mobile-filter-button"
           onClick={() => {
             setDraftMode(mode);
+            setDraftFulfillment(q.fulfillmentMode ?? '');
             setOpen(true);
           }}
           aria-haspopup="dialog"

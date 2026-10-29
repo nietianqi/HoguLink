@@ -17,6 +17,7 @@ import { nominatedTotal } from '@/lib/desktop-model';
 import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
 import { visitPreferences } from '@/lib/visit-model';
+import { sv } from '@/lib/service-mode-i18n';
 export function TherapistCard({
   listing,
   store,
@@ -124,7 +125,11 @@ export function TherapistCard({
               locale={locale}
               prices={providerModePrices(store, offerings, [listing], area)}
             />
-            <small>{dt(locale, 'total')}</small>
+            <small>
+              {fulfillmentMode(selected) === 'IN_STORE'
+                ? sv(locale, 'inStorePriceNote')
+                : dt(locale, 'total')}
+            </small>
           </div>
           <Link
             className="card-cta"

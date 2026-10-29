@@ -45,6 +45,9 @@ import { holdSecondsRemaining, visitTimeRange } from '@/lib/booking-presentation
 import { ca } from '@/lib/customer-auth-i18n';
 import { VenueInfo } from './service-mode';
 import { sv } from '@/lib/service-mode-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
+import { h5Portrait } from '@/lib/h5-media';
+import { useDemoAccess } from '@/lib/use-runtime';
 type CheckoutData = {
   serverNow?: number;
   hold: Hold;
@@ -64,6 +67,7 @@ type CheckoutData = {
   };
 };
 export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string }) {
+  const demo = useDemoAccess();
   const router = useRouter();
   const [data, setData] = useState<CheckoutData>();
   const [error, setError] = useState('');
@@ -91,7 +95,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
   const holdClock = useRef({ serverNow: 0, local: 0 });
   const [address, setAddress] = useState<Address>({
     name: '',
-    type: 'HOTEL',
+    type: 'HOME',
     area: '',
     detail: '',
     hotelName: '',
@@ -159,14 +163,17 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
             value.visit.hotelOnly,
           );
           const next =
-            restored ?? restoreVisitAddress(null, value.quote.area, value.visit.hotelOnly);
+            restored ??
+            restoreVisitAddress({ type: 'HOME' }, value.quote.area, value.visit.hotelOnly);
           if (!exact && next.type === 'HOTEL') next.room = '';
           touched.current = !!(next.name || next.detail);
           setAddress(next);
           sessionStorage.removeItem(`${prefix}edit`);
         } catch {
           touched.current = false;
-          setAddress(restoreVisitAddress(null, value.quote.area, value.visit.hotelOnly));
+          setAddress(
+            restoreVisitAddress({ type: 'HOME' }, value.quote.area, value.visit.hotelOnly),
+          );
         }
         setReady(true);
       })
@@ -418,6 +425,28 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           </div>
         )}
       </div>
+    );
+  const nextAction = (className: string) =>
+    remaining === 0 ? (
+      <button type="button" className={className} onClick={editVisit} disabled={busy}>
+        {xt(l, 'retryTime')}
+      </button>
+    ) : !paymentId || !agreed ? (
+      <a
+        className={className}
+        aria-disabled={busy}
+        onClick={(e) => {
+          if (busy) e.preventDefault();
+        }}
+        href={!paymentId ? '#checkout-payment' : '#checkout-policy'}
+      >
+        {!paymentId ? mt(l, 'payment') : mt(l, 'agree')}
+      </a>
+    ) : (
+      <button className={className} form="checkout-form" type="submit" disabled={busy}>
+        {busy ? <LoaderCircle size={17} className="spin" /> : <ArrowRight size={17} />}
+        {pc(l, 'request')}
+      </button>
     );
   return (
     <>
@@ -676,13 +705,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 {error}
               </p>
             )}
-            <button
-              className="button full checkout-submit"
-              disabled={busy || !paymentId || !agreed || remaining === 0}
-            >
-              {busy ? <LoaderCircle size={17} className="spin" /> : <ArrowRight size={17} />}{' '}
-              {af(l, 'review')}
-            </button>
+            {nextAction('button full checkout-submit')}
             <p className="visit-help">{acceptanceHelp(l, data.visit.acceptanceMode)}</p>
           </fieldset>
         </form>
@@ -690,7 +713,12 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           <span className="eyebrow small">{vt(l, 'session')}</span>
           <div className="mini-profile">
             {data.visit.photo ? (
-              <img src={data.visit.photo} width="64" height="64" alt="" />
+              <img
+                src={h5Portrait({ slug: data.visit.listingSlug, photo: data.visit.photo }, demo)}
+                width="64"
+                height="64"
+                alt=""
+              />
             ) : (
               <span className="summary-shop-icon">
                 <StoreIcon size={27} />
@@ -715,9 +743,9 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
               <dd>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</dd>
             </div>
             <div>
-              <dt>{vt(l, 'location')}</dt>
+              <dt>{inStore ? sv(l, 'venue') : vt(l, 'location')}</dt>
               <dd>
-                {areaName(l, data.quote.area)}
+                {inStore ? data.quote.venue?.address : areaName(l, data.quote.area)}
                 {data.quote.requiredLanguage
                   ? ` · ${languageNames[data.quote.requiredLanguage]}`
                   : ''}
@@ -727,24 +755,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           <PriceLines locale={l} quote={data.quote} />
           <p className="summary-estimate">{vt(l, 'frozenQuote')}</p>
           <div className="booking-desktop-action">
-            {remaining === 0 ? (
-              <button type="button" className="button full" onClick={editVisit} disabled={busy}>
-                {xt(l, 'retryTime')}
-              </button>
-            ) : !paymentId ? (
-              <a className="button full" href="#checkout-payment">
-                {mt(l, 'payment')}
-              </a>
-            ) : !agreed ? (
-              <a className="button full" href="#checkout-policy">
-                {mt(l, 'agree')}
-              </a>
-            ) : (
-              <button className="button full" form="checkout-form" type="submit" disabled={busy}>
-                {busy ? <LoaderCircle size={17} className="spin" /> : <ArrowRight size={17} />}
-                {af(l, 'review')}
-              </button>
-            )}
+            {nextAction('button full')}
             <p>{vt(l, 'requestNote')}</p>
             {error && (
               <p className="error-message" role="alert">
@@ -780,30 +791,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
           note={`${dateTime(l, data.quote.startAt)} JST · ${vt(l, 'frozenQuote')}`}
           error={error}
         >
-          {remaining === 0 ? (
-            <button type="button" className="button" onClick={editVisit} disabled={busy}>
-              {xt(l, 'retryTime')}
-            </button>
-          ) : !paymentId ? (
-            <a className="button" href="#checkout-payment">
-              {mt(l, 'payment')}
-            </a>
-          ) : !agreed ? (
-            <a className="button" href="#checkout-policy">
-              {mt(l, 'agree')}
-            </a>
-          ) : (
-            <button className="button" form="checkout-form" type="submit" disabled={busy}>
-              {busy ? (
-                <LoaderCircle className="spin" size={17} />
-              ) : (
-                <>
-                  {af(l, 'review')}
-                  <ArrowRight size={17} />
-                </>
-              )}
-            </button>
-          )}
+          {nextAction('button')}
         </MobilePriceDock>
       </div>
       <MobileSheet
@@ -849,10 +837,12 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
                 <dd>{visitTimeRange(l, data.quote.startAt, data.quote.endAt)}</dd>
               </div>
               <div>
+                <dt>{t(l, 'name')}</dt>
+                <dd>{review.name}</dd>
+              </div>
+              <div>
                 <dt>{inStore ? sv(l, 'venue') : t(l, 'address')}</dt>
                 <dd>
-                  {review.name}
-                  <br />
                   {inStore
                     ? data.quote.venue?.address
                     : `${areaName(l, review.area)} · ${review.detail}`}

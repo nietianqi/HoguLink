@@ -18,6 +18,8 @@ import { caseStatus } from '@/lib/care-i18n';
 import { af, flowError, refundStatus } from '@/lib/customer-flow-i18n';
 import { MobileSheet } from './mobile-ui';
 import { wt } from '@/lib/workday-i18n';
+import { customerShowAmounts } from '@/lib/customer-order-model';
+import { pc } from '@/lib/pc-consumer-i18n';
 
 export function OrderCarePanel({
   locale: l,
@@ -131,21 +133,27 @@ export function OrderCarePanel({
       )}
       {data && (
         <>
-          <dl className="order-care-amounts">
-            <div>
-              <dt>{af(l, 'charged')}</dt>
-              <dd>{money(l, data.captured)}</dd>
-            </div>
-            <div>
-              <dt>{af(l, 'refunded')}</dt>
-              <dd>{money(l, data.refunded)}</dd>
-            </div>
-            <div>
-              <dt>{af(l, 'remaining')}</dt>
-              <dd>{money(l, data.remaining)}</dd>
-            </div>
-          </dl>
-          {data.captured === 0 && <p className="flow-muted">{af(l, 'authorizationHelp')}</p>}
+          {customerShowAmounts(data) ? (
+            <dl className="order-care-amounts">
+              <div>
+                <dt>{af(l, 'charged')}</dt>
+                <dd>{money(l, data.captured)}</dd>
+              </div>
+              <div>
+                <dt>{af(l, 'refunded')}</dt>
+                <dd>{money(l, data.refunded)}</dd>
+              </div>
+              <div>
+                <dt>{af(l, 'remaining')}</dt>
+                <dd>{money(l, data.remaining)}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="flow-muted">{pc(l, 'noCharge')}</p>
+          )}
+          {data.captured === 0 && customerShowAmounts(data) && (
+            <p className="flow-muted">{af(l, 'authorizationHelp')}</p>
+          )}
           {data.captured > 0 && (
             <p className="care-next-step">
               {af(

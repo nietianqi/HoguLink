@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { at } from '@/lib/admin-i18n';
 import { AdminFrame } from '@/components/admin-navigation';
 import { MerchantNavigation } from '@/components/merchant-navigation';
+import { StaffNavigation, StaffLanguage } from '@/components/staff-navigation';
 import { notFound } from 'next/navigation';
 import { QualityWorkspace } from '@/components/quality-workspace';
 import { asLocale } from '@/lib/i18n';
@@ -45,6 +46,16 @@ export default async function Page({
       </div>
     </Suspense>
   ) : (
-    content
+    <Suspense>
+      <div className="wrap staff-page">
+        <div className="staff-layout workday-staff">
+          <StaffNavigation locale={asLocale(p.locale)} />
+          <div className="staff-content">
+            <StaffLanguage locale={asLocale(p.locale)} />
+            {content}
+          </div>
+        </div>
+      </div>
+    </Suspense>
   );
 }

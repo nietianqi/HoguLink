@@ -275,7 +275,7 @@ test('in-store prices remain independent of home pricing, and cannot acquire a t
   }));
 
 test('in-store-only capability does not break existing home orders or allow new home quotes', () =>
-  fixture(async (e) => {
+  fixture(async (e, clock) => {
     await configure(e);
     let existing = await homeBooking(e);
     existing = await e.ack(staff, existing.id, existing.version);
@@ -289,6 +289,7 @@ test('in-store-only capability does not break existing home orders or allow new 
     assert.ok(!(await e.publicCatalog()).stores.some((s) => s.id === shop.storeId));
     const q = await e.quote(customer, quoteInput(e, existing.quote.endAt + 60 * minute));
     assert.equal(q.fulfillmentMode, 'IN_STORE');
+    clock.now = existing.quote.startAt - 90 * minute;
     assert.equal(
       (await e.event(staff, existing.id, existing.version, 'EN_ROUTE')).status,
       'EN_ROUTE',

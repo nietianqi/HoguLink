@@ -4,6 +4,7 @@ import type { EmergencyLocation, Locale, SafetyEvent, SafetyLocation } from '@ho
 import { api, ClientError } from '@/lib/api';
 import { dateTime, errorText } from '@/lib/i18n';
 import { ct } from '@/lib/care-i18n';
+import { so } from '@/lib/staff-operations-i18n';
 
 const mapUrl = (p: SafetyLocation) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${p.latitude},${p.longitude}`)}`;
@@ -28,28 +29,41 @@ export function SafetyHelp({
   locale: l,
   bookingId,
   refreshKey,
+  alwaysShow = false,
+  emergencyContact,
 }: {
   locale: Locale;
   bookingId: string;
   refreshKey: unknown;
+  alwaysShow?: boolean;
+  emergencyContact?: string;
 }) {
   const [event, setEvent] = useState<SafetyEvent>(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   useEffect(() => {
     let live = true;
-    api<SafetyEvent[]>('safety-events')
-      .then((all) => {
-        if (live) setEvent(all.find((x) => x.bookingId === bookingId && x.status === 'OPEN'));
-      })
-      .catch(() => {});
+    const load = () =>
+      api<SafetyEvent[]>('safety-events')
+        .then((all) => {
+          if (live) setEvent(all.find((x) => x.bookingId === bookingId && x.status === 'OPEN'));
+        })
+        .catch(() => {});
+    void load();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void load();
+    }, 15000);
     return () => {
       live = false;
+      clearInterval(timer);
     };
   }, [bookingId, refreshKey]);
-  if (!event) return null;
+  if (!event && !alwaysShow) return null;
   const open = event;
+  const contact = open?.emergencyContact ?? emergencyContact;
+  const dialableContact = contact && /^\+?[\d()\s-]{7,20}$/.test(contact) ? contact : undefined;
   async function share() {
+    if (!open) return;
     setBusy(true);
     setError('');
     try {
@@ -61,13 +75,12 @@ export function SafetyHelp({
             })
           : reject(new Error('Location unavailable')),
       );
-      setEvent(
-        await api<SafetyEvent>(`staff/safety-events/${open.id}/location`, {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: Math.round(position.coords.accuracy),
-        }),
-      );
+      const shared = await api<SafetyEvent>(`staff/safety-events/${open.id}/location`, {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: Math.round(position.coords.accuracy),
+      });
+      setEvent({ ...open, ...shared });
     } catch (e) {
       setError(e instanceof ClientError ? errorText(l, e.code) : ct(l, 'locationUnavailable'));
     } finally {
@@ -76,7 +89,23 @@ export function SafetyHelp({
   }
   return (
     <section className="exception-panel safety-help" role="alert">
-      <h3>{ct(l, 'helpSent')}</h3>
+      {open && <h3>{so(l, 'safetyRecorded')}</h3>}
+      {open && (
+        <>
+          <p>{so(l, `notification_${open.notificationStatus ?? 'PENDING'}`)}</p>
+          <p>
+            <strong>{so(l, 'safetyFollowUp')}</strong> ·{' '}
+            {so(
+              l,
+              open.followUp === 'PLATFORM_HANDLING'
+                ? 'safetyHandling'
+                : open.followUp === 'SHOP_CONTACTED'
+                  ? 'safetyContacted'
+                  : 'safetyPending',
+            )}
+          </p>
+        </>
+      )}
       <p>
         <strong>{ct(l, 'emergencyCall')}</strong>
       </p>
@@ -87,24 +116,27 @@ export function SafetyHelp({
         <a className="button danger-button small" href="tel:119">
           119
         </a>
-        {open.emergencyContact && (
-          <a className="button secondary small" href={`tel:${open.emergencyContact}`}>
-            {ct(l, 'shopEmergency')} · {open.emergencyContact}
+        {dialableContact && (
+          <a
+            className="button secondary small"
+            href={`tel:${dialableContact.replace(/[()\s-]/g, '')}`}
+          >
+            {ct(l, 'shopEmergency')} · {dialableContact}
           </a>
         )}
       </div>
-      {open.location ? (
+      {open?.location ? (
         <p className="quality-note">
           {ct(l, 'locationShared')} · {dateTime(l, open.location.sharedAt)}
         </p>
-      ) : (
+      ) : open ? (
         <>
           <p className="flow-muted">{ct(l, 'shareLocationHelp')}</p>
           <button className="button small" disabled={busy} onClick={() => void share()}>
             {ct(l, 'shareLocation')}
           </button>
         </>
-      )}
+      ) : null}
       {error && (
         <p role="alert" className="error-message">
           {error}

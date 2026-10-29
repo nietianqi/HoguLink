@@ -38,7 +38,7 @@ export function Header({ locale }: { locale: Locale }) {
     (suffix) => path === `/${locale}${suffix}`,
   );
   const business = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
-  if (/^\/(ja|en|zh-cn)\/(admin|merchant)(\/|$)/.test(path)) return null;
+  if (/^\/(ja|en|zh-cn)\/(admin|merchant|staff)(\/|$)/.test(path)) return null;
   return (
     <>
       <div className={`demo-bar ${business ? '' : 'h5-consumer-demo'}`}>
@@ -183,7 +183,7 @@ export function Header({ locale }: { locale: Locale }) {
 }
 export function Footer({ locale }: { locale: Locale }) {
   const path = usePathname();
-  if (/^\/(ja|en|zh-cn)\/(admin|merchant)(\/|$)/.test(path)) return null;
+  if (/^\/(ja|en|zh-cn)\/(admin|merchant|staff)(\/|$)/.test(path)) return null;
   return (
     <footer>
       <div className="wrap footer-content">

@@ -7,6 +7,8 @@ import { ot } from '@/lib/coordination-i18n';
 import { pf } from '@/lib/partner-flow-i18n';
 import { ar } from '@/lib/acceptance-i18n';
 import { sv } from '@/lib/service-mode-i18n';
+import { canRespond, nextEvent } from '@/lib/staff-model';
+import { ft, type StaffTextKey } from '@/lib/staff-i18n';
 
 export function OrderQueueDisclosure({
   locale,
@@ -41,6 +43,19 @@ export function PartnerOrderFlow({
 }) {
   const stage = workOrderStage(b),
     next = nextWork(b);
+  const event = nextEvent(b);
+  const staffLabel: StaffTextKey | undefined = canRespond(b)
+    ? 'accept'
+    : event
+      ? (
+          {
+            EN_ROUTE: 'enRoute',
+            ARRIVED: 'arrived',
+            START: 'begin',
+            COMPLETE: 'complete',
+          } as Record<string, StaffTextKey>
+        )[event]
+      : undefined;
   const steps = ['receive', 'confirm', 'visit', 'approval', 'finished'] as const;
   const targets =
     role === 'MERCHANT'
@@ -77,11 +92,13 @@ export function PartnerOrderFlow({
         <div className="partner-order-next">
           <span>{pf(l, 'current')}</span>
           <strong>
-            {stage === null
-              ? pf(l, 'cancelled')
-              : b.quote.fulfillmentMode === 'IN_STORE' && next === 'visit'
-                ? sv(l, b.checkIn ? 'readyToStart' : 'waitCheckIn')
-                : ot(l, next)}
+            {role === 'STAFF' && staffLabel
+              ? ft(l, staffLabel)
+              : stage === null
+                ? pf(l, 'cancelled')
+                : b.quote.fulfillmentMode === 'IN_STORE' && next === 'visit'
+                  ? sv(l, b.checkIn ? 'readyToStart' : 'waitCheckIn')
+                  : ot(l, next)}
           </strong>
         </div>
         {stage !== null && (

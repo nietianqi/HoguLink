@@ -275,6 +275,15 @@ export const lateNight = (startAt: number) => {
   const hour = new Date(startAt + 9 * 3_600_000).getUTCHours();
   return hour >= 22 || hour < 6;
 };
+/** Scheduled home travel may be recorded within 90 minutes before the appointment. */
+export const HOME_TRAVEL_RECORD_LEAD_MINUTES = 90;
+export function travelRecordOpensAt(
+  quote: Pick<Quote, 'fulfillmentMode' | 'bookingMode' | 'startAt'>,
+) {
+  return fulfillmentMode(quote) === 'HOME_VISIT' && quote.bookingMode === 'SCHEDULED'
+    ? quote.startAt - HOME_TRAVEL_RECORD_LEAD_MINUTES * 60000
+    : undefined;
+}
 /** JST minutes; an end at or before the start runs past midnight and belongs to the start day. */
 export type ShiftWindow = { startMinute: number; endMinute: number };
 export type StaffShifts = {
@@ -477,6 +486,10 @@ export type Audit = {
   detail: string;
 };
 export type SafetyEvent = {
+  /** View-only delivery state; acceptance does not prove a recipient has read the alert. */
+  notificationStatus?: 'NOT_CONFIGURED' | 'PENDING' | 'SENT' | 'PARTIAL' | 'FAILED';
+  /** Therapist-safe progress, without internal safety notes or operator identity. */
+  followUp?: 'SHOP_CONTACTED' | 'PLATFORM_HANDLING';
   /** Shop follow-up is shared only with that shop and the platform safety team. */
   merchantContact?: { at: number; note: string };
   id: string;

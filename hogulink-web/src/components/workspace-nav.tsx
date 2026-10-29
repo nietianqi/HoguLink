@@ -28,10 +28,13 @@ import { t } from '@/lib/i18n';
 import { st } from '@/lib/merchant-i18n';
 import { MerchantNavigation } from './merchant-navigation';
 import { ft } from '@/lib/staff-i18n';
+import { StaffNavigation } from './staff-navigation';
 import { at, adminTabs, adminTabAllowed } from '@/lib/admin-i18n';
 export function WorkspaceNav(props: Parameters<typeof LegacyWorkspaceNav>[0]) {
   return props.role === 'MERCHANT' ? (
     <MerchantNavigation locale={props.locale} />
+  ) : props.role === 'STAFF' ? (
+    <StaffNavigation locale={props.locale} />
   ) : (
     <LegacyWorkspaceNav {...props} />
   );

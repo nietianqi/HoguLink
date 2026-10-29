@@ -29,6 +29,7 @@ import { adminCaseVisible, adminDirectory, currentAdmin, requireAdmin } from './
 import { staffBookingAccess } from './staff-access.js';
 import { canAdmin, type TicketHandling } from '@hogulink/contracts';
 import { assertDecisionClosable, decisionDetail } from './governance.js';
+import type { Outbox } from './notifications.js';
 
 const hour = 60 * 60_000;
 const open = (ticket: SupportTicket) => !['RESOLVED', 'CLOSED'].includes(ticket.status);
@@ -777,15 +778,39 @@ export class CareService {
         (x) =>
           actor.role === 'ADMIN' ||
           (actor.role === 'MERCHANT' && x.storeId === actor.storeId) ||
-          (actor.role === 'STAFF' && x.staffId === actor.staffId),
+          (actor.role === 'STAFF' && x.staffId === actor.staffId && x.storeId === actor.storeId),
       );
       const contacts = new Map<string, string>();
       if (actor.role === 'STAFF')
         for (const storeId of new Set(events.map((x) => x.storeId)))
           contacts.set(storeId, (await tx.get<Store>('stores', storeId))?.emergencyContact ?? '');
-      return events
-        .map((x) => safetyEventView(actor, x, contacts.get(x.storeId)))
-        .sort((a, b) => b.createdAt - a.createdAt);
+      const views = await Promise.all(
+        events.map(async (event) => {
+          const view = safetyEventView(actor, event, contacts.get(event.storeId));
+          if (actor.role !== 'STAFF') return view;
+          const jobs = (
+            await tx.find<Outbox>('outbox', { bookingId: event.bookingId, type: event.type })
+          ).filter((job) => job.createdAt >= event.createdAt);
+          const configured =
+            (process.env.EMAIL_PROVIDER || 'disabled') !== 'disabled' &&
+            process.env.NOTIFICATION_EMAIL_SCOPE !== 'customer-auth';
+          view.notificationStatus = !configured
+            ? 'NOT_CONFIGURED'
+            : jobs.length && jobs.every((job) => job.status === 'SENT')
+              ? 'SENT'
+              : jobs.some(
+                    (job) => job.status === 'SENT' || Object.keys(job.receipts ?? {}).length > 0,
+                  )
+                ? 'PARTIAL'
+                : jobs.some((job) => ['FAILED', 'BLOCKED', 'EXPIRED'].includes(job.status))
+                  ? 'FAILED'
+                  : 'PENDING';
+          if (event.handling?.ownerId) view.followUp = 'PLATFORM_HANDLING';
+          else if (event.merchantContact) view.followUp = 'SHOP_CONTACTED';
+          return view;
+        }),
+      );
+      return views.sort((a, b) => b.createdAt - a.createdAt);
     });
   }
   /** The therapist shares their current position once, by explicit choice, for an open event. */

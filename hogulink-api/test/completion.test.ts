@@ -31,6 +31,7 @@ test('service cannot start one millisecond before booked time; server timestamp 
   fixture(async (e, clock) => {
     let b = await booking(e);
     b = await e.ack(staff, b.id, b.version);
+    clock.now = b.quote.startAt - 30 * 60000;
     for (const event of ['EN_ROUTE', 'ARRIVED']) b = await e.event(staff, b.id, b.version, event);
     clock.now = b.quote.startAt - 1;
     await assert.rejects(e.event(staff, b.id, b.version, 'START'), code('SERVICE_TOO_EARLY'));

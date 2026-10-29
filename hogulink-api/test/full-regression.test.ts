@@ -151,6 +151,7 @@ for (const state of [
         COMPLETED: ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE'],
       };
       for (const event of paths[state] ?? []) {
+        if (event === 'EN_ROUTE') clock.now = Math.max(clock.now, b.quote.startAt - 90 * 60000);
         if (event === 'START') clock.now = b.quote.startAt;
         if (event === 'COMPLETE') clock.now = b.startedAt! + b.quote.endAt - b.quote.startAt;
         b = await e.event(staff, b.id, b.version, event);
@@ -307,8 +308,9 @@ test('FULL-ACL-03 revoked staff cannot progress, complete or create safety repor
     );
   }));
 test('FULL-ACL-05 suspending public discovery preserves a valid existing staff task', () =>
-  fixture(async (e) => {
+  fixture(async (e, clock) => {
     let b = await confirmed(e);
+    clock.now = b.quote.startAt - 90 * 60000;
     await e.enforce(
       { id: 'admin', role: 'ADMIN', verificationLevel: 3 },
       'listing-aoi',

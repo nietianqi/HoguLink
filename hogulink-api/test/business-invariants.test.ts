@@ -45,10 +45,11 @@ for (const state of ['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'] as const)
     }));
 
 test('two simultaneous departures for the same person have exactly one winner', () =>
-  fixture(async (e) => {
+  fixture(async (e, clock) => {
     const tasks = await Promise.all([booking(e), booking(e, { startAt: e.now() + 360 * minute })]);
     const confirmed = [];
     for (const task of tasks) confirmed.push(await e.ack(staff, task.id, task.version));
+    clock.now = confirmed[1].quote.startAt - 90 * minute;
     const results = await Promise.allSettled(
       confirmed.map((task) => e.event(staff, task.id, task.version, 'EN_ROUTE')),
     );

@@ -243,13 +243,14 @@ test('suspending a therapist or shop lists the bookings that still need aftercar
   }));
 
 // ---- Therapist safety conditions
-test('a late-night condition applies after shop approval and only to first-time home customers', () =>
+test('a pending late-night condition protects new first-time home bookings before shop approval', () =>
   fixture(async (e, clock) => {
     await openAllDay(e);
     const night = jst(19, 23);
     let listing = await e.staff.requestSafetyConditions(staff, { noFirstLateNight: true });
     assert.equal(listing.safetyRequest!.status, 'PENDING');
-    assert.ok(await homeQuote(e, night), 'not enforced before approval');
+    await assert.rejects(homeQuote(e, night), code('STAFF_CONDITIONS'));
+    assert.ok(await homeQuote(e, jst(19, 15)), 'pending conditions do not block daytime work');
     const otherShop = { ...shop, id: 'quality-mori', storeId: 'store-mori' };
     await assert.rejects(
       e.staff.reviewSafetyConditions(otherShop, 'listing-aoi', { approve: true }),
@@ -285,6 +286,19 @@ test('a late-night condition applies after shop approval and only to first-time 
     // Relaxing the condition is the therapist's own choice and applies at once.
     listing = await e.staff.requestSafetyConditions(staff, { noFirstLateNight: false });
     assert.equal(listing.safetyConditions, undefined);
+  }));
+
+test('temporary safety conditions preserve existing assigned work and can be removed by the therapist', () =>
+  fixture(async (e) => {
+    await openAllDay(e);
+    let existing = await booking(e, { startAt: jst(19, 23) });
+    await e.staff.requestSafetyConditions(staff, { noFirstLateNight: true });
+    await assert.rejects(homeQuote(e, jst(20, 23)), code('STAFF_CONDITIONS'));
+    existing = await e.ack(staff, existing.id, existing.version);
+    assert.equal(existing.status, 'CONFIRMED');
+    assert.equal(existing.staffTaskStatus, 'ACKNOWLEDGED');
+    await e.staff.requestSafetyConditions(staff, { noFirstLateNight: false });
+    assert.ok(await homeQuote(e, jst(20, 23)));
   }));
 
 // ---- Case evidence

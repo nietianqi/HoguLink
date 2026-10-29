@@ -14,6 +14,7 @@ import {
   withinBusinessHours,
   withinShifts,
   lateNight,
+  travelRecordOpensAt,
   fulfillmentMode,
   venueAvailable,
   venueSnapshot,
@@ -406,7 +407,7 @@ export class Engine {
       quote.startAt - (lead > 1440 && !replacement ? 720 : 15) * minute,
     );
   }
-  /** Therapist safety conditions the shop approved, checked against this customer. */
+  /** Pending stricter safety conditions temporarily protect new bookings too. */
   private async conditionsAllow(
     tx: Records,
     listing: Listing,
@@ -414,7 +415,11 @@ export class Engine {
     quote: Pick<Quote, 'startAt' | 'fulfillmentMode'>,
   ) {
     if (
-      !listing.safetyConditions?.noFirstLateNight ||
+      !(
+        listing.safetyConditions?.noFirstLateNight ||
+        (listing.safetyRequest?.status === 'PENDING' &&
+          listing.safetyRequest.conditions.noFirstLateNight)
+      ) ||
       fulfillmentMode(quote) !== 'HOME_VISIT' ||
       !lateNight(quote.startAt)
     )
@@ -2135,6 +2140,7 @@ export class Engine {
           402,
         );
       if (event === 'START')
+        // Start is checked separately from the departure/arrival recording window.
         ensure(
           // Scheduled visits start no earlier than the booked time; an instant visit starts
           // once the therapist has arrived, and its end is still checked from the actual start.
@@ -2144,6 +2150,14 @@ export class Engine {
               : b.arrivedAt !== undefined && this.now() >= b.arrivedAt),
           'SERVICE_TOO_EARLY',
           'Service cannot start before the booked time and arrival.',
+          409,
+        );
+      const travelOpensAt = travelRecordOpensAt(b.quote);
+      if (['EN_ROUTE', 'ARRIVED'].includes(event) && travelOpensAt !== undefined)
+        ensure(
+          this.now() >= travelOpensAt,
+          'TRAVEL_TOO_EARLY',
+          'Travel records open 90 minutes before the scheduled home visit.',
           409,
         );
       if (event === 'START' && inStore) {

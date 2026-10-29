@@ -10,6 +10,7 @@ import { api, ClientError } from '@/lib/api';
 import { dateTime, money } from '@/lib/i18n';
 import { xt, exceptionError } from '@/lib/exception-i18n';
 import { sv } from '@/lib/service-mode-i18n';
+import { so } from '@/lib/staff-operations-i18n';
 import { MobileSheet } from './mobile-ui';
 
 type NoShowBooking = Pick<
@@ -44,12 +45,16 @@ export function NoShowPanel({
   const arrived = b.status === 'ARRIVED' || atVenue;
   const canContact = role === 'STAFF' || (inStore && role === 'MERCHANT');
   useEffect(() => {
-    setText(xt(l, role === 'STAFF' ? 'contactText' : 'noteText'));
+    setText(
+      inStore && role === 'STAFF'
+        ? so(l, 'venueContact')
+        : xt(l, role === 'STAFF' ? 'contactText' : 'noteText'),
+    );
     setError('');
     setReview(false);
     setAgreed(false);
     request.current = '';
-  }, [b.id, l, role]);
+  }, [b.id, l, role, inStore]);
   useEffect(() => {
     if (!arrived || b.noShow?.status !== 'REPORTED') setReview(false);
   }, [b.status, b.noShow?.status]);
@@ -61,6 +66,7 @@ export function NoShowPanel({
   }, [b.id, b.status, role]);
   const policy = b.quote.cancellationPolicy.noShow,
     report = b.noShow;
+  if (inStore && !report && (!now || now < b.quote.startAt)) return null;
   if (!(canContact && arrived) && !report) return null;
   if (!policy) return <p className="notice">{xt(l, 'legacy')}</p>;
   const fee = Math.floor(((b.quote.total - b.quote.transportFee) * policy.feeBps) / 10000);

@@ -1,5 +1,7 @@
 'use client';
 import { mo } from '@/lib/merchant-operations-i18n';
+import { StaffLanguage } from './staff-navigation';
+import { sv } from '@/lib/service-mode-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { goCustomerAccess } from './customer-signin';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -400,14 +402,21 @@ export function CareCenter({
           ? 'admin-embedded-workspace'
           : role === 'MERCHANT'
             ? 'merchant-layout workday-merchant'
-            : 'workspace-layout'
+            : role === 'STAFF'
+              ? 'staff-layout workday-staff'
+              : 'workspace-layout'
       }
     >
       <WorkspaceNav locale={l} role={role} active="support" actor={actor} />
-      <div className={`workspace-content ${role === 'MERCHANT' ? 'merchant-content' : ''}`}>
+      <div
+        className={`workspace-content ${role === 'MERCHANT' ? 'merchant-content' : role === 'STAFF' ? 'staff-content' : ''}`}
+      >
+        {role === 'STAFF' && <StaffLanguage locale={l} />}
         <div className="workspace-title">
           <div>
-            {role !== 'CUSTOMER' && <span className="eyebrow small">HOGULINK / CARE</span>}
+            {!['CUSTOMER', 'STAFF'].includes(role) && (
+              <span className="eyebrow small">HOGULINK / CARE</span>
+            )}
             <h1>
               <LifeBuoy size={26} />
               {role === 'ADMIN' ? at(l, 'support') : ct(l, 'center')}
@@ -571,7 +580,9 @@ export function CareCenter({
                         </option>
                         {bookings.map((b) => (
                           <option key={b.id} value={b.id}>
-                            {dateTime(l, b.quote.startAt)} · {b.id.slice(-8)}
+                            {dateTime(l, b.quote.startAt)} ·{' '}
+                            {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} ·{' '}
+                            {b.quote.serviceName?.[l] ?? ''} · {b.id.slice(-8)}
                           </option>
                         ))}
                       </select>

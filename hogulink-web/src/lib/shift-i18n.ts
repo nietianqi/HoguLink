@@ -32,9 +32,9 @@ const words = {
     '深夜（22:00–6:00）上门只接本店老顾客',
   ],
   conditionsHelp: [
-    '条件の追加は店舗の承認後に有効になります。解除はすぐ反映されます。既存の予約には影響しません。',
-    'Adding a condition takes effect once the shop approves it; removing one applies at once. Existing bookings are not affected.',
-    '新增条件需店铺批准后生效，取消条件立即生效；不影响已有预约。',
+    '店舗の確認待ちの間も、新規予約には一時的に条件を適用します。解除はすぐ反映されます。既存の予約は変わりません。',
+    'The condition protects new bookings while awaiting your shop’s review. Removing it applies at once. Existing bookings are unchanged.',
+    '等待店铺确认期间，新预约也会临时按此条件保护；取消条件立即生效，已有预约不变。',
   ],
   APPROVED: ['承認済み', 'Approved', '已批准'],
   PENDING: ['店舗の承認待ち', 'Waiting for the shop', '等待店铺批准'],

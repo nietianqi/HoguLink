@@ -75,7 +75,7 @@ const words = {
   mainPhotoRule: [
     '出張サービスにはメイン写真が必要です。到着時にお客様が本人確認に使います。',
     'Home visits need a main photo; customers use it to recognize you at the door.',
-    '上门服务必须有主照片，顾客上门时用它核对本人。',
+    '上门服务必须有主照片，服务时顾客用它核对技师本人。',
   ],
   missingMain: [
     'メイン写真がないため、出張予約を受けられません。承認済みの写真をメイン写真に設定してください。',

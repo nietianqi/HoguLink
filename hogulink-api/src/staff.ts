@@ -68,6 +68,7 @@ export class StaffService {
       id: randomUUID(),
       type: action,
       target,
+      storeId: actor.storeId,
       createdAt: this.now(),
       status: 'PENDING',
       delivery: 'DEMO_LOCAL_ONLY',
@@ -86,6 +87,9 @@ export class StaffService {
           acceptanceMode: store.acceptanceMode,
           active: store.active,
           approved: store.approved,
+          intakePaused: !!store.intakePaused,
+          billingBlocked: !!store.billingBlocked,
+          homeVisitsEnabled: store.homeVisitsEnabled !== false,
         },
         eligible: this.eligible(listing, store),
         dutyExpiresAt: listing.dutyUpdatedAt + 4 * 3600_000,
@@ -175,7 +179,8 @@ export class StaffService {
   }
   /**
    * The therapist asks for stricter safety conditions; the shop approves them before they
-   * filter bookings. Relaxing a condition is the therapist's own choice and applies at once.
+   * filter bookings permanently. While pending it protects new bookings provisionally.
+   * Relaxing a condition is the therapist's own choice and applies at once.
    */
   async requestSafetyConditions(actor: Actor, input: unknown) {
     const conditions = safetyConditionsInput.parse(input);

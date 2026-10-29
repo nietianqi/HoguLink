@@ -27,7 +27,6 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
-  UserRound,
 } from 'lucide-react';
 import type {
   Actor,
@@ -57,14 +56,27 @@ import { japanInput, parseJapanInput } from '@/lib/merchant-model';
 import { useSession } from './booking-form';
 import { MobileSheet } from './mobile-ui';
 import { PartnerEntry } from './partner-portal';
-import { QualityEntry, ArrivalPanel, SafetyDeskPanel } from './quality-workspace';
+import { ArrivalPanel, SafetyDeskPanel } from './quality-workspace';
 import { OrderCoordination, StaffCooperationInbox } from './order-coordination';
 import { wt } from '@/lib/workday-i18n';
-import { WorkdayTools } from './workday-tools';
 import { CompletionPanel } from './completion-panel';
 import { PartnerOrderFlow } from './partner-order-flow';
 import { pf } from '@/lib/partner-flow-i18n';
 import { MediaManager } from './media-manager';
+import { StaffNavigation, StaffLanguage } from './staff-navigation';
+import { StaffAlerts } from './staff-alerts';
+import { StaffPerformance } from './staff-performance';
+import { SafetyHelp } from './safety-help';
+import { fulfillmentMode, listingSupports, travelRecordOpensAt } from '@hogulink/contracts';
+import {
+  staffCanMessage,
+  staffPerformance,
+  staffProfileSections,
+  staffTravelReady,
+  type StaffProfileSection,
+} from '@/lib/staff-model';
+import { so, staffCountdown } from '@/lib/staff-operations-i18n';
+import { sv } from '@/lib/service-mode-i18n';
 
 type Block = {
   id: string;
@@ -81,6 +93,9 @@ type Workspace = {
     areas: string[];
     emergencyContact: string;
     acceptanceMode: string;
+    intakePaused: boolean;
+    billingBlocked: boolean;
+    homeVisitsEnabled: boolean;
   };
   eligible: boolean;
   dutyExpiresAt: number;
@@ -90,7 +105,6 @@ type Workspace = {
   safety: { id: string; bookingId: string; type: string; status: string; createdAt: number }[];
 };
 type Review = { booking: Booking; action: 'ack' | 'decline' | 'COMPLETE' | 'SAFETY_TERMINATION' };
-const icons = { overview: Sparkles, tasks: ListChecks, schedule: CalendarDays, profile: UserRound };
 const eventLabels: Record<string, StaffTextKey> = {
   EN_ROUTE: 'enRoute',
   ARRIVED: 'arrived',
@@ -104,6 +118,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
   const query = useSearchParams(),
     requested = query.get('tab') as StaffTab;
   const tab = staffTabs.includes(requested) ? requested : 'overview';
+  const profileSection = staffProfileSections.includes(query.get('section') as StaffProfileSection)
+    ? (query.get('section') as StaffProfileSection)
+    : 'public';
   const { actor, setActor, loading } = useSession();
   const demoAccess = useDemoAccess();
   const [demoStaff, setDemoStaff] = useState<
@@ -138,6 +155,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
   const messageGeneration = useRef(0),
     sendLock = useRef(false);
   const [requestLimit, setRequestLimit] = useState(12);
+  const [safetyOpen, setSafetyOpen] = useState(false),
+    [connected, setConnected] = useState(true);
+  const actionLock = useRef(false);
   const generation = useRef(0),
     retry = useRef({ payload: '', key: '' });
   const hasRole = actor?.role === 'STAFF';
@@ -151,7 +171,11 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     (e: unknown) => {
       const code = e instanceof ClientError ? e.code : undefined;
       setError(
-        code === 'INVALID_TIME' || code === 'REQUEST_LIMIT' ? ft(l, code) : errorText(l, code),
+        code === 'TRAVEL_TOO_EARLY'
+          ? so(l, code)
+          : code === 'INVALID_TIME' || code === 'REQUEST_LIMIT'
+            ? ft(l, code)
+            : errorText(l, code),
       );
     },
     [l],
@@ -204,10 +228,24 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       if (document.visibilityState === 'visible') void refresh();
     }, 30000);
     const clock = window.setInterval(() => setNow(Date.now()), 1000);
+    const resume = () => {
+      setConnected(navigator.onLine);
+      if (document.visibilityState === 'visible' && navigator.onLine) void refresh();
+    };
+    const offline = () => setConnected(false);
+    setConnected(navigator.onLine);
+    window.addEventListener('focus', resume);
+    window.addEventListener('online', resume);
+    window.addEventListener('offline', offline);
+    document.addEventListener('visibilitychange', resume);
     return () => {
       generation.current++;
       window.clearInterval(poll);
       window.clearInterval(clock);
+      window.removeEventListener('focus', resume);
+      window.removeEventListener('online', resume);
+      window.removeEventListener('offline', offline);
+      document.removeEventListener('visibilitychange', resume);
     };
   }, [refresh]);
   async function login() {
@@ -226,7 +264,13 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       setBusy(false);
     }
   }
-  async function mutate(fn: () => Promise<unknown>, success = ft(l, 'saved')) {
+  async function mutate(fn: () => Promise<unknown>, success: string = ft(l, 'saved')) {
+    if (actionLock.current) return false;
+    if (!navigator.onLine) {
+      setError(so(l, 'offline'));
+      return false;
+    }
+    actionLock.current = true;
     setBusy(true);
     setError('');
     setNotice('');
@@ -251,6 +295,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       }
       return false;
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
@@ -281,10 +326,11 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
   }, [requestedBooking]);
   const selected = requestedBooking ? bookings.find((b) => b.id === requestedBooking) : items[0];
   const selectedId = selected?.id,
-    messageAllowed = !!selected && canProgress(selected) && !!selected.address;
+    messageAllowed = !!selected && staffCanMessage(selected);
   useEffect(() => {
     setMessages([]);
     setDraft('');
+    setSafetyOpen(false);
   }, [selectedId, actor?.id]);
   const loadMessages = useCallback(async () => {
     const generation = ++messageGeneration.current;
@@ -309,6 +355,10 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     };
   }, [loadMessages, selected?.version, updated]);
   const stats = staffNumbers(bookings, now),
+    monthly = staffPerformance(bookings, now),
+    openSafety = data?.safety
+      .filter((event) => event.status === 'OPEN')
+      .sort((a, b) => b.createdAt - a.createdAt)[0],
     focus = focusTask(bookings),
     online = !!data?.listing.onDuty && data.dutyExpiresAt > now;
   const upcoming = bookings
@@ -321,6 +371,17 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       minute: '2-digit',
       hourCycle: 'h23',
     }).format(at);
+  const relativeDay = (at: number) => {
+    const date = japanDay(at),
+      today = japanDay(now);
+    return date === today
+      ? so(l, 'today')
+      : date === japanDay(now + 86400000)
+        ? so(l, 'tomorrow')
+        : date === japanDay(now - 86400000)
+          ? so(l, 'yesterday')
+          : date.slice(5);
+  };
   const offering = (b: Booking) =>
     b.quote.serviceName?.[l] ??
     data?.offerings.find((o) => o.id === b.quote.offeringId)?.name[l] ??
@@ -335,6 +396,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           ? ft(l, 'pending')
           : statusText(l, b.status);
   function openReview(b: Booking, action: Review['action']) {
+    setSafetyOpen(false);
     setReview({ booking: b, action });
     setEta(b.arrivalMinutes ?? 45);
     setReason('scheduleConflict');
@@ -368,17 +430,29 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     retry.current = { payload: '', key: '' };
   }
   function dutyCard() {
+    const unavailable =
+      !data?.eligible ||
+      data.store.acceptanceMode === 'MANUAL' ||
+      data.store.intakePaused ||
+      data.store.billingBlocked ||
+      data.store.homeVisitsEnabled === false ||
+      !listingSupports(data.listing, 'HOME_VISIT');
     return (
       <section className="staff-panel staff-duty">
         <div className="staff-panel-title">
           <h2>{ft(l, 'standby')}</h2>
           <span className={`staff-state ${online ? 'online' : ''}`}>
             <i />
-            {ft(l, online ? 'online' : data?.listing.onDuty ? 'expired' : 'offline')}
+            {unavailable
+              ? so(l, 'standbyUnavailable')
+              : ft(l, online ? 'online' : data?.listing.onDuty ? 'expired' : 'offline')}
           </span>
         </div>
         <p>{ft(l, 'dutyHelp')}</p>
-        {online && (
+        <p>
+          {so(l, 'standbyHelp')} <Link href={href('schedule')}>{so(l, 'shifts')}</Link>
+        </p>
+        {online && !unavailable && (
           <div className="staff-expiry">
             <Clock3 size={15} />
             {ft(l, 'until')} <strong>{time(data!.dutyExpiresAt)} JST</strong>
@@ -392,22 +466,27 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
         {data?.store.acceptanceMode === 'MANUAL' && (
           <p className="staff-warning">{ft(l, 'manual')}</p>
         )}
+        {(data?.store.intakePaused || data?.store.billingBlocked) && (
+          <p className="staff-warning">{so(l, 'paused')}</p>
+        )}
         <div className="staff-action-row">
-          <button
-            className="button"
-            disabled={busy || !data?.eligible || data.store.acceptanceMode === 'MANUAL'}
-            onClick={() =>
-              mutate(() =>
-                api(
-                  'staff/duty-status',
-                  { onDuty: true, expectedAt: data?.listing.dutyUpdatedAt },
-                  'PUT',
-                ),
-              )
-            }
-          >
-            {ft(l, online ? 'renew' : 'on')}
-          </button>
+          {!unavailable && (
+            <button
+              className="button"
+              disabled={busy || !data?.eligible || data.store.acceptanceMode === 'MANUAL'}
+              onClick={() =>
+                mutate(() =>
+                  api(
+                    'staff/duty-status',
+                    { onDuty: true, expectedAt: data?.listing.dutyUpdatedAt },
+                    'PUT',
+                  ),
+                )
+              }
+            >
+              {ft(l, online ? 'renew' : 'on')}
+            </button>
+          )}
           {data?.listing.onDuty && (
             <button
               className="button secondary"
@@ -438,10 +517,11 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
       >
         <time>
           <strong>{time(b.quote.startAt)}</strong>
-          <small>{japanDay(b.quote.startAt).slice(5).replace('-', ' / ')}</small>
+          <small>{relativeDay(b.quote.startAt)}</small>
         </time>
         <div>
           <span className={`staff-tag ${canRespond(b) ? 'attention' : ''}`}>{taskStatus(b)}</span>
+          <span className="staff-mode-tag">{sv(l, fulfillmentMode(b.quote))}</span>
           <h3>{offering(b)}</h3>
           <p>
             {areaName(l, b.quote.area)} · {duration(b)} {t(l, 'minutes')}
@@ -469,7 +549,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           </Link>
         )}
         <div className="staff-detail-top">
-          <span className="eyebrow">VISIT / {b.id.slice(-8).toUpperCase()}</span>
+          <span className="staff-reference">
+            {so(l, 'order')} · {b.id.slice(-8).toUpperCase()}
+          </span>
           <span className="staff-tag">{taskStatus(b)}</span>
         </div>
         <PartnerOrderFlow locale={l} booking={b} role="STAFF" />
@@ -483,15 +565,23 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             <span>01</span>
             <h3>{pf(l, 'fulfillment')}</h3>
           </div>
-          <p className="flow-muted">{pf(l, 'taskHelp')}</p>
+          <p className="flow-muted">
+            {fulfillmentMode(b.quote) === 'IN_STORE'
+              ? so(l, 'prepareVenueHelp')
+              : pf(l, 'taskHelp')}
+          </p>
           <CompletionPanel
             locale={l}
             booking={b}
             role="STAFF"
+            stickyAction
             onUpdated={() => void mutate(refresh)}
           />
           {!closed && (
-            <div className="staff-detail-action">
+            <div
+              className="staff-detail-action"
+              data-primary={canRespond(b) || event === 'EN_ROUTE' || event === 'ARRIVED'}
+            >
               {canRespond(b) && (
                 <>
                   <p className="staff-deadline">
@@ -501,7 +591,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   </p>
                   <button
                     className="button full"
-                    disabled={busy || b.deadline <= now}
+                    disabled={busy || !connected || b.deadline <= now}
                     onClick={() => openReview(b, 'ack')}
                   >
                     {ft(l, 'accept')}
@@ -512,7 +602,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
               {event && !['START', 'COMPLETE'].includes(event) && (
                 <button
                   className="button full"
-                  disabled={busy}
+                  disabled={busy || !connected || !staffTravelReady(b, now)}
                   onClick={() =>
                     event === 'COMPLETE'
                       ? openReview(b, 'COMPLETE')
@@ -521,9 +611,16 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                         )
                   }
                 >
-                  {ft(l, eventLabels[event])}
+                  {!staffTravelReady(b, now)
+                    ? `${so(l, 'travelWait')} ${time(travelRecordOpensAt(b.quote)!)}`
+                    : ft(l, eventLabels[event])}
                   <ArrowRight size={18} />
                 </button>
+              )}
+              {event && ['EN_ROUTE', 'ARRIVED'].includes(event) && !staffTravelReady(b, now) && (
+                <p className="staff-travel-wait" role="status">
+                  {so(l, 'travelWait')} · {dateTime(l, travelRecordOpensAt(b.quote)!)} JST
+                </p>
               )}
               {b.replacementConsent === 'PENDING' && b.proposedListingId && (
                 <p className="notice">{ft(l, 'waitingConsent')}</p>
@@ -542,47 +639,56 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 )}
             </div>
           )}
-          <section className="staff-location">
-            <MapPin size={20} />
-            <div>
-              <h3>
-                {ft(l, 'location')} · {areaName(l, b.quote.area)}
-              </h3>
-              {b.address ? (
-                <>
-                  <strong>
-                    {b.address.type === 'HOTEL'
-                      ? `${ft(l, 'hotel')} · ${b.address.hotelName}`
-                      : ft(l, 'home')}
-                  </strong>
+          {fulfillmentMode(b.quote) === 'HOME_VISIT' && (
+            <section className="staff-location">
+              <MapPin size={20} />
+              <div>
+                <h3>
+                  {ft(l, 'location')} · {areaName(l, b.quote.area)}
+                </h3>
+                {b.address ? (
+                  <>
+                    <strong>
+                      {b.address.type === 'HOTEL'
+                        ? `${ft(l, 'hotel')} · ${b.address.hotelName}`
+                        : ft(l, 'home')}
+                    </strong>
+                    <p>
+                      {b.address.detail} {b.address.room}
+                    </p>
+                    <p>{b.address.name}</p>
+                  </>
+                ) : (
                   <p>
-                    {b.address.detail} {b.address.room}
+                    <ShieldCheck size={14} />
+                    {ft(l, 'privateAddress')}
                   </p>
-                  <p>{b.address.name}</p>
-                </>
-              ) : (
-                <p>
-                  <ShieldCheck size={14} />
-                  {ft(l, 'privateAddress')}
-                </p>
-              )}
-            </div>
-          </section>
+                )}
+              </div>
+            </section>
+          )}
           {b.status === 'CONFIRMED' && canProgress(b) && (
             <div className="staff-preparation">
               <Coffee size={18} />
               <div>
-                <h3>{ft(l, 'preparation')}</h3>
-                <p>{ft(l, 'preparationHelp')}</p>
-                <small>{ft(l, 'buffer')}</small>
+                <h3>
+                  {fulfillmentMode(b.quote) === 'IN_STORE'
+                    ? so(l, 'prepareVenue')
+                    : ft(l, 'preparation')}
+                </h3>
+                <p>
+                  {fulfillmentMode(b.quote) === 'IN_STORE'
+                    ? so(l, 'prepareVenueHelp')
+                    : ft(l, 'preparationHelp')}
+                </p>
+                <small>
+                  {fulfillmentMode(b.quote) === 'IN_STORE' ? so(l, 'turnover') : ft(l, 'buffer')}
+                </small>
               </div>
             </div>
           )}
           {!closed && b.quote.fulfillmentMode !== 'IN_STORE' && (
             <ArrivalPanel locale={l} booking={b} staff onUpdated={() => void refresh()} />
-          )}
-          {b.status === 'IN_SERVICE' && (
-            <SafetyDeskPanel locale={l} role="STAFF" bookingId={b.id} />
           )}
           <NoShowPanel locale={l} booking={b} role="STAFF" onUpdated={refresh} />
         </section>
@@ -649,6 +755,38 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   }
                 }}
               >
+                <div className="staff-quick-messages" aria-label={so(l, 'quickMessages')}>
+                  {(fulfillmentMode(b.quote) === 'IN_STORE'
+                    ? (['venueReady', 'venueContact'] as const)
+                    : b.status === 'CONFIRMED'
+                      ? (['confirmTime'] as const)
+                      : b.status === 'EN_ROUTE'
+                        ? (['departing', 'arrived'] as const)
+                        : (['arrived'] as const)
+                  ).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className="staff-text-button"
+                      disabled={busy}
+                      onClick={() => setDraft(so(l, key))}
+                      title={so(l, key)}
+                    >
+                      {so(
+                        l,
+                        key === 'venueReady'
+                          ? 'quickVenueReady'
+                          : key === 'venueContact'
+                            ? 'quickVenueContact'
+                            : key === 'departing'
+                              ? 'quickDeparting'
+                              : key === 'arrived'
+                                ? 'quickArrived'
+                                : 'quickConfirmTime',
+                      )}
+                    </button>
+                  ))}
+                </div>
                 <label className="sr-only" htmlFor="staff-message">
                   {ft(l, 'messages')}
                 </label>
@@ -687,7 +825,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 event.bookingId === b.id && event.type === 'SOS' && event.status === 'OPEN',
             ) && (
               <p className="notice" role="status">
-                {ft(l, 'sosSaved')}
+                {so(l, 'safetyRecorded')}
               </p>
             )}
             {!closed && (
@@ -695,17 +833,18 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 <button
                   className="button secondary"
                   disabled={busy}
-                  onClick={() =>
-                    mutate(
+                  onClick={() => {
+                    setSafetyOpen(true);
+                    void mutate(
                       () =>
                         api('staff/safety-alerts', {
                           bookingId: b.id,
                           version: b.version,
                           type: 'SOS',
                         }),
-                      ft(l, 'sosSaved'),
-                    )
-                  }
+                      so(l, 'safetyRecorded'),
+                    );
+                  }}
                 >
                   {ft(l, 'sos')}
                 </button>
@@ -725,61 +864,37 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             <small>{ft(l, 'noPublic')}</small>
             <small>{ft(l, 'demo')}</small>
           </section>
+          {data?.safety.some((event) => event.bookingId === b.id && event.status === 'OPEN') && (
+            <SafetyHelp locale={l} bookingId={b.id} refreshKey={b.version} />
+          )}
         </div>
+        {!closed && (
+          <button
+            type="button"
+            className="staff-safety-trigger"
+            onClick={() => setSafetyOpen(true)}
+          >
+            <LifeBuoy size={19} />
+            {ft(l, 'support')}
+          </button>
+        )}
       </article>
     );
   }
   return (
     <div className="staff-layout workday-staff">
-      <aside className="staff-sidebar">
-        <Link className="staff-wordmark" href={href('overview')}>
-          <Leaf size={25} />
-          <strong>
-            HoguLink<small>THERAPIST SPACE</small>
-          </strong>
-        </Link>
-        <div className="staff-identity">
-          {data?.listing.photo ? (
-            <Image src={data.listing.photo} alt="" width={72} height={72} loading="eager" />
-          ) : (
-            <span>
-              <UserRound size={29} />
-            </span>
-          )}
-          <strong>{data?.listing.name[l] ?? ft(l, 'portal')}</strong>
-          <small>{data?.store.name[l] ?? 'HoguLink'}</small>
-        </div>
-        <nav aria-label={ft(l, 'portal')}>
-          {staffTabs.map((view) => {
-            const Icon = icons[view];
-            return (
-              <Link key={view} href={href(view)} aria-current={view === tab ? 'page' : undefined}>
-                <Icon size={18} />
-                {ft(l, view)}
-                {view === 'tasks' && stats.pending > 0 && <b>{stats.pending}</b>}
-              </Link>
-            );
-          })}
-          <Link href={`/${l}/staff/support`}>
-            <LifeBuoy size={18} />
-            {ft(l, 'support')}
-          </Link>
-        </nav>
-        <div className="staff-sidebar-foot">
-          <ShieldCheck size={23} />
-          <p>{ft(l, 'noPublic')}</p>
-          <Link href={`/${l}`}>
-            {t(l, 'back')}
-            <ArrowUpRight size={15} />
-          </Link>
-        </div>
-      </aside>
+      <StaffNavigation
+        locale={l}
+        listing={data?.listing}
+        storeName={data?.store.name}
+        count={stats.pending}
+      />
       <div className="staff-content">
         <header className="staff-heading">
           <div>
-            <span className="eyebrow">HOGULINK / THERAPIST</span>
+            <span className="eyebrow">{so(l, 'workspace')}</span>
             <h1>{ft(l, tab)}</h1>
-            <p>{tab === 'overview' ? wt(l, 'workHelp') : ft(l, 'portal')}</p>
+            {tab === 'overview' && <p>{wt(l, 'workHelp')}</p>}
           </div>
           <div className="staff-heading-tools">
             <time>
@@ -789,8 +904,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 day: 'numeric',
                 weekday: 'short',
               }).format(now)}
-              <small>JAPAN STANDARD TIME</small>
+              <small>JST</small>
             </time>
+            <StaffLanguage locale={l} />
             <button
               className="staff-icon-button"
               disabled={!hasRole || fetching || busy}
@@ -808,6 +924,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
               aria-label={ft(l, 'support')}
             >
               <LifeBuoy size={19} />
+              <span>{ft(l, 'support')}</span>
             </Link>
           </div>
         </header>
@@ -856,6 +973,11 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             {notice}
           </p>
         )}
+        {!connected && (
+          <p className="notice error" role="alert">
+            {so(l, 'offline')}
+          </p>
+        )}
         {hasRole && !data && (
           <div className="staff-panel staff-empty" aria-busy={fetching}>
             {error || readError ? (
@@ -875,6 +997,22 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
         )}
         {data && hasRole && (
           <>
+            {openSafety && (
+              <section className="staff-safety-banner" role="alert">
+                <ShieldCheck size={20} />
+                <strong>{so(l, 'safetyFollowUp')}</strong>
+                <Link
+                  href={href('tasks', openSafety.bookingId).replace(
+                    '#staff-task-detail',
+                    `#contact-${openSafety.bookingId}`,
+                  )}
+                >
+                  {so(l, 'safetyAction')}
+                </Link>
+              </section>
+            )}
+            <StaffAlerts key={`alerts:${actor.id}`} locale={l} bookings={bookings} now={now} />
+            <SafetyDeskPanel key={`safety:${actor.id}`} locale={l} role="STAFF" urgentOnly />
             {tab === 'overview' && (
               <>
                 <div className="staff-overview-grid">
@@ -891,15 +1029,23 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                         <span className="staff-tag">{taskStatus(focus)}</span>
                         <h2>{offering(focus)}</h2>
                         <p>
-                          {dateTime(l, focus.quote.startAt)} · {duration(focus)} {t(l, 'minutes')}
+                          {relativeDay(focus.quote.startAt)} · {time(focus.quote.startAt)} ·{' '}
+                          {duration(focus)} {t(l, 'minutes')}
                         </p>
                         <div className="staff-focus-place">
                           <MapPin size={18} />
                           {areaName(l, focus.quote.area)}
-                          <small>
-                            {ft(l, focus.quote.bookingMode === 'INSTANT' ? 'instant' : 'scheduled')}
-                          </small>
+                          <small>{sv(l, fulfillmentMode(focus.quote))}</small>
                         </div>
+                        {!canRespond(focus) && (
+                          <p className="staff-time-context">
+                            {['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(focus.status)
+                              ? so(l, 'working')
+                              : focus.quote.startAt > now
+                                ? `${so(l, 'startsIn')} ${staffCountdown(l, focus.quote.startAt - now)}`
+                                : so(l, 'scheduled')}
+                          </p>
+                        )}
                         {canRespond(focus) && (
                           <p className="staff-focus-deadline">
                             {ft(l, 'respondBy')} {dateTime(l, focus.deadline)}
@@ -923,20 +1069,6 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                     )}
                   </section>
                 </div>
-                <WorkdayTools
-                  locale={l}
-                  items={[
-                    {
-                      href: href('tasks'),
-                      label: ft(l, 'tasks'),
-                      icon: ListChecks,
-                      count: stats.pending,
-                    },
-                    { href: href('schedule'), label: ft(l, 'schedule'), icon: CalendarDays },
-                    { href: `/${l}/staff/support`, label: ft(l, 'support'), icon: ShieldCheck },
-                    { href: href('profile'), label: ft(l, 'profile'), icon: UserRound },
-                  ]}
-                />
                 <div className="staff-stat-grid workday-staff-stats">
                   <div>
                     <span>{ft(l, 'pending')}</span>
@@ -949,13 +1081,14 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                     <CalendarDays size={20} />
                   </div>
                   <div>
-                    <span>{ft(l, 'duration')}</span>
-                    <strong>
-                      {stats.minutes}
-                      <small> {t(l, 'minutes')}</small>
-                    </strong>
+                    <span>
+                      {so(l, 'month')} · {so(l, 'completed')}
+                    </span>
+                    <strong>{monthly.completed}</strong>
                     <Clock3 size={20} />
-                    <small>{ft(l, 'allTime')}</small>
+                    <Link href={`${href('profile')}&section=performance`}>
+                      {so(l, 'performance')} <ArrowUpRight size={14} />
+                    </Link>
                   </div>
                 </div>
                 <div className="staff-overview-bottom">
@@ -1065,7 +1198,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   <div className="staff-panel-title">
                     <div>
                       <h2>{ft(l, 'schedule')}</h2>
-                      <p>{ft(l, 'buffer')}</p>
+                      <p>{so(l, 'scheduleHelp')}</p>
                     </div>
                     <button className="button" onClick={openLeave} disabled={busy}>
                       <Plus size={17} />
@@ -1171,10 +1304,15 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                                 <Link href={href('tasks', e.id)}>
                                   <strong>{offering(e.booking)}</strong>
                                   <p>
+                                    {sv(l, fulfillmentMode(e.booking.quote))} ·{' '}
                                     {areaName(l, e.booking.quote.area)} ·{' '}
                                     {statusText(l, e.booking.status)}
                                   </p>
-                                  <small>{ft(l, 'buffer')}</small>
+                                  <small>
+                                    {fulfillmentMode(e.booking.quote) === 'IN_STORE'
+                                      ? so(l, 'turnover')
+                                      : ft(l, 'buffer')}
+                                  </small>
                                 </Link>
                               ) : (
                                 <>
@@ -1246,7 +1384,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                       </article>
                     ))
                   ) : (
-                    <p className="staff-empty">{ft(l, 'calendarEmpty')}</p>
+                    <p className="staff-empty">{so(l, 'noRequests')}</p>
                   )}
                   {data.requests.length > requestLimit && (
                     <button
@@ -1272,155 +1410,243 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
               </>
             )}
             {tab === 'profile' && (
-              <div className="staff-profile-grid">
-                <section className="staff-panel staff-profile-card">
-                  <Image
-                    src={data.listing.photo || '/images/therapists/aoi.svg'}
-                    alt={data.listing.name[l]}
-                    width={120}
-                    height={120}
-                    loading="eager"
-                  />
-                  <span className="eyebrow">YOUR THERAPIST PROFILE</span>
-                  <h2>{data.listing.name[l]}</h2>
-                  <p>
-                    <Store size={16} />
-                    {data.store.name[l]}
-                  </p>
-                  <div className="staff-profile-bio">{data.listing.description[l]}</div>
-                  <dl>
-                    <div>
-                      <dt>{ft(l, 'languages')}</dt>
-                      <dd>{data.listing.languages.map((x) => languageNames[x]).join(' · ')}</dd>
-                    </div>
-                    <div>
-                      <dt>{ft(l, 'area')}</dt>
-                      <dd>{data.store.areas.map((x) => areaName(l, x)).join(' · ')}</dd>
-                    </div>
-                    {data.listing.hotelOnly && (
+              <div className="staff-profile-grid" data-section={profileSection}>
+                <nav className="staff-profile-tabs" aria-label={ft(l, 'profile')}>
+                  {staffProfileSections.map((section) => (
+                    <Link
+                      href={`${href('profile')}&section=${section}`}
+                      key={section}
+                      aria-current={profileSection === section ? 'page' : undefined}
+                    >
+                      {so(l, section)}
+                    </Link>
+                  ))}
+                </nav>
+                {profileSection === 'public' && (
+                  <section className="staff-panel staff-profile-card">
+                    <Image
+                      src={data.listing.photo || '/images/therapists/aoi.svg'}
+                      alt={data.listing.name[l]}
+                      width={120}
+                      height={120}
+                      loading="eager"
+                    />
+                    <span className="eyebrow">{so(l, 'public')}</span>
+                    <h2>{data.listing.name[l]}</h2>
+                    <p>
+                      <Store size={16} />
+                      {data.store.name[l]}
+                    </p>
+                    <div className="staff-profile-bio">{data.listing.description[l]}</div>
+                    <dl>
                       <div>
-                        <dt>{ft(l, 'reason')}</dt>
-                        <dd>{ft(l, 'hotelOnly')}</dd>
+                        <dt>{ft(l, 'languages')}</dt>
+                        <dd>{data.listing.languages.map((x) => languageNames[x]).join(' · ')}</dd>
                       </div>
+                      <div>
+                        <dt>{ft(l, 'area')}</dt>
+                        <dd>{data.store.areas.map((x) => areaName(l, x)).join(' · ')}</dd>
+                      </div>
+                      {data.listing.hotelOnly && (
+                        <div>
+                          <dt>{ft(l, 'reason')}</dt>
+                          <dd>{ft(l, 'hotelOnly')}</dd>
+                        </div>
+                      )}
+                    </dl>
+                    {data.listing.publicationStatus === 'PUBLISHED_INDEXABLE' && data.eligible && (
+                      <Link
+                        className="button secondary full"
+                        href={`/${l}/therapists/${data.listing.slug}`}
+                      >
+                        {ft(l, 'publicPage')}
+                        <ArrowUpRight size={16} />
+                      </Link>
                     )}
-                  </dl>
-                  <p>{ft(l, 'profileHelp')}</p>
-                  {data.listing.publicationStatus === 'PUBLISHED_INDEXABLE' && data.eligible && (
                     <Link
                       className="button secondary full"
-                      href={`/${l}/therapists/${data.listing.slug}`}
+                      href={`${href('profile')}&section=media`}
                     >
-                      {ft(l, 'publicPage')}
-                      <ArrowUpRight size={16} />
+                      {so(l, 'media')}
                     </Link>
-                  )}
-                </section>
-                <div>
-                  <section className="staff-panel">
-                    <div className="staff-panel-title">
-                      <h2>{ft(l, 'membership')}</h2>
-                      <ShieldCheck size={21} />
-                    </div>
-                    <div className="staff-credentials">
-                      {(
-                        [
-                          ['identityVerified', data.listing.identityVerified],
-                          ['membership', data.listing.membershipActive],
-                          ['consent', data.listing.portraitConsent],
-                          ['publication', data.listing.publicationStatus === 'PUBLISHED_INDEXABLE'],
-                        ] as const
-                      ).map(([key, ok]) => (
-                        <div key={key}>
-                          <span>{ft(l, key)}</span>
-                          <strong className={ok ? '' : 'staff-warning'}>
-                            {ok ? <Check size={16} /> : <Clock3 size={16} />}{' '}
-                            {ft(l, ok ? 'valid' : 'needsReview')}
-                          </strong>
+                  </section>
+                )}
+                {profileSection === 'settings' && (
+                  <div>
+                    <section className="staff-panel">
+                      <div className="staff-panel-title">
+                        <h2>{ft(l, 'membership')}</h2>
+                        <ShieldCheck size={21} />
+                      </div>
+                      <div className="staff-credentials">
+                        {(
+                          [
+                            ['identityVerified', data.listing.identityVerified],
+                            ['membership', data.listing.membershipActive],
+                            ['consent', data.listing.portraitConsent],
+                            [
+                              'publication',
+                              data.listing.publicationStatus === 'PUBLISHED_INDEXABLE',
+                            ],
+                          ] as const
+                        ).map(([key, ok]) => (
+                          <div key={key}>
+                            <span>{ft(l, key)}</span>
+                            <strong className={ok ? '' : 'staff-warning'}>
+                              {ok ? <Check size={16} /> : <Clock3 size={16} />}{' '}
+                              {ft(l, ok ? 'valid' : 'needsReview')}
+                            </strong>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                    <section className="staff-panel">
+                      <h2>{sh(l, 'conditions')}</h2>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          disabled={busy}
+                          checked={
+                            (data.listing.safetyRequest?.status === 'PENDING'
+                              ? data.listing.safetyRequest.conditions.noFirstLateNight
+                              : data.listing.safetyConditions?.noFirstLateNight) ?? false
+                          }
+                          onChange={(e) =>
+                            void mutate(() =>
+                              api(
+                                'staff/safety-conditions',
+                                { noFirstLateNight: e.target.checked },
+                                'PUT',
+                              ),
+                            )
+                          }
+                        />
+                        {sh(l, 'noFirstLateNight')}
+                      </label>
+                      {(data.listing.safetyRequest || data.listing.safetyConditions) && (
+                        <p className="flow-muted">
+                          {sh(
+                            l,
+                            data.listing.safetyRequest?.status ??
+                              (data.listing.safetyConditions ? 'APPROVED' : 'PENDING'),
+                          )}
+                          {data.listing.safetyRequest?.note
+                            ? ` · ${data.listing.safetyRequest.note}`
+                            : ''}
+                        </p>
+                      )}
+                      <p className="flow-muted">{sh(l, 'conditionsHelp')}</p>
+                    </section>
+                    <section className="staff-panel">
+                      <div className="staff-panel-title">
+                        <h2>{ft(l, 'service')}</h2>
+                        <Leaf size={20} />
+                      </div>
+                      {data.offerings.map((o) => (
+                        <div className="staff-service" key={o.id}>
+                          <span>
+                            {o.durationMinutes}
+                            <small>{t(l, 'minutes')}</small>
+                          </span>
+                          <strong>{o.name[l]}</strong>
+                          <span className="staff-mode-tag">{sv(l, fulfillmentMode(o))}</span>
+                          <small>
+                            {o.approved && o.active !== false
+                              ? ft(l, 'valid')
+                              : ft(l, 'needsReview')}
+                          </small>
                         </div>
                       ))}
-                    </div>
-                    <p>{ft(l, 'profileHelp')}</p>
-                  </section>
-                  <section className="staff-panel">
-                    <h2>{sh(l, 'conditions')}</h2>
-                    <label className="checkbox">
-                      <input
-                        type="checkbox"
-                        disabled={busy}
-                        checked={
-                          (data.listing.safetyRequest?.status === 'PENDING'
-                            ? data.listing.safetyRequest.conditions.noFirstLateNight
-                            : data.listing.safetyConditions?.noFirstLateNight) ?? false
-                        }
-                        onChange={(e) =>
-                          void mutate(() =>
-                            api(
-                              'staff/safety-conditions',
-                              { noFirstLateNight: e.target.checked },
-                              'PUT',
-                            ),
-                          )
-                        }
-                      />
-                      {sh(l, 'noFirstLateNight')}
-                    </label>
-                    {(data.listing.safetyRequest || data.listing.safetyConditions) && (
-                      <p className="flow-muted">
-                        {sh(
-                          l,
-                          data.listing.safetyRequest?.status ??
-                            (data.listing.safetyConditions ? 'APPROVED' : 'PENDING'),
-                        )}
-                        {data.listing.safetyRequest?.note
-                          ? ` · ${data.listing.safetyRequest.note}`
-                          : ''}
-                      </p>
-                    )}
-                    <p className="flow-muted">{sh(l, 'conditionsHelp')}</p>
-                  </section>
-                  <section className="staff-panel">
-                    <div className="staff-panel-title">
-                      <h2>{ft(l, 'service')}</h2>
-                      <Leaf size={20} />
-                    </div>
-                    {data.offerings.map((o) => (
-                      <div className="staff-service" key={o.id}>
-                        <span>
-                          {o.durationMinutes}
-                          <small>{t(l, 'minutes')}</small>
-                        </span>
-                        <strong>{o.name[l]}</strong>
-                        <small>
-                          {o.approved && o.active !== false ? ft(l, 'valid') : ft(l, 'needsReview')}
-                        </small>
-                      </div>
-                    ))}
-                  </section>
-                  {dutyCard()}
-                </div>
-                <MediaManager locale={l} role="STAFF" />
+                    </section>
+                  </div>
+                )}
+                {profileSection === 'media' && <MediaManager locale={l} role="STAFF" />}
+                {profileSection === 'performance' && (
+                  <StaffPerformance key={actor.id} locale={l} bookings={bookings} now={now} />
+                )}
               </div>
             )}
-            <p className="workday-income-note">
-              <Store size={17} />
-              {wt(l, 'incomeHelp')}
-            </p>
             <p className="staff-sync">
-              {updated && (
-                <>
-                  {ft(l, 'updated')} {time(updated)} JST ·{' '}
-                </>
-              )}
-              {ft(l, 'demo')}
+              {fetching ? so(l, 'syncing') : updated ? so(l, 'synced') : null}
             </p>
           </>
         )}
-        <details className="workday-resources">
-          <summary>{wt(l, 'resources')}</summary>
-          <PartnerEntry locale={l} role="STAFF" />
-          <QualityEntry locale={l} role="STAFF" />
-        </details>
+        {tab === 'profile' && profileSection === 'settings' && (
+          <details className="workday-resources">
+            <summary>{wt(l, 'resources')}</summary>
+            <PartnerEntry locale={l} role="STAFF" />
+          </details>
+        )}
       </div>
+      <MobileSheet
+        open={safetyOpen && !!selected}
+        onClose={() => setSafetyOpen(false)}
+        title={so(l, 'safetyAction')}
+        locale={l}
+        className="staff-dialog"
+      >
+        {selected && (
+          <div className="staff-safety-sheet-body">
+            {error && (
+              <p className="notice error" role="alert">
+                {error}
+              </p>
+            )}
+            <p>{ft(l, 'safetyHelp')}</p>
+            {isOpenTask(selected) && (
+              <div className="staff-action-row">
+                <button
+                  className="button"
+                  disabled={
+                    busy ||
+                    !connected ||
+                    data?.safety.some(
+                      (event) =>
+                        event.bookingId === selected.id &&
+                        event.type === 'SOS' &&
+                        event.status === 'OPEN',
+                    )
+                  }
+                  onClick={() =>
+                    void mutate(
+                      () =>
+                        api('staff/safety-alerts', {
+                          bookingId: selected.id,
+                          version: selected.version,
+                          type: 'SOS',
+                        }),
+                      so(l, 'safetyRecorded'),
+                    )
+                  }
+                >
+                  {data?.safety.some(
+                    (event) =>
+                      event.bookingId === selected.id &&
+                      event.type === 'SOS' &&
+                      event.status === 'OPEN',
+                  )
+                    ? so(l, 'safetyRecorded')
+                    : ft(l, 'sos')}
+                </button>
+                <button
+                  className="staff-text-button danger"
+                  disabled={busy || !connected}
+                  onClick={() => openReview(selected, 'SAFETY_TERMINATION')}
+                >
+                  {ft(l, 'terminate')}
+                </button>
+              </div>
+            )}
+            <SafetyHelp
+              locale={l}
+              bookingId={selected.id}
+              refreshKey={`${selected.version}:${updated}`}
+              alwaysShow
+              emergencyContact={data?.store.emergencyContact}
+            />
+          </div>
+        )}
+      </MobileSheet>
       <MobileSheet
         open={!!review}
         onClose={() => {
@@ -1453,7 +1679,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             <div className="staff-review-summary">
               <strong>{offering(review.booking)}</strong>
               <p>
-                {dateTime(l, review.booking.quote.startAt)} ·{' '}
+                {relativeDay(review.booking.quote.startAt)} ·{' '}
+                {dateTime(l, review.booking.quote.startAt)} · {duration(review.booking)}{' '}
+                {t(l, 'minutes')} · {sv(l, fulfillmentMode(review.booking.quote))} ·{' '}
                 {areaName(l, review.booking.quote.area)}
               </p>
             </div>

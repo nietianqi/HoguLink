@@ -7,6 +7,7 @@ import { api, ClientError } from '@/lib/api';
 import { dateTime, money } from '@/lib/i18n';
 import { cpt } from '@/lib/completion-i18n';
 import { MobileSheet } from './mobile-ui';
+import { so } from '@/lib/staff-operations-i18n';
 
 type View = {
   autoConfirmationEligible?: boolean;
@@ -20,11 +21,13 @@ export function CompletionPanel({
   booking: b,
   role,
   onUpdated,
+  stickyAction = false,
 }: {
   locale: Locale;
   booking: Booking;
   role: Role;
   onUpdated: () => void;
+  stickyAction?: boolean;
 }) {
   const [view, setView] = useState<View>(),
     [now, setNow] = useState(0),
@@ -97,6 +100,10 @@ export function CompletionPanel({
     retry.current = null;
   };
   async function submit() {
+    if (!navigator.onLine) {
+      setError(so(l, 'offline'));
+      return;
+    }
     if (
       submitLock.current ||
       !action ||
@@ -237,7 +244,7 @@ export function CompletionPanel({
             (b.quote.fulfillmentMode === 'IN_STORE' && b.status === 'CONFIRMED' && b.checkIn)) && (
             <>
               <button
-                className="button"
+                className={`button ${stickyAction ? 'staff-primary-next' : ''}`}
                 disabled={locked || (b.quote.bookingMode === 'SCHEDULED' && now < b.quote.startAt)}
                 onClick={() => open('START')}
               >
@@ -251,7 +258,7 @@ export function CompletionPanel({
           )}
         {role === 'STAFF' && b.status === 'IN_SERVICE' && (
           <button
-            className="button"
+            className={`button ${stickyAction ? 'staff-primary-next' : ''}`}
             disabled={locked || eligibleAt === undefined || now < eligibleAt}
             onClick={() => open('REQUEST')}
           >

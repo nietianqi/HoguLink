@@ -136,8 +136,8 @@ const words = {
   cancel: ['戻る', 'Go back', '返回'],
   confirm: ['確認して実行', 'Confirm action', '确认执行'],
   respondBy: ['返答期限', 'Respond by', '请在此时间前回应'],
-  instant: ['即時予約', 'Instant visit', '即时上门'],
-  scheduled: ['日時指定', 'Scheduled visit', '预约上门'],
+  instant: ['即時予約', 'Instant booking', '即时预约'],
+  scheduled: ['日時指定', 'Scheduled booking', '指定时间预约'],
   accept: ['タスクを確認する', 'Confirm task', '确认承接任务'],
   acceptHelp: [
     'サービス契約の受理は店舗が行います。担当タスクを確認すると詳細住所を確認できます。',
@@ -213,11 +213,11 @@ const words = {
     'Contact your shop if a visit feels unsafe. You can end the task for a safety reason.',
     '遇到不适合继续服务的情况，可联系店铺或因安全原因终止任务。',
   ],
-  sos: ['SOSを記録（デモ）', 'Record SOS (demo)', '记录 SOS（演示）'],
+  sos: ['SOSを記録', 'Record safety alert', '记录安全求助'],
   sosSaved: [
-    'SOSをローカルに記録しました。実際の通知は送信されていません。',
-    'SOS recorded locally. No real alert was sent.',
-    'SOS 已记录到本地，尚未发送真实通知。',
+    '安全上の問題を記録しました。通知・対応の状況をご確認ください。',
+    'Your safety concern was recorded. Check the notification and follow-up status.',
+    '安全求助已记录，请查看通知与处理进度。',
   ],
   terminate: ['安全上の理由で終了', 'End task for safety', '因安全原因终止'],
   terminateHelp: [

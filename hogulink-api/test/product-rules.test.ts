@@ -194,6 +194,7 @@ test('a declined pre-visit authorization blocks departure until the customer ren
       e.renewPaymentGuarantee(customer, b.id, { version: b.version }),
       code('INVALID_STATE'),
     );
+    advanceClock(e, b.quote.startAt - 90 * minute);
     b = await e.event(staff, b.id, b.version, 'EN_ROUTE');
     assert.equal(b.status, 'EN_ROUTE');
   }));

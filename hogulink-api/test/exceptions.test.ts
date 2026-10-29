@@ -296,8 +296,9 @@ test('no-show requires two contacts and the exact waiting deadline; reporting it
     assert.equal(b.platformFee, 0);
   }));
 test('arriving early cannot start the no-show timer before the scheduled service start', () =>
-  fixture(async (e) => {
+  fixture(async (e, clock) => {
     let b = await confirmed(e);
+    clock.now = b.quote.startAt - 30 * minute;
     for (const event of ['EN_ROUTE', 'ARRIVED']) b = await e.event(staff, b.id, b.version, event);
     b = await act(e, b, 'CONTACT');
     assert.equal(b.noShow!.waitUntil, b.quote.startAt + 15 * minute);

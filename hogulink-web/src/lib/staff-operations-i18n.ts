@@ -113,6 +113,7 @@ const words = {
   media: ['写真・動画', 'Photos & video', '照片视频'],
   settings: ['サービス設定', 'Service settings', '服务设置'],
   performance: ['実績・評価', 'Work & reviews', '业绩与评价'],
+  community: ['コミュニティ', 'Community', '社区'],
   month: ['今月の実績', 'This month’s work', '本月服务业绩'],
   completed: ['完了した予約', 'Completed bookings', '已完成预约'],
   serviceMinutes: ['購入されたサービス時間', 'Purchased service minutes', '已完成服务时长'],

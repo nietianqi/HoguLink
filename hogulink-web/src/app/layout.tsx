@@ -33,6 +33,9 @@ import './storefront.css';
 import './account.css';
 import './merchant-operations.css';
 import './staff-operations.css';
+import './booking-browse.css';
+import './community.css';
+import './pc-consumer.css';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

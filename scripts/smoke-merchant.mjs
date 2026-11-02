@@ -204,6 +204,8 @@ await call(owner, 'merchant/settings', 'PUT', {
 booking = await call(staff, `staff/tasks/${booking.id}/ack`, 'POST', { version: booking.version });
 for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
   await advanceVisit(booking, event);
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  booking = await call(staff, `bookings/${booking.id}`);
   booking = await call(staff, `staff/tasks/${booking.id}/events`, 'POST', {
     version: booking.version,
     event,

@@ -239,7 +239,9 @@ export default async function Page({
           </nav>
           <section className="detail-section" id="services">
             <h2>{md(l, 'serviceTitle')}</h2>
-            <p className="detail-muted">{vt(l, 'totalNote')}</p>
+            <p className="detail-muted">
+              {vt(l, 'totalNote')} {sv(l, 'modeBookingIntro')}
+            </p>
             {!!store.bookingRules?.timeSurcharges?.length && (
               <p className="detail-muted">{surchargeNote(l, store.bookingRules.timeSurcharges)}</p>
             )}
@@ -257,7 +259,6 @@ export default async function Page({
                   </span>
                   <div>
                     <h3>{o.name[l]}</h3>
-                    <p>{sv(l, 'modeBookingIntro')}</p>
                   </div>
                   <ModePrices
                     locale={l}

@@ -24,6 +24,7 @@ import { ct } from '@/lib/care-i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { pc } from '@/lib/pc-consumer-i18n';
 import { ht } from '@/lib/h5-i18n';
+import { BrowseReturnLink } from './booking-browse';
 import { visitPreferences, visitSelection, withServiceMode } from '@/lib/visit-model';
 export function Header({ locale }: { locale: Locale }) {
   const path = usePathname();
@@ -36,9 +37,15 @@ export function Header({ locale }: { locale: Locale }) {
   });
   const workspace = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   const base = path.split('/').slice(0, 3).join('/');
-  const h5Tab = ['', '/discover', '/therapists', '/account', '/account/messages'].some(
-    (suffix) => path === `/${locale}${suffix}`,
-  );
+  const h5Tab = [
+    '',
+    '/discover',
+    '/services',
+    '/therapists',
+    '/shops',
+    '/account',
+    '/account/messages',
+  ].some((suffix) => path === `/${locale}${suffix}`);
   const business = /^\/(ja|en|zh-cn)\/(merchant|staff|admin)(\/|$)/.test(path);
   if (/^\/(ja|en|zh-cn)\/(admin|merchant|staff)(\/|$)/.test(path)) return null;
   return (
@@ -66,20 +73,30 @@ export function Header({ locale }: { locale: Locale }) {
       <header
         className={`header wrap ${workspace ? 'workspace-header' : 'customer-header'} ${h5Tab ? 'h5-tab-header' : ''}`}
       >
-        {/\/(therapists|shops|book)\//.test(path) && (
-          <Link
-            className="mobile-back"
-            href={
-              path.includes('/book/')
-                ? `${path.replace('/book/', '/therapists/')}?${new URLSearchParams(visitSelection(Object.fromEntries(query)))}`
-                : path.includes('/shops/')
-                  ? `/${locale}/discover?${new URLSearchParams({ tab: 'shops', ...preferences })}`
-                  : `/${locale}?${new URLSearchParams(preferences)}#discover`
+        {/\/(therapists|shops)\//.test(path) ||
+        (/\/book\//.test(path) && query.get('from') === 'services') ? (
+          <BrowseReturnLink
+            locale={locale}
+            fallback={
+              path.includes('/shops/')
+                ? 'shops'
+                : query.get('from') === 'services'
+                  ? 'services'
+                  : 'therapists'
             }
-            aria-label={mt(locale, 'back')}
-          >
-            <ChevronLeft size={22} />
-          </Link>
+            q={Object.fromEntries(query)}
+            className="mobile-back"
+          />
+        ) : (
+          /\/book\//.test(path) && (
+            <Link
+              className="mobile-back"
+              href={`${path.replace('/book/', '/therapists/')}?${new URLSearchParams(visitSelection(Object.fromEntries(query)))}`}
+              aria-label={mt(locale, 'back')}
+            >
+              <ChevronLeft size={22} />
+            </Link>
+          )
         )}
         <Link
           href={
@@ -126,7 +143,7 @@ export function Header({ locale }: { locale: Locale }) {
                 active: /\/(therapists|book)(\/|$)/.test(path),
               },
               {
-                href: `/${locale}/discover?tab=shops`,
+                href: `/${locale}/shops`,
                 label: pc(locale, 'shops'),
                 Icon: StoreIcon,
                 desktopOnly: true,

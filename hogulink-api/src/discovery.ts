@@ -13,7 +13,7 @@ import {
   type Store,
 } from '@hogulink/contracts';
 import { discoveryArticles } from '@hogulink/contracts/discovery-content';
-import { discoveryTabs } from '@hogulink/contracts/discovery';
+import { discoveryTabs, legacyDiscoveryTabs } from '@hogulink/contracts/discovery';
 import type { Engine } from './engine.js';
 import type { Records } from './repository.js';
 import { ensure } from './errors.js';
@@ -27,9 +27,23 @@ const filters = z
     language: z.enum(['ja', 'en', 'zh']).optional(),
   })
   .strict();
+/** Old shared links keep working: the shop list tab now reads as shop updates. */
+const legacyTab = (value: unknown) =>
+  typeof value === 'string' && Object.hasOwn(legacyDiscoveryTabs, value)
+    ? legacyDiscoveryTabs[value]
+    : value === 'shops'
+      ? 'updates'
+      : value;
+const tabKinds: Record<(typeof discoveryTabs)[number], DiscoveryPost['kind'][] | null> = {
+  recommended: null,
+  questions: ['question'],
+  notes: ['note', 'therapist'],
+  updates: ['update', 'shop'],
+  guides: ['editorial', 'guide', 'safety'],
+};
 const feedInput = filters
   .extend({
-    tab: z.enum(discoveryTabs).default('recommended'),
+    tab: z.preprocess(legacyTab, z.enum(discoveryTabs).default('recommended')),
     search: z.string().trim().max(80).default(''),
     limit: z.coerce.number().int().min(1).max(20).default(8),
     cursor: z.string().max(300).optional(),
@@ -54,7 +68,7 @@ export class DiscoveryService {
       403,
     );
   }
-  private async posts(input: z.infer<typeof filters> = {}) {
+  private async posts(input: z.infer<typeof filters> = {}, includeCommunity = true) {
     const c = await this.engine.publicCatalog(input);
     const listings = c.listings
       .filter((p) =>
@@ -132,10 +146,24 @@ export class DiscoveryService {
     const items: DiscoveryPost[] = [];
     for (let i = 0; i < Math.max(people.length, guides.length, shopPosts.length); i++)
       for (const item of [people[i], guides[i], shopPosts[i]]) if (item) items.push(item);
-    return items;
+    // Live community posts lead (pinned editorials first); profiles and guides follow.
+    return [
+      ...(includeCommunity ? await this.engine.community.published(input, true) : []),
+      ...items,
+    ];
   }
   private async stats(tx: Records, post: DiscoveryPost): Promise<DiscoveryPost> {
     return { ...post, stats: await this.counts(tx, post.id) };
+  }
+  private async hydrate(tx: Records, posts: DiscoveryPost[]) {
+    const result: DiscoveryPost[] = [];
+    for (const candidate of posts) {
+      const post = candidate.community
+        ? await this.engine.community.publicPost(tx, candidate.id)
+        : candidate;
+      if (post) result.push(await this.stats(tx, post));
+    }
+    return result;
   }
   private async counts(tx: Records, id: string) {
     return {
@@ -146,6 +174,7 @@ export class DiscoveryService {
   }
   private async available(tx: Records, id: string) {
     if (discoveryArticles.some((a) => `guide-${a.slug}` === id)) return true;
+    if (id.startsWith('post-')) return this.engine.community.isPublic(tx, id);
     const person = id.startsWith('therapist-')
       ? (await tx.find<Listing>('listings', { slug: id.slice(10) }, { limit: 1 }))[0]
       : undefined;
@@ -170,16 +199,10 @@ export class DiscoveryService {
   async feed(input: unknown = {}): Promise<DiscoveryFeed> {
     const d = feedInput.parse(input);
     const term = d.search.normalize('NFKC').toLocaleLowerCase();
+    const kinds = tabKinds[d.tab];
     const all = (await this.posts({ area: d.area, language: d.language })).filter(
       (p) =>
-        (d.tab === 'recommended' ||
-          (d.tab === 'shops'
-            ? p.kind === 'shop'
-            : d.tab === 'therapists'
-              ? p.kind === 'therapist'
-              : d.tab === 'safety'
-                ? p.kind === 'safety'
-                : ['guide', 'safety'].includes(p.kind))) &&
+        (!kinds || kinds.includes(p.kind)) &&
         (!term ||
           [...Object.values(p.title), ...Object.values(p.summary), ...Object.values(p.author.name)]
             .join(' ')
@@ -202,7 +225,7 @@ export class DiscoveryService {
       }
     }
     return this.engine.repo.read(async (tx) => ({
-      items: await Promise.all(all.slice(offset, offset + d.limit).map((p) => this.stats(tx, p))),
+      items: await this.hydrate(tx, all.slice(offset, offset + d.limit)),
       total: all.length,
       nextCursor:
         offset + d.limit < all.length
@@ -211,8 +234,9 @@ export class DiscoveryService {
     }));
   }
   async detail(id: string, input: unknown = {}): Promise<DiscoveryDetail> {
-    const q = filters.parse(input),
-      posts = await this.posts(q),
+    const q = filters.parse(input);
+    if (id.startsWith('post-')) return this.thread(id);
+    const posts = await this.posts(q),
       post = posts.find((p) => p.id === id);
     ensure(post, 'NOT_FOUND', 'This content is no longer available for these preferences.', 404);
     const article = discoveryArticles.find((a) => `guide-${a.slug}` === id);
@@ -240,8 +264,37 @@ export class DiscoveryService {
     return this.engine.repo.read(async (tx) => ({
       post: await this.stats(tx, post),
       sections,
-      related: await Promise.all(related.map((p) => this.stats(tx, p))),
+      related: await this.hydrate(tx, related),
     }));
+  }
+  /** A community post opens whatever the browsing filters; its replies come with it. */
+  private async thread(id: string): Promise<DiscoveryDetail> {
+    const posts = await this.posts();
+    return this.engine.repo.read(async (tx) => {
+      // A direct link never depends on where a post sits in the browsing feed.
+      const post = await this.engine.community.publicPost(tx, id);
+      const community = await this.engine.community.publicThread(tx, id);
+      ensure(post && community, 'NOT_FOUND', 'This post is no longer available.', 404);
+      // Same author or topic first, then other posts of the same kind, then any community post.
+      const rank = (p: DiscoveryPost) =>
+        p.author.id === post.author.id || p.community?.topic === post.community?.topic
+          ? 0
+          : p.kind === post.kind
+            ? 1
+            : p.community
+              ? 2
+              : 3;
+      const related = posts
+        .filter((p) => p.id !== id && rank(p) < 3)
+        .sort((a, b) => rank(a) - rank(b))
+        .slice(0, 4);
+      return {
+        post: await this.stats(tx, post),
+        sections: [],
+        related: await this.hydrate(tx, related),
+        community,
+      };
+    });
   }
   async state(actor: Actor, id: string): Promise<DiscoveryReaction> {
     this.customer(actor);
@@ -302,7 +355,7 @@ export class DiscoveryService {
   }
   async saved(actor: Actor): Promise<DiscoverySaved[]> {
     this.customer(actor);
-    const posts = await this.posts();
+    const posts = await this.posts({}, false);
     return this.engine.repo.read(async (tx) => {
       const rows = await tx.find<ReactionRecord>(
         'discoveryReactions',
@@ -310,16 +363,16 @@ export class DiscoveryService {
         { orderBy: 'updatedAt', descending: true, limit: 100 },
       );
       return Promise.all(
-        rows.map(async (r) => ({
-          id: r.postId,
-          post: posts.find((p) => p.id === r.postId)
-            ? await this.stats(
-                tx,
-                posts.find((p) => p.id === r.postId)!,
-              )
-            : null,
-          state: { liked: r.liked, saved: r.saved, version: r.version },
-        })),
+        rows.map(async (r) => {
+          const post = r.postId.startsWith('post-')
+            ? await this.engine.community.publicPost(tx, r.postId)
+            : posts.find((p) => p.id === r.postId);
+          return {
+            id: r.postId,
+            post: post ? await this.stats(tx, post) : null,
+            state: { liked: r.liked, saved: r.saved, version: r.version },
+          };
+        }),
       );
     });
   }

@@ -16,6 +16,7 @@ import {
   ReceiptText,
   Settings2,
   LifeBuoy,
+  MessagesSquare,
 } from 'lucide-react';
 const icons = {
   overview: LayoutDashboard,
@@ -24,6 +25,7 @@ const icons = {
   team: UsersRound,
   services: SlidersHorizontal,
   storefront: Store,
+  community: MessagesSquare,
   finance: ReceiptText,
   settings: Settings2,
 };

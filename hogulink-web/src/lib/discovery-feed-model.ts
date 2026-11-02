@@ -1,7 +1,8 @@
 import type { DiscoveryPost, DiscoveryTab, Locale } from '@hogulink/contracts';
-import { discoveryTabs } from '@hogulink/contracts/discovery';
+import { asDiscoveryTab } from '@hogulink/contracts/discovery';
 import { h5Portrait } from './h5-media';
 import { visitPreferences } from './visit-model';
+import { communityHref } from './community-model';
 export type DiscoveryQuery = {
   tab: DiscoveryTab;
   area?: string;
@@ -11,9 +12,7 @@ export type DiscoveryQuery = {
 };
 export function discoveryQuery(raw: Record<string, unknown>): DiscoveryQuery {
   return {
-    tab: discoveryTabs.includes(raw.tab as DiscoveryTab)
-      ? (raw.tab as DiscoveryTab)
-      : 'recommended',
+    tab: asDiscoveryTab(raw.tab),
     ...(typeof raw.area === 'string' &&
     ['shinjuku', 'shibuya', 'minato', 'chuo', 'taito'].includes(raw.area)
       ? { area: raw.area }
@@ -46,7 +45,7 @@ export function discoveryCarry(q: DiscoveryQuery) {
   return new URLSearchParams(visitPreferences(q));
 }
 export function postImage(post: DiscoveryPost, index = 0) {
-  const photo = post.images[index] ?? post.images[0];
+  const photo = post.images[index] ?? post.images[0] ?? '';
   return post.kind === 'therapist' && index === 0
     ? h5Portrait({ slug: post.author.slug ?? '', photo }, post.sample)
     : photo;
@@ -55,11 +54,15 @@ export function postHref(l: Locale, post: DiscoveryPost, q: DiscoveryQuery) {
   return `/${l}/discover/${post.id}?${discoveryParams(q)}`;
 }
 export function authorHref(l: Locale, p: DiscoveryPost, q: DiscoveryQuery) {
-  return p.author.kind === 'editor'
-    ? '#more-content'
+  // Customers have no public profile; their name leads to the conversation instead.
+  return p.author.kind === 'editor' || p.author.kind === 'customer'
+    ? p.community
+      ? '#replies'
+      : '#more-content'
     : `/${l}/${p.author.kind === 'shop' ? 'shops' : 'therapists'}/${p.author.slug}?${discoveryCarry(q)}`;
 }
 export function postBookingHref(l: Locale, p: DiscoveryPost, q: DiscoveryQuery) {
+  if (p.community) return communityHref(l, p, discoveryCarry(q)).href;
   return p.author.kind === 'therapist'
     ? `/${l}/book/${p.author.slug}?${discoveryCarry(q)}`
     : p.author.kind === 'shop'

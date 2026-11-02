@@ -1,4 +1,5 @@
 'use client';
+import { useBookingEntry } from './booking-browse';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -172,6 +173,7 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
   const [adminActor, setAdminActor] = useState<Actor | null>(null);
   const path = usePathname();
   const query = useSearchParams();
+  const bookingEntry = useBookingEntry(locale, path, Object.fromEntries(query));
   useEffect(() => {
     let baseline = window.visualViewport?.height ?? window.innerHeight;
     let width = window.innerWidth;
@@ -325,12 +327,13 @@ export function MobileNavigation({ locale }: { locale: Locale }) {
                 active: path.startsWith(`/${locale}/discover`) || path.includes('/guides/'),
               },
               {
-                href: `/${locale}/therapists`,
+                href: bookingEntry,
                 label: ht(locale, 'booking'),
                 Icon: CalendarDays,
                 active:
                   path.startsWith(`/${locale}/therapists`) ||
-                  path.startsWith(`/${locale}/services`),
+                  path.startsWith(`/${locale}/services`) ||
+                  path === `/${locale}/shops`,
               },
               {
                 href: `${base}/messages`,

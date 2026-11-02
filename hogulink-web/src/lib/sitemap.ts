@@ -12,7 +12,7 @@ export async function sitemapXml(kind: (typeof sitemapNames)[number]) {
         kind === 'therapists'
           ? c.listings.map((x) => `/therapists/${x.slug}`)
           : kind === 'shops'
-            ? c.stores.map((x) => `/shops/${x.slug}`)
+            ? ['/shops', ...c.stores.map((x) => `/shops/${x.slug}`)]
             : kind === 'areas'
               ? Object.keys(areas)
                   .filter((x) => c.stores.some((s) => s.areas.includes(x)))

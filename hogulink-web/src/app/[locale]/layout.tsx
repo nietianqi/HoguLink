@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { locales, localeMap } from '@/lib/i18n';
 import { Header, Footer } from '@/components/shell';
 import { MobileNavigation } from '@/components/mobile-ui';
+import { BrowseHistoryManager } from '@/components/booking-browse';
 import type { Locale } from '@hogulink/contracts';
 export default async function LocaleLayout({
   children,
@@ -23,6 +24,9 @@ export default async function LocaleLayout({
         <Header locale={l} />
       </Suspense>
       {children}
+      <Suspense>
+        <BrowseHistoryManager />
+      </Suspense>
       <Footer locale={l} />
       <Suspense>
         <MobileNavigation locale={l} />

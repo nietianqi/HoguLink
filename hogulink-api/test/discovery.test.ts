@@ -43,11 +43,10 @@ test('discovery filters combine and normalize multilingual searches without filt
     const shops = await e.discovery.feed({ tab: 'shops', search: 'Ｎａｇｉ' });
     assert.equal(shops.items.length, 1);
     assert.equal(shops.items[0].storeId, 'store-nagi');
-    assert(
-      (await e.discovery.feed({ tab: 'safety', area: 'taito', language: 'zh' })).items.every(
-        (p) => p.kind === 'safety',
-      ),
-    );
+    // The old safety tab link now opens the combined guides tab.
+    const guides = await e.discovery.feed({ tab: 'safety', area: 'taito', language: 'zh' });
+    assert(guides.items.some((p) => p.kind === 'safety'));
+    assert(guides.items.every((p) => ['editorial', 'guide', 'safety'].includes(p.kind)));
     assert.equal((await e.discovery.feed({ search: 'unmatched-query' })).total, 0);
   }));
 test('public discovery excludes suspended portraits, inactive menus and shops with no eligible supply', () =>

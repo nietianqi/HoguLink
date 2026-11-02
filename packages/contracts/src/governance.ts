@@ -48,6 +48,8 @@ export type AdminTodo = {
   /** Therapist photos and videos waiting for review, plus reported public ones. */
   media?: number;
   storefronts?: number;
+  /** Community posts and replies waiting for review, plus published ones with open reports. */
+  community?: number;
   services?: number;
   experience?: number;
   contentReviews?: number;

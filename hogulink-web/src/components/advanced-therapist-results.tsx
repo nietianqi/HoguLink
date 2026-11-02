@@ -8,6 +8,7 @@ import { t } from '@/lib/i18n';
 import { dt } from '@/lib/desktop-i18n';
 import { TherapistCard } from './catalog';
 import { DiscoveryFilters } from './discovery-filters';
+import { BookingBrowseHeader, BrowseFilterChips } from './booking-browse';
 export async function AdvancedTherapistResults({
   locale: l,
   q,
@@ -74,12 +75,12 @@ export async function AdvancedTherapistResults({
   if (q.sort === 'earliest')
     cards.sort((a, b) => (a.slots?.[0] ?? Infinity) - (b.slots?.[0] ?? Infinity));
   return (
-    <main id="main" className="wrap advanced-therapist-results">
-      {' '}
+    <main id="main" className="wrap advanced-therapist-results booking-directory">
+      <BookingBrowseHeader locale={l} kind="therapists" q={q} />
       <section>
         <div className="section-heading">
           <div>
-            <h1>{t(l, 'explore')}</h1>
+            <h2>{t(l, 'explore')}</h2>
             <p>{t(l, 'subtitle')}</p>
           </div>
           <span className="result-count">
@@ -87,6 +88,7 @@ export async function AdvancedTherapistResults({
             <span>{t(l, 'results')}</span>
           </span>
         </div>
+        <BrowseFilterChips locale={l} kind="therapists" q={q} />
         <div className="discovery-layout">
           <DiscoveryFilters
             key={JSON.stringify(q)}
@@ -141,6 +143,7 @@ export async function AdvancedTherapistResults({
             <div className={`therapist-grid ${q.view === 'list' ? 'therapist-list' : ''}`}>
               {cards.map(({ listing, store, offering, offerings, slots }) => (
                 <TherapistCard
+                  browse
                   key={listing.id}
                   demo={catalog.demo}
                   listing={listing}

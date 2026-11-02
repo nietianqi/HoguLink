@@ -6,6 +6,9 @@ import {
   BookOpen,
   ChevronRight,
   Eye,
+  MessageCircleQuestion,
+  PenLine,
+  Pin,
   ShieldCheck,
   Store,
   UserRound,
@@ -18,6 +21,8 @@ import { areaName, areas, languageNames, t } from '@/lib/i18n';
 import { ht } from '@/lib/h5-i18n';
 import { xt } from '@/lib/discovery-i18n';
 import { pt } from '@/lib/discovery-post-i18n';
+import { cm } from '@/lib/community-i18n';
+import { badgeText } from '@/lib/community-model';
 import {
   discoveryParams,
   discoveryApiParams,
@@ -40,6 +45,7 @@ export function DiscoveryPhoto({
   fullWidth?: boolean;
 }) {
   const photo = postImage(post, index);
+  if (!photo) return null;
   return photo.startsWith('/images/') ? (
     <Image
       src={photo}
@@ -67,6 +73,7 @@ export function DiscoveryCard({
   q: DiscoveryQuery;
   eager?: boolean;
 }) {
+  if (post.community) return <CommunityCard post={post} l={l} q={q} eager={eager} />;
   const Icon =
     post.kind === 'therapist'
       ? UserRound
@@ -96,6 +103,69 @@ export function DiscoveryCard({
     </Link>
   );
 }
+/** Questions and text posts read as text; photo posts keep the image-led card. */
+function CommunityCard({
+  post,
+  l,
+  q,
+  eager,
+}: {
+  post: DiscoveryPost;
+  l: Locale;
+  q: DiscoveryQuery;
+  eager: boolean;
+}) {
+  const meta = post.community!;
+  const Icon =
+    post.kind === 'question'
+      ? MessageCircleQuestion
+      : post.kind === 'update'
+        ? Store
+        : post.kind === 'note'
+          ? UserRound
+          : BookOpen;
+  return (
+    <Link
+      className={`h5-feed-card community-card community-${post.kind} ${post.images.length ? '' : 'is-text'}`}
+      href={postHref(l, post, q)}
+    >
+      {post.images.length > 0 && (
+        <div className={`h5-feed-image ${post.portrait ? 'is-portrait' : ''}`}>
+          <DiscoveryPhoto post={post} eager={eager} />
+        </div>
+      )}
+      <div className="community-card-tags">
+        <span className={`community-badge is-${post.author.kind}`}>{cm(l, badgeText(post))}</span>
+        {meta.pinned && (
+          <span className="community-pin">
+            <Pin size={11} />
+            {cm(l, 'pinned')}
+          </span>
+        )}
+        {post.sample && <small>{cm(l, 'sample')}</small>}
+      </div>
+      <h2>{post.title[l]}</h2>
+      {!post.images.length && <p className="community-card-summary">{post.summary[l]}</p>}
+      <div className="h5-feed-author">
+        <Icon size={13} />
+        <span>{post.author.name[l]}</span>
+        <small>
+          {post.kind === 'question'
+            ? meta.accepted
+              ? cm(l, 'accepted')
+              : meta.answers
+                ? `${meta.answers} ${cm(l, 'answers')}`
+                : cm(l, 'noAnswers')
+            : meta.expiresAt
+              ? `${cm(l, 'endsAt')} ${new Date(meta.expiresAt).toLocaleDateString(l, { month: 'numeric', day: 'numeric', timeZone: 'Asia/Tokyo' })}`
+              : meta.answers
+                ? `${meta.answers} ${cm(l, 'answers')}`
+                : null}
+        </small>
+      </div>
+    </Link>
+  );
+}
 export function DiscoveryColumns({
   items,
   l,
@@ -110,7 +180,7 @@ export function DiscoveryColumns({
   for (const p of items) {
     const col = heights[0] <= heights[1] ? 0 : 1;
     columns[col].push(p);
-    heights[col] += p.portrait ? 318 : 208;
+    heights[col] += p.portrait ? 318 : p.images.length ? 208 : 170;
   }
   return (
     <div className="h5-feed-columns">
@@ -197,7 +267,7 @@ export function H5DiscoveryFeed({
             href={`/${l}/discover?${discoveryParams({ ...q, tab })}`}
             aria-current={q.tab === tab ? 'page' : undefined}
           >
-            {tab === 'therapists' ? ht(l, 'therapists') : xt(l, tab)}
+            {cm(l, tab)}
           </Link>
         ))}
       </nav>
@@ -213,10 +283,17 @@ export function H5DiscoveryFeed({
             <span> · {q.area ? areaName(l, q.area) : q.search || languageNames[q.language!]}</span>
           )}
         </button>
-        <Link href={`/${l}/account/favorites?type=content`}>
-          {pt(l, 'saved')}
-          <ChevronRight size={13} />
-        </Link>
+        <span className="community-actions">
+          <Link href={`/${l}/discover/mine`}>{cm(l, 'mine')}</Link>
+          <Link href={`/${l}/account/favorites?type=content`}>
+            {pt(l, 'saved')}
+            <ChevronRight size={13} />
+          </Link>
+          <Link className="community-ask" href={`/${l}/discover/ask`}>
+            <PenLine size={14} />
+            {cm(l, 'ask')}
+          </Link>
+        </span>
       </div>
       <form
         id="discovery-filters"

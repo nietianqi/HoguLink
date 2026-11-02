@@ -44,7 +44,7 @@ const copy = {
     'Relaxation visits from local shops',
   ],
   homeServicesTitle: ['精选服务', 'おすすめメニュー', 'Featured services'],
-  homeAllServices: ['更多项目', 'すべて見る', 'View all'],
+  homeAllServices: ['全部项目', 'すべてのメニュー', 'All services'],
   homeServiceCategory: ['放松', 'リラクゼーション', 'Relaxation'],
   homeServiceMembers: ['可选技师 {count} 位', 'スタッフ {count} 名', '{count} therapists'],
   homeServiceMember: ['可选技师 {count} 位', 'スタッフ {count} 名', '{count} therapist'],
@@ -55,7 +55,7 @@ const copy = {
     'Make time for the rest you need',
   ],
   homeTherapistsTitle: ['推荐技师', 'おすすめスタッフ', 'Recommended therapists'],
-  homeAllTherapists: ['全部技师', 'すべて見る', 'View all'],
+  homeAllTherapists: ['全部技师', 'すべてのスタッフ', 'All therapists'],
   homeTherapistsHelp: [
     '选择喜欢的技师，由店铺安排服务',
     'スタッフを選び、店舗がサービスを手配',

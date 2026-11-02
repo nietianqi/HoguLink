@@ -1,6 +1,17 @@
 import type { NextConfig } from 'next';
+import { networkInterfaces } from 'node:os';
 const api = process.env.API_INTERNAL_URL || 'http://127.0.0.1:4000';
 const config: NextConfig = {
+  // Dev assets and hot reload also need to accept this computer's private LAN addresses.
+  allowedDevOrigins: Object.values(networkInterfaces())
+    .flatMap((entries) => entries ?? [])
+    .filter(
+      (entry) =>
+        entry.family === 'IPv4' &&
+        !entry.internal &&
+        /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(entry.address),
+    )
+    .map((entry) => entry.address),
   distDir:
     process.env.HOGULINK_QA_BUILD === '1'
       ? '.next-h5-qa'

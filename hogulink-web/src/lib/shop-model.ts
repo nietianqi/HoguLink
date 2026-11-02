@@ -57,11 +57,14 @@ export function shopCards(
     .flatMap((store) => {
       const services = choices.filter((c) => c.store.id === store.id);
       if (!services.length) return [];
-      const cheapest = services.reduce((a, b) =>
-        b.freeTotal < a.freeTotal || (b.freeTotal === a.freeTotal && b.offering.id < a.offering.id)
-          ? b
-          : a,
-      );
+      const cheapest = services
+        .flatMap((service) => service.variants)
+        .reduce((a, b) =>
+          b.freeTotal < a.freeTotal ||
+          (b.freeTotal === a.freeTotal && b.offering.id < a.offering.id)
+            ? b
+            : a,
+        );
       const members = [
         ...new Map(services.flatMap((s) => s.members).map((m) => [m.id, m])).values(),
       ].sort((a, b) => a.id.localeCompare(b.id));

@@ -60,6 +60,7 @@ export function directoryHref(locale: Locale, q: Record<string, string>) {
 
 export function therapistSelection(q: Record<string, string>, item: MobileTherapist) {
   return new URLSearchParams({
+    from: 'therapists',
     ...Object.fromEntries(
       Object.entries(directoryQuery(q)).filter(([k]) =>
         ['area', 'language', 'mode', 'fulfillmentMode'].includes(k),

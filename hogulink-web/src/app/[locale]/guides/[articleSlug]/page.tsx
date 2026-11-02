@@ -46,7 +46,7 @@ export default async function Page({
             <Link className="quality-primary" href={`/${l}/services`}>
               {xt(l, 'viewServices')}
             </Link>
-            <Link className="quality-button" href={`/${l}/discover?tab=shops`}>
+            <Link className="quality-button" href={`/${l}/shops`}>
               {xt(l, 'shops')}
             </Link>
           </div>

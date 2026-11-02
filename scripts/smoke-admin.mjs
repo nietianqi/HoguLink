@@ -245,6 +245,8 @@ for (const ticket of [first, second])
   });
 for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
   await advanceVisit(b, event);
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  b = await call(staff, `bookings/${b.id}`);
   b = await call(staff, `staff/tasks/${b.id}/events`, 'POST', { version: b.version, event });
 }
 b = await confirmVisit(customer, b);

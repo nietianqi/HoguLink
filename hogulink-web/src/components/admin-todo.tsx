@@ -103,6 +103,13 @@ export function todoCards(l: Locale, todo: AdminTodo, links: TodoLinks): Card[] 
       href: destination(links.review, 'section', 'storefront'),
       Icon: Store,
     });
+  if (todo.community !== undefined)
+    cards.push({
+      key: 'todoCommunity',
+      count: todo.community,
+      href: destination(links.review, 'section', 'community'),
+      Icon: MessageSquareWarning,
+    });
   if (todo.services !== undefined)
     cards.push({
       key: 'todoServices',

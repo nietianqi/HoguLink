@@ -63,6 +63,7 @@ import { CompletionPanel } from './completion-panel';
 import { PartnerOrderFlow } from './partner-order-flow';
 import { pf } from '@/lib/partner-flow-i18n';
 import { MediaManager } from './media-manager';
+import { CommunityWorkspace } from './community-workspace';
 import { StaffNavigation, StaffLanguage } from './staff-navigation';
 import { StaffAlerts } from './staff-alerts';
 import { StaffPerformance } from './staff-performance';
@@ -1561,6 +1562,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                   </div>
                 )}
                 {profileSection === 'media' && <MediaManager locale={l} role="STAFF" />}
+                {profileSection === 'community' && (
+                  <CommunityWorkspace key={actor.id} locale={l} role="STAFF" />
+                )}
                 {profileSection === 'performance' && (
                   <StaffPerformance key={actor.id} locale={l} bookings={bookings} now={now} />
                 )}

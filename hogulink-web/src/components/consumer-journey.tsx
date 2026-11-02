@@ -1,10 +1,16 @@
 'use client';
 import { h5ServiceImage } from '@/lib/h5-media';
 import { sv } from '@/lib/service-mode-i18n';
-import { ModePrices } from './service-mode';
+import { ModePrices, ServiceModePicker } from './service-mode';
 import { choiceModePrices } from '@/lib/consumer-model';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { fulfillmentMode, type FulfillmentMode } from '@hogulink/contracts';
+import { BookingBrowseHeader, BrowseFilterChips } from './booking-browse';
+import { bf } from '@/lib/booking-browse-i18n';
+import { serviceDirectoryQuery } from '@/lib/booking-browse-model';
+import { h5Portrait } from '@/lib/h5-media';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -137,6 +143,13 @@ export function ServiceCatalog({
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const choiceRequest = useRef(0);
+  const router = useRouter();
+  const [selectedMode, setSelectedMode] = useState<FulfillmentMode | null>(null);
+  const [filterFulfillment, setFilterFulfillment] = useState(q.fulfillmentMode ?? '');
+  const [filterMode, setFilterMode] = useState(mode);
+  const selectedVariant = selected?.variants.find(
+    (v) => fulfillmentMode(v.offering) === selectedMode,
+  );
   const choices = serviceChoices(catalog, {
     duration,
     area: q.area,
@@ -150,13 +163,16 @@ export function ServiceCatalog({
   });
   const href = (changes: Record<string, string>) =>
     `/${l}/services?${new URLSearchParams(
-      Object.entries({ ...q, ...changes }).filter(([, v]) => v !== ''),
+      Object.entries({ ...q, ...changes }).filter(
+        ([key, v]) => v !== '' && !['offering', 'from', 'homeBrowse'].includes(key),
+      ),
     )}`;
   async function choose(item: Choice) {
     const request = ++choiceRequest.current;
     setOpen(true);
     setBusy(true);
     setSelected(item);
+    setSelectedMode(null);
     setMembers([]);
     setError('');
     try {
@@ -170,17 +186,8 @@ export function ServiceCatalog({
         fulfillmentMode: q.fulfillmentMode,
       }).find((x) => x.offering.id === item.offering.id);
       if (!current) throw Error('unavailable');
-      let candidates = current.members;
-      if (mode === 'INSTANT') {
-        candidates = await instantServiceMembers(candidates, item.offering.id, {
-          area: q.area,
-          language: q.language,
-        });
-      }
       if (request !== choiceRequest.current) return;
       setSelected(current);
-      setMembers(candidates);
-      if (!candidates.length) setError(ut(l, 'noServices'));
     } catch (e) {
       if (request !== choiceRequest.current) return;
       setError(
@@ -191,6 +198,38 @@ export function ServiceCatalog({
     } finally {
       if (request === choiceRequest.current) setBusy(false);
     }
+  }
+  async function chooseMode(value: FulfillmentMode) {
+    const variant = selected?.variants.find((v) => fulfillmentMode(v.offering) === value);
+    if (!variant) return;
+    const request = ++choiceRequest.current;
+    setSelectedMode(value);
+    setMembers([]);
+    setBusy(true);
+    setError('');
+    try {
+      const candidates =
+        mode === 'INSTANT'
+          ? await instantServiceMembers(variant.members, variant.offering.id, {
+              area: q.area,
+              language: q.language,
+            })
+          : variant.members;
+      if (request !== choiceRequest.current) return;
+      setMembers(candidates);
+      if (!candidates.length) setError(ut(l, 'noServices'));
+    } catch (error) {
+      if (request === choiceRequest.current) setError(qualityError(l, error));
+    } finally {
+      if (request === choiceRequest.current) setBusy(false);
+    }
+  }
+  function submitFilters(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const next = serviceDirectoryQuery(Object.fromEntries(new FormData(event.currentTarget)));
+    delete next.offering;
+    setFilterOpen(false);
+    router.push(`/${l}/services?${new URLSearchParams(next)}`);
   }
   useEffect(() => {
     if (!q.offering) return;
@@ -208,15 +247,26 @@ export function ServiceCatalog({
     <>
       <label>
         <span>{sv(l, 'mode')}</span>
-        <select name="fulfillmentMode" defaultValue={q.fulfillmentMode ?? ''}>
+        <select
+          name="fulfillmentMode"
+          value={filterFulfillment}
+          onChange={(event) => {
+            setFilterFulfillment(event.target.value);
+            if (event.target.value === 'IN_STORE') setFilterMode('SCHEDULED');
+          }}
+        >
           <option value="">{t(l, 'all')}</option>
           <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
           <option value="IN_STORE">{sv(l, 'IN_STORE')}</option>
         </select>
       </label>
       <label>
-        <span>{t(l, 'area')}</span>
-        <select aria-label={t(l, 'area')} name="area" defaultValue={q.area ?? ''}>
+        <span>{bf(l, filterFulfillment === 'IN_STORE' ? 'venueArea' : 'area')}</span>
+        <select
+          aria-label={bf(l, filterFulfillment === 'IN_STORE' ? 'venueArea' : 'area')}
+          name="area"
+          defaultValue={q.area ?? ''}
+        >
           <option value="">{t(l, 'all')}</option>
           {Object.keys(areas).map((a) => (
             <option key={a} value={a}>
@@ -236,9 +286,16 @@ export function ServiceCatalog({
       </label>
       <label>
         <span>{t(l, 'mode')}</span>
-        <select aria-label={t(l, 'mode')} name="mode" defaultValue={mode}>
+        <select
+          aria-label={t(l, 'mode')}
+          name="mode"
+          value={filterMode}
+          onChange={(event) => setFilterMode(event.target.value)}
+        >
           <option value="SCHEDULED">{t(l, 'scheduled')}</option>
-          <option value="INSTANT">{t(l, 'instant')}</option>
+          <option value="INSTANT" disabled={filterFulfillment === 'IN_STORE'}>
+            {t(l, 'instant')}
+          </option>
         </select>
       </label>
       <label>
@@ -255,25 +312,23 @@ export function ServiceCatalog({
     </>
   );
   const booking = (member: Choice['members'][number], free = false) =>
-    `/${l}/book/${member.slug}?${new URLSearchParams({ ...safeCarry(q), mode, offering: selected!.offering.id, nomination: free ? 'FREE' : 'NOMINATED' })}`;
+    `/${l}/book/${member.slug}?${new URLSearchParams({ ...safeCarry(q), mode, fulfillmentMode: selectedMode!, modeConfirmed: '1', from: 'services', offering: selectedVariant!.offering.id, nomination: free ? 'FREE' : 'NOMINATED' })}`;
   return (
-    <main id="main" className="wrap consumer-page">
+    <main id="main" className="wrap consumer-page booking-directory booking-service-directory">
+      <BookingBrowseHeader locale={l} kind="services" q={q} />
       {q.offering &&
         !choices.some((item) => item.variants.some((v) => v.offering.id === q.offering)) && (
           <p className="quality-error" role="alert">
             {qt(l, 'unavailable')}
           </p>
         )}
-      <div className="consumer-intro">
-        <h1>{ut(l, 'serviceTitle')}</h1>
-        <p>{ut(l, 'serviceIntro')}</p>
-      </div>
-      <form className="consumer-service-filter" action={`/${l}/services`}>
+      <form className="consumer-service-filter" action={`/${l}/services`} onSubmit={submitFilters}>
         <label>
           <span>{ut(l, 'search')}</span>
           <input
             name="search"
             aria-label={ut(l, 'search')}
+            placeholder={bf(l, 'searchServices')}
             maxLength={80}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -281,7 +336,8 @@ export function ServiceCatalog({
         </label>
         {advancedFields}
         <input type="hidden" name="duration" value={duration || ''} />
-        <button className="quality-primary">{ut(l, 'filterServices')}</button>
+        <input type="hidden" name="promo" value={q.promo ?? ''} />
+        <button className="quality-primary">{ht(l, 'searchAction')}</button>
         <button
           className="quality-button consumer-filter-toggle"
           type="button"
@@ -292,6 +348,47 @@ export function ServiceCatalog({
           {ut(l, 'filters')}
         </button>
       </form>
+      <div className="booking-directory-toolbar booking-service-toolbar">
+        <label>
+          <span className="sr-only">
+            {bf(l, q.fulfillmentMode === 'IN_STORE' ? 'venueArea' : 'area')}
+          </span>
+          <select
+            aria-label={bf(l, q.fulfillmentMode === 'IN_STORE' ? 'venueArea' : 'area')}
+            value={q.area ?? ''}
+            onChange={(event) => router.push(href({ area: event.target.value }))}
+          >
+            <option value="">
+              {bf(l, 'area')} · {t(l, 'all')}
+            </option>
+            {Object.keys(areas).map((area) => (
+              <option key={area} value={area}>
+                {areaName(l, area)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="sr-only">{bf(l, 'sort')}</span>
+          <select
+            aria-label={bf(l, 'sort')}
+            value={q.sort === 'price' ? 'price' : ''}
+            onChange={(event) => router.push(href({ sort: event.target.value }))}
+          >
+            <option value="">{ut(l, 'recommended')}</option>
+            <option value="price">{ut(l, 'lowPrice')}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen(true)}
+        >
+          {bf(l, 'filters')}
+        </button>
+      </div>
+      <BrowseFilterChips locale={l} kind="services" q={q} />
       <nav className="consumer-service-tabs" aria-label={ut(l, 'services')}>
         <Link href={href({ duration: '' })} aria-current={!duration ? 'page' : undefined}>
           {t(l, 'all')}
@@ -340,7 +437,15 @@ export function ServiceCatalog({
             </div>
             <div className="consumer-service-info">
               <span className="quality-eyebrow">{item.store.name[l]}</span>
-              <h3>{item.offering.name[l]}</h3>
+              <h3>
+                <button
+                  type="button"
+                  className="booking-service-name"
+                  onClick={() => void choose(item)}
+                >
+                  {item.offering.name[l]}
+                </button>
+              </h3>
               <p>
                 {item.offering.durationMinutes} {t(l, 'minutes')} ·{' '}
                 {t(l, mode === 'INSTANT' ? 'instant' : 'scheduled')}
@@ -356,7 +461,7 @@ export function ServiceCatalog({
                   <small>{ut(l, 'total')}</small>
                 </div>
                 <button className="quality-primary" onClick={() => void choose(item)}>
-                  {ut(l, 'chooseTherapist')}
+                  {bf(l, 'bookService')}
                   <ArrowRight size={16} />
                 </button>
               </div>
@@ -372,7 +477,7 @@ export function ServiceCatalog({
           </Link>
         </div>
       )}
-      <p className="consumer-price-note">{ut(l, 'refreshed')}</p>
+      <p className="consumer-price-note">{bf(l, 'priceNote')}</p>
       <MobileSheet
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
@@ -380,10 +485,11 @@ export function ServiceCatalog({
         locale={l}
         className="quality-dialog"
       >
-        <form className="consumer-advanced-form" action={`/${l}/services`}>
+        <form className="consumer-advanced-form" action={`/${l}/services`} onSubmit={submitFilters}>
           {advancedFields}
           <input type="hidden" name="duration" value={duration || ''} />
           <input type="hidden" name="search" value={search} />
+          <input type="hidden" name="promo" value={q.promo ?? ''} />
           <button className="quality-primary">{ut(l, 'filterServices')}</button>
         </form>
       </MobileSheet>
@@ -394,7 +500,7 @@ export function ServiceCatalog({
           setOpen(false);
           setBusy(false);
         }}
-        title={ut(l, 'chooseTherapist')}
+        title={bf(l, 'personnel')}
         locale={l}
         className="quality-dialog consumer-choice-dialog"
       >
@@ -405,37 +511,54 @@ export function ServiceCatalog({
             </h3>
             <p>{selected.store.name[l]}</p>
             <ModePrices locale={l} prices={selected.modePrices} />
+            <p className="consumer-price-note">{bf(l, 'priceNote')}</p>
+            {!busy && (
+              <ServiceModePicker
+                locale={l}
+                value={selectedMode}
+                onChange={(value) => void chooseMode(value)}
+                home={selected.variants.some((v) => fulfillmentMode(v.offering) === 'HOME_VISIT')}
+                inStore={selected.variants.some((v) => fulfillmentMode(v.offering) === 'IN_STORE')}
+              />
+            )}
             {busy ? (
               <p role="status">{ut(l, 'checking')}</p>
             ) : (
-              <>
-                <div className="consumer-member-list">
-                  {members.map((m) => (
-                    <Link key={m.id} href={booking(m)}>
-                      <img src={m.photo} alt="" width={52} height={62} />
+              selectedVariant && (
+                <>
+                  {members[0] && (
+                    <Link className="consumer-assign" href={booking(members[0], true)}>
+                      <Store size={19} />
                       <span>
-                        <strong>{m.name[l]}</strong>
-                        <small>{m.languages.map((x) => languageNames[x]).join(' · ')}</small>
+                        <strong>{ut(l, 'shopAssign')}</strong>
+                        <ModePrices
+                          locale={l}
+                          prices={choiceModePrices([selectedVariant], undefined, true)}
+                        />
+                        <small>{ut(l, 'noNomination')}</small>
                       </span>
-                      <ArrowRight size={18} />
+                      <ArrowUpRight size={17} />
                     </Link>
-                  ))}
-                </div>
-                {members[0] && (
-                  <Link className="consumer-assign" href={booking(members[0], true)}>
-                    <Store size={19} />
-                    <span>
-                      <strong>{ut(l, 'shopAssign')}</strong>
-                      <ModePrices
-                        locale={l}
-                        prices={choiceModePrices(selected.variants, undefined, true)}
-                      />
-                      <small>{ut(l, 'noNomination')}</small>
-                    </span>
-                    <ArrowUpRight size={17} />
-                  </Link>
-                )}
-              </>
+                  )}
+                  <h4>{bf(l, 'nominated')}</h4>
+                  <div className="consumer-member-list">
+                    {members.map((m) => (
+                      <Link key={m.id} href={booking(m)}>
+                        <img src={h5Portrait(m, catalog.demo)} alt="" width={52} height={62} />
+                        <span>
+                          <strong>{m.name[l]}</strong>
+                          <small>{m.languages.map((x) => languageNames[x]).join(' · ')}</small>
+                          <ModePrices
+                            locale={l}
+                            prices={choiceModePrices([selectedVariant], m.id)}
+                          />
+                        </span>
+                        <ArrowRight size={18} />
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )
             )}
             {error && (
               <p className="quality-error" role="alert">

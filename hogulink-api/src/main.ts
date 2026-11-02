@@ -7,6 +7,7 @@ import { Repository } from './repository.js';
 import { Engine } from './engine.js';
 import { assertDemoRuntime } from './config.js';
 import { seed, seedDemoPromotion, seedDemoServices } from './seed.js';
+import { seedDemoCommunity } from './community.js';
 import { bootstrapAdmin } from './employees.js';
 import { startBackground } from './background.js';
 
@@ -23,6 +24,7 @@ const engine = new Engine(repo);
 if ((process.env.APP_MODE ?? 'demo') === 'demo' && process.env.SEED_DEMO_DATA !== '0') {
   await seedDemoServices(repo);
   await seedDemoPromotion(engine);
+  await seedDemoCommunity(engine);
 }
 @Module({ controllers: [ApiController], providers: [{ provide: 'ENGINE', useValue: engine }] })
 class AppModule {}

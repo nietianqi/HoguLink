@@ -1,0 +1,493 @@
+/*
+ * PC customer finish (1101px and wider). One quiet card language across directories and
+ * detail pages: white 16px cards on the light canvas, a single soft shadow, names and totals
+ * first, secondary facts in one muted line. Every rule sits in this breakpoint, so the H5
+ * layouts are untouched; selectors carry the page's main class to outrank older layers.
+ */
+@media (min-width: 1101px) {
+  body:has(.customer-header) {
+    --pc-shadow: 0 1px 2px rgb(16 40 30 / 0.04), 0 10px 28px rgb(16 40 30 / 0.06);
+    --pc-shadow-hover: 0 2px 6px rgb(16 40 30 / 0.06), 0 18px 40px rgb(16 40 30 / 0.1);
+    --pc-radius: 16px;
+  }
+
+  /* Directory header: one clear title, the three ways to browse as a segmented switch. */
+  body:has(.customer-header) main.booking-directory .booking-browse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 4px 0 24px;
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-heading {
+    gap: 14px;
+    margin: 0;
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-heading h1 {
+    font-size: 30px;
+    letter-spacing: -0.01em;
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-back {
+    order: 2;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--h5-line, var(--hl-line));
+    border-radius: 999px;
+    background: #fff;
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-tabs {
+    gap: 4px;
+    margin: 0;
+    padding: 4px;
+    border: 1px solid var(--h5-line, var(--hl-line));
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: var(--pc-shadow);
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-tabs a {
+    min-height: 42px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--h5-muted, var(--hl-muted));
+  }
+  body:has(.customer-header) main.booking-directory .booking-browse-tabs a[aria-current] {
+    background: var(--h5-primary, #00865b);
+    color: #fff;
+  }
+
+  /* Therapist directory: portrait-led cards, four across, one action each. The person-card
+     rules use doubled classes, so these carry the directory classes as well. */
+  body:has(.customer-header) main.booking-therapist-directory.h5-directory-v2 .h5-therapist-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 24px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .h5-therapist-card.hl-person-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--h5-line, var(--hl-line));
+    border-radius: var(--pc-radius);
+    background: #fff;
+    box-shadow: var(--pc-shadow);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .h5-therapist-card.hl-person-card:hover {
+    box-shadow: var(--pc-shadow-hover);
+    transform: translateY(-2px);
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .hl-person-photo {
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    overflow: hidden;
+    background: var(--h5-mint, #e5f8ef);
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .hl-person-photo
+    > a:not(.hl-person-play) {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .hl-person-photo
+    img {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    object-fit: cover;
+    object-position: center top;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .hl-person-photo
+    > .hl-person-play {
+    left: 12px;
+    bottom: 12px;
+    font-size: 12px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px 18px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-heading
+    h2 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.3;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-copy
+    > p.hl-person-meta {
+    gap: 2px 10px;
+    margin: 0;
+    color: var(--h5-muted, var(--hl-muted));
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-copy
+    > p.hl-person-services {
+    margin: 0;
+    overflow: hidden;
+    font-size: 13px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-copy
+    > .h5-directory-price {
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 4px;
+    padding: 12px 0 0;
+    border: 0;
+    border-top: 1px solid var(--h5-line, var(--hl-line));
+    border-radius: 0;
+    background: none;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-directory-price
+    strong {
+    font-size: 20px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .hl-person-aux {
+    justify-content: space-between;
+    gap: 8px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-action {
+    position: static;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 6px;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-action
+    > small {
+    color: var(--h5-muted, var(--hl-muted));
+    line-height: 1.45;
+  }
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    .h5-therapist-action
+    .h5-primary {
+    min-width: 0;
+    padding: 0 18px;
+  }
+  /* Supporting text stays readable at desk distance: nothing below 12px. */
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    .hl-person-card
+    :is(
+      .h5-badge,
+      .service-mode-tag,
+      .service-mode-duration,
+      .h5-stats,
+      .h5-stats-empty,
+      small,
+      .h5-directory-locate
+    ) {
+    font-size: 12px;
+  }
+  /* The advanced-search link sits under the switch rather than across it. */
+  body:has(.customer-header)
+    main.booking-therapist-directory.h5-directory-v2
+    > .consumer-advanced-entry {
+    margin: -12px 0 16px;
+    text-align: right;
+  }
+
+  /* Service directory: three photo-led cards per row; the duplicate summary toolbar goes. */
+  body:has(.customer-header) main.booking-service-directory .booking-directory-toolbar {
+    display: none;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--h5-line, var(--hl-line));
+    border-radius: var(--pc-radius);
+    background: #fff;
+    box-shadow: var(--pc-shadow);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-card:hover {
+    box-shadow: var(--pc-shadow-hover);
+    transform: translateY(-2px);
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-photo {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    flex: none;
+    border-radius: 0;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 18px 18px;
+  }
+  body:has(.customer-header)
+    main.booking-service-directory
+    .consumer-service-info
+    .quality-eyebrow {
+    color: var(--h5-primary-ink, #006b49);
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-info h3 {
+    margin: 0;
+    font-size: 19px;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-info > p {
+    margin: 0;
+    color: var(--h5-muted, var(--hl-muted));
+    font-size: 13px;
+  }
+  body:has(.customer-header) main.booking-service-directory .consumer-service-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--h5-line, var(--hl-line));
+  }
+  /* The duration already heads the card; the price line repeats it. */
+  body:has(.customer-header)
+    main.booking-service-directory
+    .consumer-service-bottom
+    .service-mode-duration {
+    display: none;
+  }
+  body:has(.customer-header)
+    main.booking-service-directory
+    .consumer-service-bottom
+    .quality-primary {
+    min-height: 40px;
+    padding: 0 16px;
+    white-space: nowrap;
+  }
+
+  /* Shop directory: the same card surface and lift. */
+  body:has(.customer-header) main.booking-shop-directory .h5-shop-card {
+    border-radius: var(--pc-radius);
+    box-shadow: var(--pc-shadow);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+  body:has(.customer-header) main.booking-shop-directory .h5-shop-card:hover {
+    box-shadow: var(--pc-shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  /* Therapist detail: portrait and identity side by side as one first screen. */
+  body:has(.customer-header) main.therapist-detail-page .detail-main {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-main > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin-top: 0;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-main > .therapist-media {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-main > .therapist-basics {
+    grid-row: 1;
+    grid-column: 2;
+    align-self: stretch;
+    margin: 0;
+  }
+  body:has(.customer-header) main.therapist-detail-page .therapist-media-stage {
+    aspect-ratio: 4 / 5;
+    height: auto;
+    overflow: hidden;
+    border-radius: var(--pc-radius);
+    background: var(--h5-mint, #e5f8ef);
+  }
+  body:has(.customer-header)
+    main.therapist-detail-page
+    :is(.therapist-media-track, .therapist-media-slide, .therapist-media-photo) {
+    height: 100%;
+  }
+  body:has(.customer-header) main.therapist-detail-page .therapist-media-photo img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: center top;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-section,
+  body:has(.customer-header) main.therapist-detail-page .therapist-reviews {
+    margin-top: 8px;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-main > .detail-section {
+    padding-top: 16px;
+  }
+  body:has(.customer-header) main.therapist-detail-page .detail-main > .detail-anchor-nav {
+    margin-bottom: 0;
+  }
+  /* Team cards on both detail pages: the portrait fills its frame instead of floating
+     in a tinted box, three to a row on the shop page. */
+  body:has(.customer-header) main.detail-page .shop-team-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  body:has(.customer-header) main.detail-page .therapist-card .portrait-link {
+    aspect-ratio: 4 / 3;
+    height: auto;
+    overflow: hidden;
+  }
+  body:has(.customer-header) main.detail-page .therapist-card .portrait-link img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+  }
+  /* One fact per row: label, then the full value, so long values do not break mid-phrase. */
+  body:has(.customer-header) main.therapist-detail-page .therapist-basics-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  body:has(.customer-header) main.therapist-detail-page .therapist-basics-facts > div {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  /* Detail panels share the card surface on both detail pages. */
+  body:has(.customer-header) main.detail-page :is(.detail-panel, .booking-preview) {
+    border-radius: var(--pc-radius);
+    box-shadow: var(--pc-shadow);
+  }
+
+  /* Without public reviews yet, a one-line summary instead of a grid of dashes. */
+  body:has(.customer-header)
+    main.detail-page
+    .quality-section:has(.quality-list:empty)
+    .quality-dimensions {
+    display: none;
+  }
+  body:has(.customer-header)
+    main.detail-page
+    .quality-section:has(.quality-list:empty)
+    .quality-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    padding: 14px 18px;
+  }
+  body:has(.customer-header)
+    main.detail-page
+    .quality-section:has(.quality-list:empty)
+    .quality-empty {
+    margin: 10px 0 0;
+    text-align: left;
+  }
+
+  /* Home: the service picks take the same lift as directory cards. */
+  body:has(.customer-header) main.market-page .customer-home-services :is(article, li) {
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+  body:has(.customer-header) main.market-page .customer-home-services :is(article, li):hover {
+    box-shadow: var(--pc-shadow-hover);
+    transform: translateY(-2px);
+  }
+}
+@media (min-width: 1101px) and (prefers-reduced-motion: reduce) {
+  body:has(.customer-header) main :is(.h5-therapist-card, .consumer-service-card, .h5-shop-card) {
+    transition: none;
+  }
+  body:has(.customer-header)
+    main
+    :is(.h5-therapist-card, .consumer-service-card, .h5-shop-card):hover,
+  body:has(.customer-header) main.market-page .customer-home-services :is(article, li):hover {
+    transform: none;
+  }
+}
+/* Narrow desktops: six navigation items, the language switch and the account control share
+   one row, so the labels drop their icons before anything is pushed off screen. */
+@media (min-width: 1101px) and (max-width: 1279px) {
+  body:has(.customer-header) .customer-header .customer-main-nav {
+    gap: 2px;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a {
+    padding-inline: 9px;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a > svg {
+    display: none;
+  }
+}

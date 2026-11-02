@@ -185,6 +185,8 @@ for (const locale of ['zh-cn', 'ja', 'en'])
     '/discover?tab=therapists',
     '/discover?tab=shops&area=taito&language=zh',
     '/discover?tab=shops',
+    '/shops',
+    '/shops?area=taito&language=zh',
     '/shops/nagi-tokyo',
     '/shops/sora-wellness?area=shibuya&language=en',
     '/discover?tab=guides',
@@ -303,7 +305,8 @@ for (const locale of ['zh-cn', 'ja', 'en']) {
   const back = shopLinks.find((item) => item.attributes.includes('mobile-back'));
   check(
     back &&
-      Object.entries({ ...preferences, mode: 'SCHEDULED', tab: 'shops' }).every(
+      back.url.pathname === `/${locale}/shops` &&
+      Object.entries({ ...preferences, mode: 'SCHEDULED' }).every(
         ([key, value]) => back.url.searchParams.get(key) === value,
       ),
     `${locale}: H5 back navigation preserves booking mode`,

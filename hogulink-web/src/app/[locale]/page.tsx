@@ -96,7 +96,8 @@ export default async function Home({
           </h1>
           <p>{serviceMode === 'IN_STORE' ? sv(l, 'inStoreHelp') : pc(l, 'homeHelp')}</p>
           <span className="hero-location">
-            <MapPin size={14} /> TOKYO, JAPAN <span>{pc(l, 'shopService')}</span>
+            <MapPin size={14} /> {l === 'ja' ? '東京' : l === 'en' ? 'Tokyo' : '东京'}{' '}
+            <span>{pc(l, 'shopService')}</span>
           </span>
         </div>
         <div className="hero-art">
@@ -109,9 +110,6 @@ export default async function Home({
             loading="eager"
             fetchPriority="high"
           />
-          <span className="hero-image-caption">
-            THE ART OF SLOWING DOWN<span>HoguLink / Tokyo</span>
-          </span>
         </div>
       </section>
       <div className="search-position wrap">

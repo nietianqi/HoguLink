@@ -1,6 +1,8 @@
 import { All, Controller, Inject, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { z } from 'zod';
 import {
   versionInput,
@@ -20,21 +22,38 @@ type Session = { id: string; actor: Actor; expiresAt: number };
 const hashToken = (value: string) => createHash('sha256').update(value).digest('hex');
 /**
  * A local web origin also accepts its localhost/127.0.0.1 twin: both reach the same machine,
- * and mixing them otherwise rejects every sign-in and booking. Public origins stay exact.
+ * and mixing them otherwise rejects every sign-in and booking. Demo development can also
+ * supply this computer's private LAN addresses. Public origins stay exact.
  */
-export function webOrigins(configured = process.env.WEB_ORIGIN) {
-  if (!configured) return new Set(['http://localhost:3000', 'http://127.0.0.1:3000']);
-  const origins = new Set([configured]);
+export function webOrigins(configured = process.env.WEB_ORIGIN, lanHosts: string[] = []) {
+  const value = configured || 'http://localhost:3000';
+  const origins = new Set([value]);
   try {
-    const url = new URL(configured);
+    const url = new URL(value);
     if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
       url.hostname = url.hostname === 'localhost' ? '127.0.0.1' : 'localhost';
       origins.add(url.origin);
+      if (url.protocol === 'http:')
+        for (const host of lanHosts)
+          if (isIP(host) === 4 && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) {
+            url.hostname = host;
+            origins.add(url.origin);
+          }
     }
   } catch {}
   return origins;
 }
-const allowedOrigins = webOrigins();
+const allowedOrigins = webOrigins(
+  process.env.WEB_ORIGIN,
+  (process.env.NODE_ENV ?? 'development') === 'development' &&
+    (process.env.APP_MODE ?? 'demo') === 'demo'
+    ? Object.values(networkInterfaces()).flatMap((entries) =>
+        (entries ?? [])
+          .filter((entry) => entry.family === 'IPv4' && !entry.internal)
+          .map((entry) => entry.address),
+      )
+    : [],
+);
 const demoEnabled = () =>
   process.env.DEMO_ACCESS_ENABLED !== '0' && (process.env.APP_MODE ?? 'demo') === 'demo';
 const secureCookie = () =>
@@ -543,6 +562,82 @@ export class ApiController {
           return res.json(await this.engine.discovery.state(actor, discoveryAction[1]));
         if (!discoveryAction[2] && method === 'PUT')
           return res.json(await this.engine.discovery.react(actor, discoveryAction[1], body));
+      }
+      if (path.startsWith('community/') || /^(staff|merchant|admin)\/community/.test(path)) {
+        const community = this.engine.community;
+        // A shop's logins share one reply budget; each therapist and customer has their own.
+        const writerKey =
+          actor.role === 'MERCHANT' && actor.storeId ? `store:${actor.storeId}` : actor.id;
+        if (path === 'community/mine' && method === 'GET')
+          return res.json(await community.mine(actor));
+        if (path === 'community/questions' && method === 'POST') {
+          await this.engine.limits.check('community-ask', actor.id, 3, 86_400_000);
+          return res.json(await community.ask(actor, body));
+        }
+        match = path.match(
+          /^community\/posts\/(post-[a-zA-Z0-9-]{1,80})\/(viewer|replies|accept)$/,
+        );
+        if (match?.[2] === 'viewer' && method === 'GET')
+          return res.json(await community.viewer(actor, match[1]));
+        if (match?.[2] === 'replies' && method === 'POST') {
+          await this.engine.limits.check('community-reply', writerKey, 20, 86_400_000);
+          return res.json(await community.reply(actor, match[1], body));
+        }
+        if (match?.[2] === 'accept' && method === 'POST')
+          return res.json(await community.accept(actor, match[1], body));
+        match = path.match(/^community\/replies\/(reply-[a-zA-Z0-9-]{1,80})\/helpful$/);
+        if (match && method === 'PUT') {
+          await this.engine.limits.check('community-vote', actor.id, 60);
+          return res.json(await community.helpful(actor, match[1], body));
+        }
+        match = path.match(
+          /^community\/(posts|replies)\/((?:post|reply)-[a-zA-Z0-9-]{1,80})\/(report|withdraw)$/,
+        );
+        if (match && method === 'POST') {
+          const kind = match[1] === 'posts' ? 'POST' : 'REPLY';
+          if (match[3] === 'withdraw')
+            return res.json(await community.withdraw(actor, kind, match[2]));
+          await this.engine.limits.check('community-report', actor.id, 10);
+          return res.json(await community.report(actor, kind, match[2], body));
+        }
+        if (path === 'staff/community' && method === 'GET')
+          return res.json(await community.staffWorkspace(actor));
+        if (path === 'staff/community/notes' && method === 'POST')
+          return res.json(await community.note(actor, body));
+        if (path === 'staff/community/settings' && method === 'PUT')
+          return res.json(await community.setReplyPolicy(actor, body));
+        if (path === 'merchant/community' && method === 'GET')
+          return res.json(await community.shopWorkspace(actor));
+        if (path === 'merchant/community/updates' && method === 'POST')
+          return res.json(await community.update(actor, body));
+        if (path === 'merchant/community/settings' && method === 'PUT')
+          return res.json(await community.setStaffPosting(actor, body));
+        if (path === 'admin/community' && method === 'GET')
+          return res.json(await community.queue(actor));
+        if (path === 'admin/community/mutes' && method === 'GET')
+          return res.json(await community.listMutes(actor));
+        if (path === 'admin/community/mutes' && method === 'POST')
+          return res.json(await community.mute(actor, body));
+        if (path === 'admin/community/editorials' && method === 'GET')
+          return res.json(await community.editorials(actor));
+        if (path === 'admin/community/editorials' && method === 'POST')
+          return res.json(await community.editorial(actor, body));
+        match = path.match(/^admin\/community\/editorials\/(post-[a-zA-Z0-9-]{1,80})$/);
+        if (match && method === 'PUT') return res.json(await community.pin(actor, match[1], body));
+        match = path.match(
+          /^admin\/community\/(posts|replies)\/((?:post|reply)-[a-zA-Z0-9-]{1,80})\/(review|dismiss)$/,
+        );
+        if (match && method === 'POST')
+          return res.json(
+            match[3] === 'dismiss'
+              ? await community.dismissReports(actor, match[2])
+              : await community.review(
+                  actor,
+                  match[1] === 'posts' ? 'POST' : 'REPLY',
+                  match[2],
+                  body,
+                ),
+          );
       }
       if (path === 'admin/content-reviews' && method === 'GET')
         return res.json(await this.engine.contentReview.list(actor));

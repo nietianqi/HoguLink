@@ -74,6 +74,8 @@ import { wt } from '@/lib/workday-i18n';
 import { WorkdayTools } from './workday-tools';
 import { MerchantPromotion } from './merchant-promotion';
 import { StorefrontEditor } from './storefront-editor';
+import { CommunityWorkspace } from './community-workspace';
+import { cm } from '@/lib/community-i18n';
 import { sf } from '@/lib/storefront-i18n';
 import { sv } from '@/lib/service-mode-i18n';
 import { MerchantNavigation } from './merchant-navigation';
@@ -373,11 +375,13 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                       ? st(l, 'teamHelp')
                       : tab === 'storefront'
                         ? sf(l, 'editorHelp')
-                        : tab === 'finance'
-                          ? st(l, 'financeHelp')
-                          : tab === 'settings'
-                            ? st(l, 'rulesHelp')
-                            : st(l, 'bookingsHelp')}
+                        : tab === 'community'
+                          ? cm(l, 'workspaceHelp')
+                          : tab === 'finance'
+                            ? st(l, 'financeHelp')
+                            : tab === 'settings'
+                              ? st(l, 'rulesHelp')
+                              : st(l, 'bookingsHelp')}
             </p>
           </div>
           <div className="merchant-heading-actions">
@@ -1013,6 +1017,9 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             )}
             {tab === 'storefront' && actor && (
               <StorefrontEditor key={`${actor.id}:${actor.storeId}`} locale={l} />
+            )}
+            {tab === 'community' && actor && (
+              <CommunityWorkspace key={`${actor.id}:${actor.storeId}`} locale={l} role="MERCHANT" />
             )}
             {tab === 'finance' && (
               <>

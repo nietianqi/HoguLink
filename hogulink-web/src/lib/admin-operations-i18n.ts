@@ -68,6 +68,7 @@ const words = {
   venues: ['実店舗', 'Venues', '到店门店'],
   media: ['写真・動画', 'Photos & videos', '照片与视频'],
   storefront: ['店舗ホーム', 'Storefronts', '店铺主页'],
+  community: ['コミュニティ', 'Community', '社区'],
   directory: ['店舗・スタッフ名簿', 'Shop & therapist directory', '店铺与技师名册'],
   quality: ['履行品質', 'Service quality', '履约质量'],
   aftercare: ['停止後の対応', 'Suspension aftercare', '停用后善后'],

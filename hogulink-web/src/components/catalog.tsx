@@ -18,6 +18,7 @@ import { h5Portrait } from '@/lib/h5-media';
 import { ht } from '@/lib/h5-i18n';
 import { visitPreferences } from '@/lib/visit-model';
 import { sv } from '@/lib/service-mode-i18n';
+import { bf } from '@/lib/booking-browse-i18n';
 export function TherapistCard({
   listing,
   store,
@@ -31,6 +32,7 @@ export function TherapistCard({
   nominationFee,
   demo = false,
   inShop = false,
+  browse = false,
 }: {
   listing: Listing;
   store: PublicStore;
@@ -44,6 +46,7 @@ export function TherapistCard({
   nominationFee?: number;
   demo?: boolean;
   inShop?: boolean;
+  browse?: boolean;
 }) {
   const selected =
     offering ??
@@ -60,9 +63,18 @@ export function TherapistCard({
           effectiveServicePrice(a, Date.now()).price - effectiveServicePrice(b, Date.now()).price,
       )[0];
   if (!selected) return null;
+  const selection = {
+    mode,
+    ...(browse ? { from: 'therapists' } : {}),
+    ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}),
+    offering: selected.id,
+    ...(area ? { area } : {}),
+    ...(language ? { language } : {}),
+  };
   const bookingHref = (start?: number) =>
-    `/${locale}/book/${listing.slug}?${new URLSearchParams({ mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}), offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}), ...(start ? { start: String(start) } : {}) })}`;
-  const profileHref = `/${locale}/therapists/${listing.slug}?${new URLSearchParams({ mode, ...(fulfillmentMode(selected) === 'IN_STORE' ? { fulfillmentMode: 'IN_STORE' } : {}), offering: selected.id, ...(area ? { area } : {}), ...(language ? { language } : {}) })}`;
+    `/${locale}/${browse ? 'therapists' : 'book'}/${listing.slug}?${new URLSearchParams({ ...selection, ...(start ? { start: String(start) } : {}) })}${browse ? '#reserve' : ''}`;
+  const profileHref = `/${locale}/therapists/${listing.slug}?${new URLSearchParams(selection)}`;
+  const actionLabel = browse ? bf(locale, 'viewTimes') : t(locale, 'book');
   return (
     <article className="therapist-card">
       <Link className="portrait-link" href={profileHref} tabIndex={-1} aria-hidden="true">
@@ -134,9 +146,9 @@ export function TherapistCard({
           <Link
             className="card-cta"
             href={bookingHref()}
-            aria-label={`${listing.name[locale]} · ${t(locale, 'book')}`}
+            aria-label={`${listing.name[locale]} · ${actionLabel}`}
           >
-            <span className="mobile-card-book">{t(locale, 'book')}</span>
+            <span className="mobile-card-book">{actionLabel}</span>
             <ArrowRight size={19} />
           </Link>
         </div>

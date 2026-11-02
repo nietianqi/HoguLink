@@ -197,7 +197,7 @@ export function HomeRecommendations({
     `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
   const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 4);
   const therapists = featuredTherapists(choices);
-  const shopListHref = path('discover', { tab: 'shops' });
+  const shopListHref = path('shops');
   const offer = offers[0];
   const emptyState = (
     <div className="h5-home-empty" role="status">
@@ -340,7 +340,7 @@ export function HomeRecommendations({
                     locale={l}
                     card={card}
                     demo={catalog.demo}
-                    href={shopCardHref(l, card, carry)}
+                    href={`${shopCardHref(l, card, carry)}&from=home&homeBrowse=shops`}
                     layout="list"
                   />
                 ) : (
@@ -349,7 +349,10 @@ export function HomeRecommendations({
                     <div className="h5-home-shop-body">
                       <H5ShopLogo store={card.store} />
                       <h3>
-                        <Link href={shopCardHref(l, card, carry)} prefetch={false}>
+                        <Link
+                          href={`${shopCardHref(l, card, carry)}&from=home&homeBrowse=shops`}
+                          prefetch={false}
+                        >
                           {card.store.name[l]}
                         </Link>
                       </h3>
@@ -469,6 +472,8 @@ export function HomeRecommendations({
                     href={path(`therapists/${listing.slug}`, {
                       offering: choice.offering.id,
                       nomination: 'NOMINATED',
+                      from: 'home',
+                      homeBrowse: 'therapists',
                     })}
                     point={location.point}
                     locating={location.state === 'locating'}
@@ -481,6 +486,8 @@ export function HomeRecommendations({
                     href={path(`therapists/${listing.slug}`, {
                       offering: choice.offering.id,
                       nomination: 'NOMINATED',
+                      from: 'home',
+                      homeBrowse: 'therapists',
                     })}
                   >
                     <span className="h5-home-therapist-image">

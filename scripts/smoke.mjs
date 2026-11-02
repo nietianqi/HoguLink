@@ -130,6 +130,8 @@ check(!!b.address, 'address available only during confirmed work');
 await request(`staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' }, 'POST', 409);
 for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
   await advanceVisit(b, event);
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  b = await request(`bookings/${b.id}`);
   b = await request(`staff/tasks/${b.id}/events`, { version: b.version, event });
 }
 b = await confirmVisit(customerCookie, b);

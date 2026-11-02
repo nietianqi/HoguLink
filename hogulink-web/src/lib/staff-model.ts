@@ -41,7 +41,13 @@ export function staffPerformance(bookings: Booking[], now: number) {
     ),
   };
 }
-export const staffProfileSections = ['public', 'media', 'settings', 'performance'] as const;
+export const staffProfileSections = [
+  'public',
+  'media',
+  'settings',
+  'performance',
+  'community',
+] as const;
 export type StaffProfileSection = (typeof staffProfileSections)[number];
 export const nextEvent = (b: Booking) =>
   canProgress(b) &&

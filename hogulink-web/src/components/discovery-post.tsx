@@ -15,6 +15,7 @@ import { api, ClientError } from '@/lib/api';
 import { pt } from '@/lib/discovery-post-i18n';
 import {
   authorHref,
+  discoveryCarry,
   discoveryParams,
   postBookingHref,
   postHref,
@@ -25,6 +26,9 @@ import { useSession } from './booking-form';
 import { goCustomerAccess } from './customer-signin';
 import { DiscoveryColumns, DiscoveryPhoto } from './h5-discovery-feed';
 import { FavoriteKinds } from './engagement-ui';
+import { CommunityThreadView } from './community-thread';
+import { cm } from '@/lib/community-i18n';
+import { communityHref } from '@/lib/community-model';
 
 function PostGallery({ post, l }: { post: DiscoveryPost; l: Locale }) {
   const track = useRef<HTMLDivElement>(null),
@@ -220,7 +224,11 @@ export function DiscoveryPostPage({
           href={authorHref(l, post, q)}
           aria-label={`${pt(l, post.author.kind === 'editor' ? 'related' : 'author')} · ${post.author.name[l]}`}
         >
-          {post.author.photo ? <img src={postImage(post)} alt="" /> : <UserRound size={23} />}
+          {post.author.photo ? (
+            <img src={post.community ? post.author.photo : postImage(post)} alt="" />
+          ) : (
+            <UserRound size={23} />
+          )}
           <span>
             <strong>{post.author.name[l]}</strong>
             <small>
@@ -240,26 +248,40 @@ export function DiscoveryPostPage({
       </header>
       <div className="discovery-post-layout">
         <article>
-          <PostGallery key={post.id} post={post} l={l} />
+          {post.images.length > 0 && <PostGallery key={post.id} post={post} l={l} />}
           <div className="discovery-post-prose">
             <h1>{post.title[l]}</h1>
-            {(post.kind === 'guide' || post.kind === 'safety') && (
-              <p className="discovery-post-summary">{post.summary[l]}</p>
+            {detail.community ? (
+              <CommunityThreadView
+                key={post.id}
+                locale={l}
+                post={post}
+                thread={detail.community}
+                carry={discoveryCarry(q)}
+              />
+            ) : (
+              <>
+                {(post.kind === 'guide' || post.kind === 'safety') && (
+                  <p className="discovery-post-summary">{post.summary[l]}</p>
+                )}
+                {detail.sections.map((s, i) => (
+                  <section key={i}>
+                    <h2>{s.heading[l]}</h2>
+                    <p>{s.text[l]}</p>
+                  </section>
+                ))}
+              </>
             )}
-            {detail.sections.map((s, i) => (
-              <section key={i}>
-                <h2>{s.heading[l]}</h2>
-                <p>{s.text[l]}</p>
-              </section>
-            ))}
           </div>
         </article>
-        <aside>
-          <section className="discovery-post-related" id="more-content">
-            <h2>{pt(l, 'related')}</h2>
-            <DiscoveryColumns items={detail.related} l={l} q={q} />
-          </section>
-        </aside>
+        {detail.related.length > 0 && (
+          <aside>
+            <section className="discovery-post-related" id="more-content">
+              <h2>{pt(l, 'related')}</h2>
+              <DiscoveryColumns items={detail.related} l={l} q={q} />
+            </section>
+          </aside>
+        )}
       </div>
       {error && (
         <div className="discovery-interaction-error" role="alert">
@@ -286,7 +308,7 @@ export function DiscoveryPostPage({
           </span>
         </button>
         <Link className="h5-primary" href={postBookingHref(l, post, q)}>
-          {pt(l, 'book')}
+          {post.community ? cm(l, communityHref(l, post, discoveryCarry(q)).label) : pt(l, 'book')}
         </Link>
       </div>
     </main>

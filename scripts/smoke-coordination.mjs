@@ -204,6 +204,8 @@ await call(
 b = await call(saki, `staff/tasks/${b.id}/ack`, { version: b.version });
 for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
   await advanceVisit(b, event);
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  b = await call(saki, `bookings/${b.id}`);
   b = await call(saki, `staff/tasks/${b.id}/events`, { version: b.version, event });
 }
 b = await confirmVisit(customer, b);

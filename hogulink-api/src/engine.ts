@@ -71,6 +71,7 @@ import { staffBookingAccess } from './staff-access.js';
 import { ExperienceService } from './experience.js';
 import { EngagementService } from './engagement.js';
 import { DiscoveryService } from './discovery.js';
+import { CommunityService } from './community.js';
 import { AddressService } from './addresses.js';
 import { RefundService } from './refund-requests.js';
 import { CoordinationService } from './coordination.js';
@@ -164,6 +165,7 @@ export class Engine {
   readonly experience: ExperienceService;
   readonly engagement: EngagementService;
   readonly discovery: DiscoveryService;
+  readonly community: CommunityService;
   readonly addresses: AddressService;
   readonly refunds: RefundService;
   readonly fulfillment: FulfillmentService;
@@ -208,6 +210,7 @@ export class Engine {
     this.experience = new ExperienceService((fn) => this.run(fn), now);
     this.engagement = new EngagementService((fn) => this.run(fn), now);
     this.discovery = new DiscoveryService(this);
+    this.community = new CommunityService(this);
     this.addresses = new AddressService((fn) => this.run(fn), now);
     this.refunds = new RefundService(
       (fn) => this.run(fn),
@@ -1490,6 +1493,7 @@ export class Engine {
         ).length;
         todo.media = await this.media.pendingCount(tx);
         todo.storefronts = await tx.count('storefrontDrafts', { status: 'PENDING' });
+        todo.community = await this.community.pendingCount(tx);
         todo.services = await tx.count('serviceProposals', { status: 'PENDING' });
         // Same queue as the review moderation page: new reviews, replies and open appeals.
         const reviews = await tx.list<ExperienceReview>('experienceReviews'),

@@ -92,6 +92,7 @@ test('directory booking links freeze only the displayed menu, nominated fee and 
     row,
   );
   assert.deepEqual(Object.fromEntries(selection), {
+    from: 'therapists',
     mode: 'INSTANT',
     area: 'taito',
     language: 'zh',

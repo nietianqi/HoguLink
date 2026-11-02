@@ -15,7 +15,6 @@ import {
   Play,
   Search,
   Store,
-  X,
 } from 'lucide-react';
 import {
   nearestArea,
@@ -41,6 +40,8 @@ import { visitPreferences } from '@/lib/visit-model';
 import { TherapistFacts } from './therapist-facts';
 import { h5Portrait } from '@/lib/h5-media';
 import { clock, md } from '@/lib/media-i18n';
+import { BookingBrowseHeader, BrowseFilterChips } from './booking-browse';
+import { bf } from '@/lib/booking-browse-i18n';
 
 export function H5TherapistDirectory({
   locale: l,
@@ -166,7 +167,23 @@ export function H5TherapistDirectory({
         aria-label={ht(l, 'filters')}
       >
         <div>
-          {pill(ht(l, 'recommended'), { sort: 'recommended' }, values.sort === 'recommended')}
+          {expanded ? (
+            pill(ht(l, 'recommended'), { sort: 'recommended' }, values.sort === 'recommended')
+          ) : (
+            <select
+              className="booking-sort-select"
+              aria-label={bf(l, 'sort')}
+              value={values.sort}
+              onChange={(event) => navigate({ ...current, sort: event.target.value })}
+            >
+              {(['recommended', 'price', 'earliest', 'rating'] as const).map((value) => (
+                <option key={value} value={value}>
+                  {ht(l, value === 'rating' ? 'sortRating' : value)}
+                </option>
+              ))}
+              {q.near && <option value="distance">{ht(l, 'sortDistance')}</option>}
+            </select>
+          )}
           {!expanded && (
             <button
               type="button"
@@ -207,6 +224,7 @@ export function H5TherapistDirectory({
             }}
           >
             <ChevronDown size={18} />
+            {bf(l, 'filters')}
           </button>
         )}
       </nav>
@@ -230,35 +248,13 @@ export function H5TherapistDirectory({
       <button disabled={pending}>{ht(l, 'searchAction')}</button>
     </div>
   );
-  const chips: Array<{ key: string; label: string; reset: string }> = [
-    ...(q.area ? [{ key: 'area', label: areaName(l, q.area), reset: '' }] : []),
-    ...(q.language ? [{ key: 'language', label: languageNames[q.language], reset: '' }] : []),
-    ...(q.search ? [{ key: 'search', label: q.search, reset: '' }] : []),
-    ...(q.sort !== 'recommended'
-      ? [
-          {
-            key: 'sort',
-            label: ht(
-              l,
-              q.sort === 'price'
-                ? 'price'
-                : q.sort === 'rating'
-                  ? 'sortRating'
-                  : q.sort === 'distance'
-                    ? 'sortDistance'
-                    : 'earliest',
-            ),
-            reset: 'recommended',
-          },
-        ]
-      : []),
-    ...(q.duration === '120'
-      ? [{ key: 'duration', label: `120 ${t(l, 'minutes')}`, reset: '60' }]
-      : []),
-  ];
   return (
-    <main id="main" className="h5-directory h5-directory-v2 h5-surface wrap" aria-busy={pending}>
-      <h1 className="h5-desktop-title">{t(l, 'explore')}</h1>
+    <main
+      id="main"
+      className="h5-directory h5-directory-v2 h5-surface wrap booking-directory booking-therapist-directory"
+      aria-busy={pending}
+    >
+      <BookingBrowseHeader locale={l} kind="therapists" q={q} />
       <Link
         className="consumer-advanced-entry"
         href={`/${l}/therapists?${new URLSearchParams({ ...q, filters: 'advanced' })}`}
@@ -285,24 +281,7 @@ export function H5TherapistDirectory({
             ))}
         </form>
         {quick()}
-        {!!chips.length && (
-          <div className="h5-directory-chips">
-            {chips.map((chip) => (
-              <Link
-                key={chip.key}
-                prefetch={false}
-                href={href({ [chip.key]: chip.reset })}
-                aria-label={`${ht(l, 'reset')} · ${chip.label}`}
-              >
-                <span>{chip.label}</span>
-                <X size={11} />
-              </Link>
-            ))}
-            <Link href={`/${l}/therapists`} prefetch={false}>
-              {ht(l, 'reset')}
-            </Link>
-          </div>
-        )}
+        <BrowseFilterChips locale={l} kind="therapists" q={q} />
       </div>
       <p className="h5-area-note">
         <MapPin size={14} />
@@ -432,11 +411,8 @@ export function H5TherapistDirectory({
                       ht(l, 'noSlots')
                     )}
                   </small>
-                  <Link
-                    className="h5-primary"
-                    href={`/${l}/${earliestAt ? 'book' : 'therapists'}/${listing.slug}?${selection}`}
-                  >
-                    {earliestAt ? md(l, 'bookThis') : ht(l, 'chooseTime')}
+                  <Link className="h5-primary" href={`${detail}#reserve`}>
+                    {bf(l, 'viewTimes')}
                   </Link>
                 </div>
               </div>
@@ -533,7 +509,13 @@ export function H5TherapistDirectory({
                 <select
                   name="fulfillmentMode"
                   value={draft.fulfillmentMode ?? ''}
-                  onChange={(e) => setDraft({ ...draft, fulfillmentMode: e.target.value })}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      fulfillmentMode: e.target.value,
+                      ...(e.target.value === 'IN_STORE' ? { mode: 'SCHEDULED' } : {}),
+                    })
+                  }
                 >
                   <option value="">{t(l, 'all')}</option>
                   <option value="HOME_VISIT">{sv(l, 'HOME_VISIT')}</option>
@@ -603,7 +585,11 @@ export function H5TherapistDirectory({
                   onChange={(e) => setDraft({ ...draft, mode: e.target.value })}
                 >
                   {(['SCHEDULED', 'INSTANT'] as const).map((mode) => (
-                    <option key={mode} value={mode}>
+                    <option
+                      key={mode}
+                      value={mode}
+                      disabled={mode === 'INSTANT' && draft.fulfillmentMode === 'IN_STORE'}
+                    >
                       {ht(l, mode === 'INSTANT' ? 'instant' : 'scheduled')}
                     </option>
                   ))}

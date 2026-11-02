@@ -275,6 +275,8 @@ check(
 );
 await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' }, 409);
 await advanceVisit(b, 'COMPLETE');
+// Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+b = await call(s, `bookings/${b.id}`);
 b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' });
 check(
   b.status === 'AWAITING_COMPLETION' && b.capturedAmount === 0,

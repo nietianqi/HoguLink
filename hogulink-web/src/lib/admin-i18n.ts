@@ -47,6 +47,7 @@ const words = {
   todoOnboarding: ['入店・資格の審査', 'Onboarding & qualifications', '入驻与资质审核'],
   todoVenues: ['来店店舗の審査', 'Venue reviews', '到店门店审核'],
   todoMedia: ['スタッフ写真・動画の審査', 'Therapist photo and video reviews', '技师照片/视频审核'],
+  todoCommunity: ['コミュニティの審査・通報', 'Community reviews and reports', '社区审核与举报'],
   todoAftercare: ['停止後の予約フォロー', 'Bookings after a suspension', '停用后的预约善后'],
   todoExperience: ['口コミ・返信・申立て', 'Reviews, replies & appeals', '评价/回复/申诉审核'],
   todoContent: ['ブロックしたメッセージ', 'Blocked messages', '消息拦截复核'],

@@ -85,9 +85,6 @@ export function H5ShopCover({
           <span className="h5-shop-cover-letter" aria-hidden="true">
             {shopMonogram(store)}
           </span>
-          <span className="h5-shop-cover-line" aria-hidden="true">
-            LOCAL CARE · TOKYO
-          </span>
         </>
       )}
       {children}
@@ -234,17 +231,21 @@ export function H5ShopList({
   demo,
   href,
   pagination,
+  feedHeading = true,
+  priceNote,
 }: {
   locale: Locale;
   cards: ShopCard[];
   demo: boolean;
   href: (store: PublicStore, card: ShopCard) => string;
   pagination?: { page: number; pages: number; previous: string; next: string };
+  feedHeading?: boolean;
+  priceNote?: string;
 }) {
   if (!cards.length) return null;
   return (
     <section className="h5-shop-list" aria-label={ht(l, 'shopsTitle')}>
-      <p className="h5-shops-sub">{ht(l, 'shopFees')}</p>
+      <p className="h5-shops-sub">{priceNote ?? ht(l, 'shopFees')}</p>
       {cards.some((card) => !card.stats) && <ShopStatsNotice locale={l} />}
       <div className="shop-list-grid">
         {cards.map((card) => (
@@ -270,7 +271,7 @@ export function H5ShopList({
         </nav>
       )}
       <p className="h5-footnote">{ht(l, 'shopStatsNote')}</p>
-      <h2 className="h5-shop-feed-title">{ht(l, 'shopFeed')}</h2>
+      {feedHeading && <h2 className="h5-shop-feed-title">{ht(l, 'shopFeed')}</h2>}
     </section>
   );
 }

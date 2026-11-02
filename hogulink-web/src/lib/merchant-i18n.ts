@@ -13,6 +13,7 @@ const words = {
   team: ['チーム', 'Team', '技师团队'],
   services: ['サービス', 'Services', '服务项目'],
   storefront: ['店舗ホームページ', 'Shop homepage', '店铺主页'],
+  community: ['コミュニティ', 'Community', '社区'],
   finance: ['売上・手数料', 'Finance', '财务与计费'],
   settings: ['店舗設定', 'Shop settings', '店铺设置'],
   support: ['相談・安全', 'Support & safety', '售后与安全'],
@@ -159,6 +160,7 @@ export type MerchantTab =
   | 'team'
   | 'services'
   | 'storefront'
+  | 'community'
   | 'finance'
   | 'settings';
 export const merchantTabs: MerchantTab[] = [
@@ -168,6 +170,7 @@ export const merchantTabs: MerchantTab[] = [
   'team',
   'services',
   'storefront',
+  'community',
   'finance',
   'settings',
 ];

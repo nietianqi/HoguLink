@@ -3,6 +3,7 @@ import { VenueReviews } from './venue-settings';
 import { ServiceProposalReviews } from './merchant-services';
 import { mo } from '@/lib/merchant-operations-i18n';
 import { MediaReview } from './media-review';
+import { CommunityReview } from './community-review';
 import { StorefrontReviews } from './storefront-reviews';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { SystemDelivery } from './system-delivery';
@@ -689,6 +690,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     'venues',
     'media',
     'storefront',
+    'community',
     'services',
     'directory',
     'quality',
@@ -700,6 +702,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
     venues: todo?.venues ?? 0,
     media: todo?.media ?? 0,
     storefront: todo?.storefronts ?? 0,
+    community: todo?.community ?? 0,
     services: todo?.services ?? 0,
     directory: 0,
     quality: 0,
@@ -710,7 +713,7 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
   const availableSections = reviewSections.filter(
     (key) =>
       canAdmin(actor, 'supply.write') ||
-      !['qualification', 'venues', 'media', 'storefront', 'services'].includes(key),
+      !['qualification', 'venues', 'media', 'storefront', 'community', 'services'].includes(key),
   );
   const reviewSection =
     availableSections.find((key) => key === requestedSection) ??
@@ -1311,6 +1314,9 @@ export function AdminWorkspace({ locale: l }: { locale: Locale }) {
                 )}
                 {reviewSection === 'storefront' && canAdmin(actor, 'supply.write') && (
                   <StorefrontReviews key={actor.id} locale={l} />
+                )}
+                {reviewSection === 'community' && canAdmin(actor, 'supply.write') && (
+                  <CommunityReview key={actor.id} locale={l} />
                 )}
                 {reviewSection === 'aftercare' && canAdmin(actor, 'supply.read') && (
                   <SuspensionImpactPanel locale={l} orderHref={(id) => href('orders', id)} />

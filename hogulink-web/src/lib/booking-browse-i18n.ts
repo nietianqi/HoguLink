@@ -1,0 +1,53 @@
+import type { Locale } from '@hogulink/contracts';
+const words = {
+  booking: ['预约服务', 'サービスを予約', 'Book a service'],
+  dimensions: [
+    '选择项目、技师或店铺',
+    'メニュー・スタッフ・店舗から選ぶ',
+    'Browse services, therapists or shops',
+  ],
+  services: ['项目', 'メニュー', 'Services'],
+  therapists: ['技师', 'スタッフ', 'Therapists'],
+  shops: ['店铺', '店舗', 'Shops'],
+  allServices: ['全部项目', 'すべてのメニュー', 'All services'],
+  allTherapists: ['全部技师', 'すべてのスタッフ', 'All therapists'],
+  allShops: ['全部店铺', 'すべての店舗', 'All shops'],
+  backHome: ['返回首页', 'ホームに戻る', 'Back to home'],
+  backList: ['返回列表', '一覧に戻る', 'Back to results'],
+  area: ['服务地区', 'エリア', 'Service area'],
+  venueArea: ['门店所在地区', '店舗エリア', 'Shop area'],
+  searchServices: ['搜索项目或店铺', 'メニュー・店舗を検索', 'Search services or shops'],
+  searchTherapists: ['搜索技师或店铺', 'スタッフ・店舗を検索', 'Search therapists or shops'],
+  searchShops: ['搜索店铺或服务', '店舗・メニューを検索', 'Search shops or services'],
+  searchAction: ['搜索', '検索', 'Search'],
+  filters: ['筛选', '絞り込み', 'Filters'],
+  applied: ['已选条件', '選択中の条件', 'Active filters'],
+  clear: ['重置筛选', '条件をリセット', 'Reset filters'],
+  apply: ['查看结果', '結果を表示', 'Show results'],
+  price: ['起价从低到高', '料金の安い順', 'Lowest starting price'],
+  name: ['按店铺名称', '店舗名順', 'Shop name'],
+  sort: ['排序', '並び順', 'Sort'],
+  personnel: ['人员安排', '担当者を選ぶ', 'Therapist preference'],
+  bookService: ['预约此项目', 'このメニューを予約', 'Book this service'],
+  nominated: ['指定技师', 'スタッフを指名', 'Choose a therapist'],
+  viewTimes: ['查看时段', '空き時間を見る', 'View available times'],
+  priceNote: [
+    '所示为指名参考价；店铺安排不收指名费，以选时后的报价为准。',
+    '表示は指名時の参考料金です。店舗おまかせは指名料なし。日時選択後に料金をご確認ください。',
+    'Reference prices include nomination. Shop assignment has no nomination fee. Confirm the quote after choosing a time.',
+  ],
+  shopPriceNote: [
+    '店铺安排起价，不收指名费；上门交通费按服务地区核对，到店不收交通费。',
+    '店舗おまかせの参考料金。指名料なし、来店は交通費なし。出張料は訪問エリアにより確認します。',
+    'Starting prices for shop assignment, without nomination fees. Home travel fees depend on the area; in-store visits have no travel fee.',
+  ],
+  shopsCount: ['共 {n} 家店铺', '{n} 店舗', '{n} shops'],
+  noShops: ['当前条件下暂无店铺', 'この条件の店舗はありません', 'No shops match your filters'],
+  storeScheduled: [
+    '到店服务仅支持指定时间预约',
+    '来店は日時指定の予約です',
+    'In-store visits require a scheduled time',
+  ],
+} as const;
+export const bf = (locale: Locale, key: keyof typeof words) =>
+  words[key][locale === 'zh-cn' ? 0 : locale === 'ja' ? 1 : 2];

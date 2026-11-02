@@ -33,6 +33,7 @@ const copy = {
     'Nomination fee included in the total',
     '指名费已计入合计',
   ],
+  feeIfChosen: ['指名時に合計へ加算', 'Added if you nominate', '指定后计入合计'],
   noNomination: ['指名料なし', 'No nomination fee', '不收指名费'],
   nextStep: ['次のご案内', 'What happens next', '下一步'],
   waitingShop: [

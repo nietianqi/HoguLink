@@ -202,7 +202,6 @@ export function StoreFavoritesPage({ locale: l }: { locale: Locale }) {
   return (
     <main id="main" className="wrap engagement-page">
       <header className="discovery-intro">
-        <span className="quality-eyebrow">HOGULINK / COLLECTION</span>
         <h1>{xt(l, 'shopFavorites')}</h1>
         <p>{xt(l, 'favoriteIntro')}</p>
       </header>
@@ -223,7 +222,7 @@ export function StoreFavoritesPage({ locale: l }: { locale: Locale }) {
           {!ready && !error && <p role="status">{xt(l, 'loading')}</p>}
           {ready && items.length === 0 && (
             <p className="quality-empty">
-              {qt(l, 'empty')} · <Link href={`/${l}/discover?tab=shops`}>{xt(l, 'shops')}</Link>
+              {qt(l, 'empty')} · <Link href={`/${l}/shops`}>{xt(l, 'shops')}</Link>
             </p>
           )}
           <div className="saved-shop-grid">
@@ -410,7 +409,6 @@ export function CustomerInboxPage({
       )}
       <div className={`h5-inbox-content ${channel ? 'is-channel' : 'is-landing'}`}>
         <header className="discovery-intro">
-          <span className="quality-eyebrow">HOGULINK / MESSAGES</span>
           <h1>{xt(l, 'inboxTitle')}</h1>
           <p>{xt(l, 'inboxHelp')}</p>
         </header>

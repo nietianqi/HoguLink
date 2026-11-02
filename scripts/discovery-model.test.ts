@@ -36,9 +36,15 @@ const catalog = (): Catalog =>
   } as Catalog);
 test('discovery requests omit booking mode while shop and post navigation retain it', () => {
   for (const mode of ['SCHEDULED', 'INSTANT']) {
-    const q = discoveryQuery({ tab: 'shops', area: 'taito', language: 'en', mode, search: 'Mori' });
+    const q = discoveryQuery({
+      tab: 'updates',
+      area: 'taito',
+      language: 'en',
+      mode,
+      search: 'Mori',
+    });
     assert.deepEqual(Object.fromEntries(discoveryApiParams(q)), {
-      tab: 'shops',
+      tab: 'updates',
       area: 'taito',
       language: 'en',
       search: 'Mori',
@@ -216,6 +222,7 @@ test('editorial guides have unique stable routes and complete three-language con
 });
 
 test('discovery search and navigation carry only supported preferences, never stale transaction values', () => {
+  // The old therapist tab link opens therapist notes.
   const q = discoveryQuery({
     tab: 'therapists',
     search: ' Ｎａｇｉ ',
@@ -224,7 +231,7 @@ test('discovery search and navigation carry only supported preferences, never st
     hold: 'private',
     start: 'old',
   });
-  assert.deepEqual(q, { tab: 'therapists', search: 'Nagi', area: 'taito', language: 'zh' });
+  assert.deepEqual(q, { tab: 'notes', search: 'Nagi', area: 'taito', language: 'zh' });
   assert(!discoveryParams(q).has('hold'));
   assert.deepEqual(discoveryQuery({ tab: 'unknown', area: 'unknown', language: 'unknown' }), {
     tab: 'recommended',
@@ -234,7 +241,7 @@ test('discovery search and navigation carry only supported preferences, never st
     author: { kind: 'therapist', slug: 'aoi-tokyo' },
   } as DiscoveryPost;
   assert.equal(postBookingHref('ja', post, q), '/ja/book/aoi-tokyo?area=taito&language=zh');
-  assert(postHref('en', post, q).includes('tab=therapists'));
+  assert(postHref('en', post, q).includes('tab=notes'));
   assert(!postBookingHref('en', post, q).includes('search='));
   assert.equal(
     safeAccountReturn(

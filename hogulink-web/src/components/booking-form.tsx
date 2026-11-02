@@ -62,6 +62,8 @@ import { visibleVisitTimes, visitTimeRange } from '@/lib/booking-presentation';
 import { ServiceModePicker, VenueInfo } from './service-mode';
 import { sv } from '@/lib/service-mode-i18n';
 import { chosenServiceMode } from '@/lib/service-mode-model';
+import { browseSource } from '@/lib/booking-browse-model';
+import { BrowseReturnLink } from './booking-browse';
 
 export function useSession() {
   const [actor, setActor] = useState<Actor | null>(null);
@@ -118,6 +120,15 @@ export function VisitBackLink({
   listing: Pick<Listing, 'slug' | 'name'>;
 }) {
   const query = useSearchParams();
+  if (query.get('from') === 'services')
+    return (
+      <BrowseReturnLink
+        locale={locale}
+        fallback="services"
+        q={Object.fromEntries(query)}
+        className="back-link"
+      />
+    );
   return (
     <Link
       className="back-link"
@@ -248,6 +259,7 @@ function useVisit(props: PlannerProps) {
     slots.includes(Number(start)) &&
     (mode !== 'INSTANT' || instantAllowed);
   const params = new URLSearchParams({
+    ...browseSource(Object.fromEntries(query)),
     ...(serviceMode ? { fulfillmentMode: serviceMode, modeConfirmed: '1' } : {}),
     mode,
     nomination,
@@ -851,7 +863,9 @@ export function BookingForm(props: PlannerProps) {
                   </span>
                   <span className="preference-fee">
                     {money(l, v.store.bookingRules?.nominationFee ?? v.rules?.nominationFee ?? 500)}
-                    <small>{pc(l, 'feeIncluded')}</small>
+                    <small>
+                      {pc(l, v.nomination === 'NOMINATED' ? 'feeIncluded' : 'feeIfChosen')}
+                    </small>
                   </span>
                 </button>
                 <button

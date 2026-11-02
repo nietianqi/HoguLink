@@ -250,7 +250,6 @@ export function AddressBookPage({ locale: l }: { locale: Locale }) {
   return (
     <main id="main" className="wrap flow-page address-page">
       <header className="discovery-intro">
-        <span className="quality-eyebrow">HOGULINK / YOUR PLACES</span>
         <h1>{af(l, 'addressTitle')}</h1>
         <p>{af(l, 'addressIntro')}</p>
       </header>

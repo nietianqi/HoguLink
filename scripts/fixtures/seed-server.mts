@@ -8,6 +8,7 @@ import { ApiController } from '../../hogulink-api/src/controller.js';
 import { Repository } from '../../hogulink-api/src/repository.js';
 import { Engine } from '../../hogulink-api/src/engine.js';
 import { seed, seedDemoPromotion, seedDemoServices } from '../../hogulink-api/src/seed.js';
+import { seedDemoCommunity } from '../../hogulink-api/src/community.js';
 import { bootstrapAdmin } from '../../hogulink-api/src/employees.js';
 import { assertDemoRuntime } from '../../hogulink-api/src/config.js';
 import { unseal } from '../../hogulink-api/src/secrets.js';
@@ -15,7 +16,8 @@ import { seedCatalog } from './seed-catalog.mjs';
 assertDemoRuntime();
 const token = process.env.SEED_TOKEN;
 const port = Number(process.env.API_PORT);
-if (!token || !port || port === 4000) throw new Error('Seed harness needs SEED_TOKEN and a separate port.');
+if (!token || !port || port === 4000)
+  throw new Error('Seed harness needs SEED_TOKEN and a separate port.');
 const repo = new Repository();
 await repo.init();
 await seed(repo);
@@ -24,10 +26,13 @@ let offset = Number(process.env.SEED_START_OFFSET_MS || 0);
 const engine = new Engine(repo, () => Date.now() + offset);
 await seedDemoServices(repo);
 await seedDemoPromotion(engine);
+await seedDemoCommunity(engine);
 if (process.env.SEED_CATALOG === '1') await seedCatalog(repo, Date.now());
 @Module({ controllers: [ApiController], providers: [{ provide: 'ENGINE', useValue: engine }] })
 class SeedModule {}
-const app = await NestFactory.create<NestExpressApplication>(SeedModule, { logger: ['error', 'warn'] });
+const app = await NestFactory.create<NestExpressApplication>(SeedModule, {
+  logger: ['error', 'warn'],
+});
 app.useBodyParser('json', { limit: '512kb' });
 app.use('/__seed/clock', (req: any, res: any) => {
   if (req.get('x-seed-token') !== token) return res.status(404).end();
@@ -46,7 +51,12 @@ app.use('/__seed/outbox', async (req: any, res: any) => {
   res.json(
     rows
       .filter((r) => r.payloadSealed)
-      .map((r) => ({ id: r.id, type: r.type, createdAt: r.createdAt, ...JSON.parse(unseal(r.payloadSealed, r.id).toString()) })),
+      .map((r) => ({
+        id: r.id,
+        type: r.type,
+        createdAt: r.createdAt,
+        ...JSON.parse(unseal(r.payloadSealed, r.id).toString()),
+      })),
   );
 });
 await app.listen(port, '127.0.0.1');

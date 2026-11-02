@@ -5,6 +5,7 @@ import {
   type FulfillmentMode,
 } from '@hogulink/contracts';
 import type { Address, Listing, Offering } from '@hogulink/contracts';
+import { browseSource } from './booking-browse-model';
 
 /** An absent or incompatible browsing area must never become a billable default. */
 export function selectedHomeArea(areas: string[], raw: string | null | undefined) {
@@ -36,6 +37,7 @@ export function visitPreferences(raw: Record<string, unknown>): Record<string, s
 export function visitSelection(raw: Record<string, unknown>): Record<string, string> {
   return {
     ...visitPreferences(raw),
+    ...browseSource(raw),
     ...(raw.modeConfirmed === '1' &&
     (raw.fulfillmentMode === 'HOME_VISIT' || raw.fulfillmentMode === 'IN_STORE')
       ? { modeConfirmed: '1' }

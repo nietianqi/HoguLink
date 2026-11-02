@@ -21,6 +21,7 @@ import {
 } from '../hogulink-web/src/lib/therapist-directory-model.js';
 import { nextEvent } from '../hogulink-web/src/lib/staff-model.js';
 import { sv } from '../hogulink-web/src/lib/service-mode-i18n.js';
+import { shopCards } from '../hogulink-web/src/lib/shop-model.js';
 const name = { ja: '店', en: 'Shop', 'zh-cn': '店' };
 const store = {
   id: 'shop',
@@ -73,6 +74,22 @@ const onsite = {
   fulfillmentMode: 'IN_STORE' as const,
 };
 const catalog = { stores: [store], listings: [person], offerings: [home, onsite], demo: true };
+
+test('shop starting price and its menu include the cheaper supported in-store variant', () => {
+  const child = { ...onsite, id: 'home-in-store' };
+  const c = {
+    ...catalog,
+    offerings: [home, child],
+    listings: [{ ...person, offeringIds: ['home', 'home-in-store'] }],
+  };
+  const both = shopCards(c)[0];
+  assert.equal(both.fromTotal, 6000);
+  assert.equal(both.fromOfferingId, 'home-in-store');
+  assert.equal(both.modePrices?.find((p) => p.mode === 'IN_STORE')?.total, both.fromTotal);
+  const homeOnly = shopCards(c, { fulfillmentMode: 'HOME_VISIT' })[0];
+  assert.equal(homeOnly.fromTotal, 8000);
+  assert.equal(homeOnly.fromOfferingId, 'home');
+});
 
 test('browsing and old links never silently choose a service location', () => {
   assert.equal(chosenServiceMode({}), null);

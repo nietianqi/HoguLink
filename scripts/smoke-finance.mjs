@@ -93,6 +93,8 @@ async function book(days) {
   b = await call(s, `staff/tasks/${b.id}/ack`, { version: b.version });
   for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
     await advanceVisit(b, event);
+    // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+    b = await call(s, `bookings/${b.id}`);
     b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event });
   }
   b = await confirmVisit(c, b);

@@ -74,6 +74,8 @@ async function book() {
   b = await call(s, `staff/tasks/${b.id}/ack`, { version: b.version });
   for (const event of ['EN_ROUTE', 'ARRIVED']) {
     await advanceVisit(b, event);
+    // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+    b = await call(s, `bookings/${b.id}`);
     b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event });
   }
   return b;
@@ -82,10 +84,14 @@ const action = (actor, b, action, extra = {}, status = 200, key = randomUUID()) 
   call(actor, `bookings/${b.id}/completion`, { version: b.version, action, ...extra }, status, key);
 async function start(b) {
   await advanceVisit(b, 'START');
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  b = await call(s, `bookings/${b.id}`);
   return call(s, `staff/tasks/${b.id}/events`, { version: b.version, event: 'START' });
 }
 async function request(b) {
   await advanceVisit(b, 'COMPLETE');
+  // Moving the clock can run the booking's scheduled pre-authorization; use its new version.
+  b = await call(s, `bookings/${b.id}`);
   return call(s, `staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' });
 }
 let b = await book();

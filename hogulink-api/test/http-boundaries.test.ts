@@ -296,3 +296,37 @@ test('a local web origin also accepts its loopback twin; public origins stay exa
   assert.deepEqual([...webOrigins('https://hogulink.example')], ['https://hogulink.example']);
   assert.deepEqual([...webOrigins(undefined)], ['http://localhost:3000', 'http://127.0.0.1:3000']);
 });
+
+test('demo LAN origins retain the configured port and accept only explicit private IPv4 hosts', () => {
+  const hosts = [
+    '192.168.0.58',
+    '10.0.0.2',
+    '172.16.1.2',
+    '172.31.0.5',
+    '172.32.0.5',
+    '8.8.8.8',
+    '192.168.0.58.evil.test',
+    '192.168.0.58:9999',
+    'localhost',
+    '::1',
+  ];
+  assert.deepEqual(
+    [...webOrigins('http://127.0.0.1:3100', hosts)],
+    [
+      'http://127.0.0.1:3100',
+      'http://localhost:3100',
+      'http://192.168.0.58:3100',
+      'http://10.0.0.2:3100',
+      'http://172.16.1.2:3100',
+      'http://172.31.0.5:3100',
+    ],
+  );
+  assert.deepEqual(
+    [...webOrigins('https://hogulink.example', hosts)],
+    ['https://hogulink.example'],
+  );
+  assert.deepEqual(
+    [...webOrigins('https://localhost:3000', hosts)],
+    ['https://localhost:3000', 'https://127.0.0.1:3000'],
+  );
+});

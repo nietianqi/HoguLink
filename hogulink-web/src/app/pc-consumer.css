@@ -1,3 +1,7 @@
+.pc-home-intro {
+  display: none;
+}
+
 /*
  * PC customer finish (1101px and wider). One quiet card language across directories and
  * detail pages: white 16px cards on the light canvas, a single soft shadow, names and totals
@@ -489,5 +493,504 @@
   }
   body:has(.customer-header) .customer-header .customer-main-nav a > svg {
     display: none;
+  }
+}
+
+/* Selected 2026-11-04 concept: H5 colours and controls, with a photograph-led PC layout.
+   This remains the final desktop layer; the H5 home and all business workspaces keep their UI. */
+@media (min-width: 1101px) {
+  body:has(.customer-header) {
+    --pc-content-width: 1352px;
+    background: var(--h5-canvas, #f3f6f8);
+  }
+  body:has(.customer-header) .wrap {
+    width: min(var(--pc-content-width), calc(100% - 96px));
+    max-width: var(--pc-content-width);
+  }
+  body:has(.customer-header) .h5-consumer-demo {
+    height: 26px;
+    min-height: 26px;
+    padding-inline: max(48px, calc((100% - var(--pc-content-width)) / 2));
+    background: #fff;
+    color: var(--h5-muted);
+    border-bottom: 1px solid var(--h5-line);
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  body:has(.customer-header) .h5-consumer-demo nav a {
+    color: var(--h5-muted);
+  }
+  body:has(.customer-header) .customer-header {
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    max-width: none;
+    height: 72px;
+    min-height: 72px;
+    padding: 0 max(48px, calc((100% - var(--pc-content-width)) / 2));
+    border-bottom: 1px solid var(--h5-line);
+    background: #fff;
+    box-shadow: none;
+  }
+  body:has(.customer-header) .customer-header .logo {
+    gap: 7px;
+    flex-shrink: 0;
+    color: var(--h5-primary);
+    font-family: var(--font-sans);
+    font-size: 28px;
+    letter-spacing: -0.8px;
+  }
+  body:has(.customer-header) .customer-header .logo > span:not(.logo-icon) {
+    font-weight: 700;
+  }
+  body:has(.customer-header) .customer-header .logo-icon {
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    transform: none;
+    background: transparent;
+    color: inherit;
+  }
+  body:has(.customer-header) .customer-header .logo-icon svg {
+    width: 33px;
+    height: 33px;
+    stroke-width: 1.7;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav {
+    gap: clamp(4px, 1vw, 16px);
+    margin: 0;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 22px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--h5-ink);
+    font-size: 18px;
+    font-weight: 600;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a > svg {
+    display: none;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a[aria-current='page'] {
+    background: var(--h5-mint);
+    color: var(--h5-primary-ink);
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a:hover {
+    background: var(--h5-mint);
+    color: var(--h5-primary-ink);
+  }
+  body:has(.customer-header) .customer-header .header-actions {
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  body:has(.customer-header) .customer-header :is(.locale-label, .account-link) {
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--h5-ink);
+    font-size: 15px;
+  }
+  body:has(.customer-header) .customer-header .locale-label select {
+    font-size: 15px;
+  }
+  body:has(.customer-header) .customer-header :is(.locale-label, .account-link) > svg {
+    display: none;
+  }
+  body:has(.customer-header) .customer-header .account-link {
+    padding-left: 20px;
+    border-left: 1px solid var(--h5-line);
+  }
+  body:has(.customer-header) main.market-page {
+    padding-top: 0;
+    color: var(--h5-ink);
+  }
+  body:has(.customer-header) main.market-page > :is(.hero, .search-position) {
+    display: none;
+  }
+  .pc-home-intro {
+    display: block;
+  }
+  .pc-home-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 350px;
+    height: clamp(350px, 24.2vw, 420px);
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--h5-primary-ink);
+  }
+  .pc-home-hero-photo {
+    z-index: -2;
+    object-fit: cover;
+    object-position: center 77%;
+  }
+  .pc-home-hero-shade {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* Contrast treatment over the source photograph, not a replacement image. */
+    background: linear-gradient(
+      90deg,
+      rgb(0 83 56 / 0.9),
+      rgb(0 83 56 / 0.7) 30%,
+      rgb(0 70 47 / 0.14) 57%,
+      transparent 75%
+    );
+  }
+  .pc-home-hero-copy {
+    padding-bottom: 40px;
+    color: #fff;
+  }
+  .pc-home-kicker {
+    margin: 0 0 16px;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+  }
+  .pc-home-hero-copy h1 {
+    margin: 0;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: clamp(40px, 3.5vw, 56px);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.015em;
+  }
+  .pc-home-description {
+    max-width: 600px;
+    margin: 18px 0 0;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.75;
+  }
+  .pc-home-search-position {
+    position: relative;
+    z-index: 2;
+    margin-top: -50px;
+  }
+  .pc-home-search {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr 1.1fr 1fr minmax(160px, 0.9fr);
+    align-items: center;
+    min-height: 98px;
+    padding: 18px 22px;
+    border: 1px solid var(--h5-line);
+    border-radius: var(--pc-radius);
+    background: #fff;
+    box-shadow: var(--pc-shadow);
+  }
+  .pc-home-search-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: 0 22px;
+    border-right: 1px solid var(--h5-line);
+    color: var(--h5-ink);
+  }
+  .pc-home-search-field > span:first-child {
+    color: var(--h5-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .pc-home-select {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .pc-home-select > svg {
+    position: absolute;
+    right: 0;
+    pointer-events: none;
+    color: var(--h5-muted);
+  }
+  .pc-home-search-field :is(select, input) {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    padding: 0 24px 0 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--h5-ink);
+    font-family: var(--font-sans);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.5;
+    cursor: pointer;
+    appearance: none;
+  }
+  .pc-home-search-field input[type='date'] {
+    padding-right: 0;
+    font-size: 16px;
+  }
+  .pc-home-search-submit {
+    min-height: 52px;
+    margin-left: 22px;
+    padding: 10px 20px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--h5-primary);
+    color: #fff;
+    font-size: 19px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .pc-home-search-submit:hover {
+    background: var(--h5-primary-ink);
+  }
+  .pc-home-intro :is(select, input, button):focus-visible {
+    outline: 2px solid var(--h5-primary);
+    outline-offset: 4px;
+  }
+  body:has(.customer-header) main.market-page .customer-home-services {
+    margin-top: 22px;
+    padding-top: 0;
+  }
+  body:has(.customer-header) main.market-page .customer-home-browse {
+    gap: 24px;
+    margin-top: 0;
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances {
+    min-height: 100px;
+    padding: 8px;
+    border: 0;
+    border-radius: 20px;
+    background: #fff;
+    gap: 12px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances > button {
+    justify-content: flex-start;
+    gap: 26px;
+    padding: 12px 30px;
+    border-radius: 14px;
+    color: var(--h5-ink);
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances > button > svg {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    color: var(--h5-muted);
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances > button[aria-selected='true'] {
+    background: var(--h5-mint);
+    color: var(--h5-primary-ink);
+  }
+  body:has(.customer-header)
+    main.market-page
+    .h5-home-entrances
+    > button[aria-selected='true']
+    > svg {
+    color: var(--h5-primary);
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances > button::after {
+    display: none;
+  }
+  .pc-home-browse-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  body:has(.customer-header) main.market-page .pc-home-browse-label strong {
+    font-size: 28px;
+    line-height: 1.3;
+  }
+  body:has(.customer-header) main.market-page .pc-home-browse-label small {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--h5-muted);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  body:has(.customer-header) main.market-page .h5-home-block {
+    position: relative;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--h5-line);
+    border-radius: var(--pc-radius);
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(16 40 30 / 0.025);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--pc-shadow-hover);
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-image {
+    flex: none;
+    width: 100%;
+    aspect-ratio: 2.35 / 1;
+    border-radius: 0;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-image > small {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 0 6px 0 0;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-copy {
+    flex: 1;
+    gap: 4px;
+    padding: 12px 22px 14px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-copy h3 {
+    font-family: var(--font-sans);
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-copy .h5-home-service-shop {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--h5-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-shop > svg {
+    display: none;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-bottom {
+    gap: 10px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-price .service-mode-price strong {
+    color: var(--h5-price);
+    font-size: 24px;
+    line-height: 1.4;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-price .service-mode-price small {
+    color: var(--h5-price);
+    font-size: 14px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-price .service-mode-duration,
+  body:has(.customer-header)
+    main.market-page
+    .h5-home-service-price
+    .service-mode-prices:not(:has(.service-mode-price + .service-mode-price))
+    .service-mode-tag {
+    display: none;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-cta {
+    min-height: 40px;
+    padding: 8px 18px;
+    font-size: 15px;
+  }
+  .pc-home-trust-row {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    align-items: center;
+    gap: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--h5-line);
+  }
+  .pc-home-price-note {
+    margin: 0;
+    color: var(--h5-muted);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  body:has(.customer-header) main.market-page .h5-home-assurance {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  body:has(.customer-header) main.market-page .h5-home-assurance a {
+    gap: 10px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-assurance strong {
+    font-size: 15px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-assurance small {
+    display: none;
+  }
+  body:has(.customer-header) main.market-page .h5-home-offer {
+    padding: 14px 20px;
+  }
+  body:has(.customer-header) main.market-page .h5-partner-banner {
+    margin: 4px 0 0;
+    padding: 22px 24px;
+    border: 1px solid var(--h5-line);
+    background: #fff;
+  }
+  body:has(.customer-header) main.market-page .h5-partner-banner strong {
+    font-size: 18px;
+  }
+  body:has(.customer-header) main.market-page .h5-partner-banner small {
+    font-size: 13px;
+  }
+}
+@media (min-width: 1101px) and (max-width: 1279px) {
+  body:has(.customer-header) .customer-header .customer-main-nav {
+    gap: 2px;
+  }
+  body:has(.customer-header) .customer-header .customer-main-nav a {
+    padding-inline: 12px;
+    font-size: 15px;
+  }
+  .pc-home-search {
+    padding-inline: 12px;
+    grid-template-columns: 1fr 1fr 1.1fr 0.8fr 0.9fr;
+  }
+  .pc-home-search-field {
+    padding-inline: 14px;
+  }
+  .pc-home-search-field select {
+    font-size: 16px;
+  }
+  .pc-home-search-submit {
+    margin-left: 14px;
+    padding-inline: 12px;
+    font-size: 16px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-entrances > button {
+    gap: 20px;
+    padding-inline: 22px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-copy {
+    padding-inline: 16px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-price .service-mode-price strong {
+    font-size: 20px;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-cta {
+    padding-inline: 12px;
+    font-size: 14px;
+  }
+}
+@media (min-width: 1101px) and (prefers-reduced-motion: reduce) {
+  body:has(.customer-header) main.market-page .h5-home-service-card {
+    transition: none;
+  }
+  body:has(.customer-header) main.market-page .h5-home-service-card:hover {
+    transform: none;
   }
 }

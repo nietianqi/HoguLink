@@ -1,6 +1,26 @@
 import type { Locale } from '@hogulink/contracts';
 
 const copy = {
+  heroLineOne: ['自分のために、', 'Make time', '为自己，'],
+  heroLineTwo: ['ひと息つく時間を。', 'to unwind.', '留一段放松时光'],
+  heroDescription: [
+    'メニュー、セラピスト、お店から、あなたに合うサービスと時間を。',
+    'Choose a service, therapist or shop. Find the time that suits you.',
+    '选择项目、技师或店铺，查找适合你的服务与时间。',
+  ],
+  chooseModeOptional: ['未選択', 'Choose a location', '请选择'],
+  centralTokyo: ['東京都心 · 全域', 'Central Tokyo', '东京都心 · 全部地区'],
+  findTimes: ['空き時間を探す', 'Find a time', '查找可约'],
+  searchDate: ['日付', 'Date', '日期'],
+  searchDuration: ['施術時間', 'Duration', '时长'],
+  serviceCount: ['{count} 件のメニュー', '{count} services', '{count} 个服务项目'],
+  therapistCount: ['{count} 名のセラピスト', '{count} therapists', '{count} 位技师'],
+  shopCount: ['{count} 店舗', '{count} shops', '{count} 家店铺'],
+  referencePrice: [
+    '表示は参考最低料金です。実際の料金はエリア、日時、担当者の選択後にご確認ください。',
+    'Reference prices only. Your area, time and therapist determine the final quote.',
+    '所示为参考起价，实际费用以所选地区、时间及人员报价为准。',
+  ],
   noReviews: ['まだレビューはありません', 'No reviews yet', '暂无评价'],
   homeSubtitle: ['東京のリラクゼーション予約', 'Relaxation services in Tokyo', '东京放松服务预约'],
   homeHelp: [

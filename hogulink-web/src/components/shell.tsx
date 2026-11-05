@@ -168,7 +168,13 @@ export function Header({ locale }: { locale: Locale }) {
             ].map(({ href, label, Icon, active, desktopOnly }) => (
               <Link
                 key={href}
-                className={desktopOnly ? 'consumer-desktop-nav' : undefined}
+                className={
+                  desktopOnly
+                    ? 'consumer-desktop-nav'
+                    : href === `/${locale}`
+                      ? 'consumer-home-nav'
+                      : undefined
+                }
                 href={(() => {
                   const target = new URL(href, 'http://hogulink.local');
                   if (!href.includes('/account'))

@@ -35,6 +35,7 @@ import { areaName, areas, languageNames, localeMap, locales, t } from '@/lib/i18
 import { sv } from '@/lib/service-mode-i18n';
 import { withServiceMode } from '@/lib/visit-model';
 import { ht } from '@/lib/h5-i18n';
+import { pc } from '@/lib/pc-consumer-i18n';
 import {
   featuredServices,
   featuredTherapists,
@@ -192,10 +193,30 @@ export function HomeRecommendations({
   const offers = serviceChoices(catalog, { ...carry, promotions: true })
     .sort((a, b) => (a.promotionEndsAt ?? 0) - (b.promotionEndsAt ?? 0))
     .slice(0, 6);
-  const featured = featuredServices(choices);
+  const allFeatured = featuredServices(choices);
+  // The desktop first row introduces different menus; all durations stay in the directory.
+  const distinctMenus = allFeatured.filter(
+    (choice, index, rows) =>
+      rows.findIndex((row) => row.offering.name[l] === choice.offering.name[l]) === index,
+  );
+  const featured = desktop
+    ? [...distinctMenus, ...allFeatured.filter((choice) => !distinctMenus.includes(choice))].slice(
+        0,
+        3,
+      )
+    : allFeatured;
   const path = (base: string, changes: Record<string, string> = {}) =>
     `/${l}/${base}?${new URLSearchParams({ ...carry, ...changes })}`;
-  const shops = shopCards(catalog, { ...carry, locale: l }, shopStats).slice(0, 4);
+  const allShops = shopCards(catalog, { ...carry, locale: l }, shopStats);
+  const shops = allShops.slice(0, 4);
+  const browseCounts = {
+    services: pc(l, 'serviceCount').replace('{count}', String(choices.length)),
+    therapists: pc(l, 'therapistCount').replace(
+      '{count}',
+      String(new Set(choices.flatMap((choice) => choice.members.map((member) => member.id))).size),
+    ),
+    shops: pc(l, 'shopCount').replace('{count}', String(allShops.length)),
+  };
   const therapists = featuredTherapists(choices);
   const shopListHref = path('shops');
   const offer = offers[0];
@@ -220,6 +241,25 @@ export function HomeRecommendations({
     const point = await location.request();
     setLocationNote(point ? '' : ht(l, 'locationDenied'));
   }
+  const assurance = (
+    <nav className="h5-home-assurance" aria-label={ht(l, 'bookingGuide')}>
+      {(
+        [
+          [ReceiptText, 'homeClearFees', 'homeClearFeesHelp', `/${l}/guides/booking-and-safety`],
+          [ShieldCheck, 'homeShopCare', 'homeShopCareHelp', `/${l}/guides/booking-and-safety`],
+          [Headphones, 'orderSupport', 'homeSupportHelp', `/${l}/account/support`],
+        ] as const
+      ).map(([Icon, title, help, href]) => (
+        <Link key={title} href={href}>
+          <Icon size={22} aria-hidden="true" />
+          <span>
+            <strong>{ht(l, title)}</strong>
+            <small>{ht(l, help)}</small>
+          </span>
+        </Link>
+      ))}
+    </nav>
+  );
   return (
     <div className={`h5-home-sections${desktop ? ' customer-home-browse' : ''}`}>
       {offer && (
@@ -304,7 +344,16 @@ export function HomeRecommendations({
             }}
           >
             <Icon size={27} strokeWidth={1.7} aria-hidden="true" />
-            <strong>{ht(l, key)}</strong>
+            {desktop ? (
+              <span className="pc-home-browse-label">
+                <strong>{ht(l, key)}</strong>
+                <small>
+                  {browseCounts[value]} <ArrowRight size={15} aria-hidden="true" />
+                </small>
+              </span>
+            ) : (
+              <strong>{ht(l, key)}</strong>
+            )}
           </button>
         ))}
       </div>
@@ -390,7 +439,7 @@ export function HomeRecommendations({
                 {ht(l, 'homeAllServices')}
                 <ChevronRight size={13} />
               </Link>
-              <p>{ht(l, 'total')}</p>
+              {!desktop && <p>{ht(l, 'total')}</p>}
             </div>
             <div className="h5-home-service-list">
               {featured.map(
@@ -411,7 +460,11 @@ export function HomeRecommendations({
                         src={h5ServiceImage(offering, catalog.demo)}
                         alt=""
                         fill
-                        sizes="(max-width:359px) 82px, (max-width:760px) 100px, 100px"
+                        sizes={
+                          desktop
+                            ? '(min-width: 1440px) 424px, 30vw'
+                            : '(max-width:359px) 82px, (max-width:760px) 100px, 100px'
+                        }
                         loading={index < 2 ? 'eager' : 'lazy'}
                       />
                       <small>{ht(l, 'serviceIllustration')}</small>
@@ -420,26 +473,39 @@ export function HomeRecommendations({
                       <div className="h5-home-service-heading">
                         <div className="h5-home-service-title">
                           <h3>{offering.name[l]}</h3>
-                          <span className="h5-home-service-category">
-                            {ht(l, 'homeServiceCategory')}
-                          </span>
+                          {!desktop && (
+                            <span className="h5-home-service-category">
+                              {ht(l, 'homeServiceCategory')}
+                            </span>
+                          )}
                         </div>
-                        <small className="h5-home-service-count">
-                          {ht(
-                            l,
-                            members.length === 1 ? 'homeServiceMember' : 'homeServiceMembers',
-                          ).replace('{count}', String(members.length))}
-                        </small>
+                        {!desktop && (
+                          <small className="h5-home-service-count">
+                            {ht(
+                              l,
+                              members.length === 1 ? 'homeServiceMember' : 'homeServiceMembers',
+                            ).replace('{count}', String(members.length))}
+                          </small>
+                        )}
                       </div>
                       <p className="h5-home-service-shop">
                         <Store size={11} aria-hidden="true" />
                         {store.name[l]}
+                        {desktop && (
+                          <span className="pc-home-service-meta">
+                            {' · '}
+                            {modePrices.length === 1 && <>{sv(l, modePrices[0].mode)} · </>}
+                            {offering.durationMinutes} {t(l, 'minutes')}
+                          </span>
+                        )}
                       </p>
                       <div className="h5-home-service-bottom">
                         <div className="h5-home-service-price">
                           <ModePrices locale={l} prices={modePrices} />
                         </div>
-                        <span className="h5-home-service-cta">{ht(l, 'homeServiceBook')}</span>
+                        <span className="h5-home-service-cta">
+                          {desktop ? ht(l, 'chooseTime') : ht(l, 'homeServiceBook')}
+                        </span>
                       </div>
                     </div>
                   </Link>
@@ -531,23 +597,14 @@ export function HomeRecommendations({
           </section>
         )}
       </div>
-      <nav className="h5-home-assurance" aria-label={ht(l, 'bookingGuide')}>
-        {(
-          [
-            [ReceiptText, 'homeClearFees', 'homeClearFeesHelp', `/${l}/guides/booking-and-safety`],
-            [ShieldCheck, 'homeShopCare', 'homeShopCareHelp', `/${l}/guides/booking-and-safety`],
-            [Headphones, 'orderSupport', 'homeSupportHelp', `/${l}/account/support`],
-          ] as const
-        ).map(([Icon, title, help, href]) => (
-          <Link key={title} href={href}>
-            <Icon size={22} aria-hidden="true" />
-            <span>
-              <strong>{ht(l, title)}</strong>
-              <small>{ht(l, help)}</small>
-            </span>
-          </Link>
-        ))}
-      </nav>
+      {desktop ? (
+        <div className="pc-home-trust-row">
+          <p className="pc-home-price-note">{pc(l, 'referencePrice')}</p>
+          {assurance}
+        </div>
+      ) : (
+        assurance
+      )}
       <Link className="h5-partner-banner" href={`/${l}/onboarding?role=MERCHANT`}>
         <Store size={30} />
         <div>

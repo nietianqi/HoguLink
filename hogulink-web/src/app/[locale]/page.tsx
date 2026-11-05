@@ -16,6 +16,7 @@ import { seo } from '@/lib/seo';
 import { MobileConsumerEntries } from '@/components/consumer-journey';
 import { H5Home } from '@/components/h5-consumer';
 import { DesktopHomeServices } from '@/components/desktop-home-services';
+import { DesktopHomeHero } from '@/components/desktop-home-hero';
 import { ht } from '@/lib/h5-i18n';
 import { visitPreferences } from '@/lib/visit-model';
 import { pc } from '@/lib/pc-consumer-i18n';
@@ -84,6 +85,7 @@ export default async function Home({
   return (
     <main id="main" className="market-page">
       <H5Home locale={l} catalog={catalog} q={q} shopStats={shopStats} />
+      <DesktopHomeHero locale={l} q={q} />
       <section className="hero wrap">
         <div className="hero-copy">
           <span className="eyebrow">

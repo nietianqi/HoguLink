@@ -72,7 +72,7 @@ export function browseListQuery(kind: BrowseKind, raw: Record<string, unknown>) 
     return query;
   }
   const query = directoryQuery(raw);
-  if (raw.filters === 'advanced') {
+  if (raw.filters === 'advanced' || raw.date || raw.maxTotal || raw.acceptance || raw.view) {
     query.filters = 'advanced';
     if (typeof raw.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.date)) query.date = raw.date;
     if (['10000', '15000', '20000'].includes(String(raw.maxTotal)))

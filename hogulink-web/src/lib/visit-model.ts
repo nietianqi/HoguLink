@@ -12,6 +12,11 @@ export function selectedHomeArea(areas: string[], raw: string | null | undefined
   return raw && areas.includes(raw) ? raw : '';
 }
 
+/** An explicit customer choice takes precedence over the provider's initial default. */
+export function selectedNomination(raw: string | null | undefined, fallback?: string) {
+  return raw === 'FREE' || raw === 'NOMINATED' ? raw : fallback === 'FREE' ? 'FREE' : 'NOMINATED';
+}
+
 /** Carry only the public service-mode preference through normal customer navigation. */
 export function withServiceMode(href: string, mode: string | null | undefined) {
   if (mode !== 'IN_STORE' || !href.startsWith('/') || href.startsWith('//')) return href;

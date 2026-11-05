@@ -138,7 +138,7 @@ export default async function Page({
         locale={l}
         name={listing.name[l]}
         store={store}
-        preferences={shopPreferences}
+        preferences={{ ...shopPreferences, ...raw }}
       />
       <div className="detail-columns">
         <div className="detail-main">

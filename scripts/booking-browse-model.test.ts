@@ -16,6 +16,26 @@ import {
 import { chosenServiceMode } from '../hogulink-web/src/lib/service-mode-model';
 import { visitSelection } from '../hogulink-web/src/lib/visit-model';
 
+test('a date search from the PC home keeps advanced list state without an explicit filter flag', () => {
+  const q = browseListQuery('therapists', {
+    mode: 'SCHEDULED',
+    date: '2026-11-06',
+    maxTotal: '10000',
+    area: 'shinjuku',
+    fulfillmentMode: 'IN_STORE',
+    duration: '60',
+    hold: 'must-not-return',
+    start: '1793923200000',
+  });
+  assert.equal(q.date, '2026-11-06');
+  assert.equal(q.filters, 'advanced');
+  assert.equal(q.maxTotal, '10000');
+  assert.equal(q.fulfillmentMode, 'IN_STORE');
+  assert.equal(q.hold, undefined);
+  assert.equal(q.start, undefined);
+  assert.deepEqual(readBrowseList('therapists', JSON.stringify(q)), q);
+});
+
 test('switching dimensions keeps only valid shared preferences, never search or transaction state', () => {
   const raw = {
     area: 'taito',

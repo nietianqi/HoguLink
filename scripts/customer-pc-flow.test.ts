@@ -5,7 +5,11 @@ import {
   customerNextStep,
   customerShowAmounts,
 } from '../hogulink-web/src/lib/customer-order-model';
-import { selectedHomeArea, restoreVisitAddress } from '../hogulink-web/src/lib/visit-model';
+import {
+  selectedHomeArea,
+  selectedNomination,
+  restoreVisitAddress,
+} from '../hogulink-web/src/lib/visit-model';
 import { chosenServiceMode } from '../hogulink-web/src/lib/service-mode-model';
 import { pc } from '../hogulink-web/src/lib/pc-consumer-i18n';
 
@@ -21,6 +25,16 @@ function booking(overrides: Partial<Booking> = {}) {
     ...overrides,
   } as Booking;
 }
+
+test('shop defaults never overwrite an explicit nomination on login return or refresh', () => {
+  assert.equal(selectedNomination('NOMINATED', 'FREE'), 'NOMINATED');
+  assert.equal(selectedNomination('FREE', 'NOMINATED'), 'FREE');
+  for (const raw of [undefined, null, '', 'invalid']) {
+    assert.equal(selectedNomination(raw, 'FREE'), 'FREE');
+    assert.equal(selectedNomination(raw, 'NOMINATED'), 'NOMINATED');
+    assert.equal(selectedNomination(raw), 'NOMINATED');
+  }
+});
 
 test('customer acceptance distinguishes shop response, therapist response and re-arrangement', () => {
   assert.equal(

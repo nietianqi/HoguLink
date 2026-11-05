@@ -109,7 +109,7 @@ export default async function Page({
   const policy = s.bookingRules?.cancellationPolicy ?? catalog.bookingRules?.cancellationPolicy;
   return (
     <main id="main" className="wrap page-section detail-page shop-detail-page storefront-page">
-      <DetailBreadcrumb locale={l} name={s.name[l]} preferences={context.carry} />
+      <DetailBreadcrumb locale={l} name={s.name[l]} preferences={q} fallback="shops" />
       <section className="storefront-hero">
         <ShopArtwork locale={l} name={s.name[l]} profile={profile} demo={catalog.demo} />
         <div className="storefront-identity">

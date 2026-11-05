@@ -470,7 +470,6 @@ export function FavoritesPage({ locale: l }: { locale: Locale }) {
       <WorkspaceNav locale={l} role="CUSTOMER" active="favorites" actor={actor} />
       <div className="quality-content">
         <div className="quality-hero">
-          <span className="quality-eyebrow">YOUR COLLECTION</span>
           <h1>{qt(l, 'favorites')}</h1>
           <FavoriteKinds locale={l} />
           <p>{qt(l, 'rebookHelp')}</p>

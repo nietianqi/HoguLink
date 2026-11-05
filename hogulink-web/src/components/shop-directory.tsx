@@ -38,7 +38,9 @@ export function ShopDirectory({
     browseListHref(l, 'shops', { ...q, ...changes });
   const navigate = (next: Record<string, string>) => {
     setOpen(false);
-    startTransition(() => router.push(browseListHref(l, 'shops', { ...next, shopPage: '1' })));
+    startTransition(() =>
+      router.push(browseListHref(l, 'shops', { ...next, search, shopPage: '1' })),
+    );
   };
   return (
     <main

@@ -1,11 +1,13 @@
 import Link from 'next/link';
-import { ArrowLeft, Check, ShieldCheck, ReceiptText, MapPin } from 'lucide-react';
+import { Check, ShieldCheck, ReceiptText, MapPin } from 'lucide-react';
 import type { Locale } from '@hogulink/contracts';
 import type { PublicStore, BookingRules } from '@/lib/api';
 import { t, areaName } from '@/lib/i18n';
 import { vt, acceptanceHelp, policyText } from '@/lib/visit-i18n';
 import { visitPreferences } from '@/lib/visit-model';
 import { sv } from '@/lib/service-mode-i18n';
+import type { BrowseKind } from '@/lib/booking-browse-model';
+import { BrowseReturnLink } from './booking-browse';
 export function VisitSteps({
   locale: l,
   step,
@@ -39,13 +41,19 @@ export function DetailBreadcrumb({
   name,
   store,
   preferences = {},
+  fallback = 'therapists',
 }: {
   locale: Locale;
   name: string;
   store?: PublicStore;
-  preferences?: Record<string, string>;
+  preferences?: Record<string, string | undefined>;
+  fallback?: BrowseKind;
 }) {
-  const browse = new URLSearchParams(visitPreferences(preferences)).toString();
+  const query = Object.fromEntries(
+    Object.entries(preferences).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
   const shop = new URLSearchParams({
     ...visitPreferences(preferences),
     ...(preferences.offering ? { offering: preferences.offering } : {}),
@@ -55,10 +63,7 @@ export function DetailBreadcrumb({
       className="detail-breadcrumb"
       aria-label={l === 'en' ? 'Breadcrumb' : l === 'ja' ? 'パンくず' : '面包屑导航'}
     >
-      <Link href={`/${l}/therapists${browse ? `?${browse}` : ''}`}>
-        <ArrowLeft size={14} />
-        {t(l, 'explore')}
-      </Link>
+      <BrowseReturnLink locale={l} fallback={fallback} q={query} />
       <span>/</span>
       {store && (
         <>

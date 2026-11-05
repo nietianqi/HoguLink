@@ -620,7 +620,6 @@ export function DeviceHistory({ locale: l, catalog }: { locale: Locale; catalog:
   return (
     <main id="main" className="wrap consumer-page">
       <div className="consumer-intro">
-        <span className="quality-eyebrow">YOUR RECENT VISITS</span>
         <h1>{ut(l, 'history')}</h1>
         <p>{ut(l, 'historyHelp')}</p>
       </div>
@@ -637,7 +636,7 @@ export function DeviceHistory({ locale: l, catalog }: { locale: Locale; catalog:
         <div className="quality-empty">
           <History size={30} />
           <p>{ut(l, 'emptyHistory')}</p>
-          <Link className="quality-primary" href={`/${l}`}>
+          <Link className="quality-primary" href={`/${l}/therapists`}>
             {ut(l, 'browse')}
           </Link>
         </div>

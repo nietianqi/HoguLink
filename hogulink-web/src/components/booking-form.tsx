@@ -52,6 +52,7 @@ import {
   visitSelection,
   withServiceMode,
   selectedHomeArea,
+  selectedNomination,
 } from '@/lib/visit-model';
 import { japanDay } from '@/lib/desktop-model';
 import { PriceLines } from './catalog';
@@ -164,7 +165,7 @@ function useVisit(props: PlannerProps) {
         }
       : store.bookingRules;
   const [nomination, setNomination] = useState(
-    query.get('nomination') === 'FREE' || props.defaultNomination === 'FREE' ? 'FREE' : 'NOMINATED',
+    selectedNomination(query.get('nomination'), props.defaultNomination),
   );
   const [mode, setMode] = useState<'INSTANT' | 'SCHEDULED'>(
     !inStore && query.get('mode') === 'INSTANT' && store.acceptanceMode !== 'MANUAL'

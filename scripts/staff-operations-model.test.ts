@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { travelRecordOpensAt, type Booking } from '@hogulink/contracts';
+import { canTerminateStaffTask, travelRecordOpensAt, type Booking } from '@hogulink/contracts';
+import { serverClockNow } from '../hogulink-web/src/lib/server-clock';
 import {
   staffCanMessage,
   staffTravelReady,
@@ -24,6 +25,42 @@ const task = (changes: Partial<Booking> = {}) =>
     deadline: now + 30 * 60000,
     ...changes,
   }) as Booking;
+
+test('safety termination is available only for the acknowledged live task', () => {
+  for (const status of ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE'] as const)
+    assert.equal(canTerminateStaffTask(task({ status })), true);
+  for (const status of [
+    'REQUESTED',
+    'ACCEPTED',
+    'AWAITING_COMPLETION',
+    'COMPLETED',
+    'CANCELLED',
+  ] as const)
+    assert.equal(canTerminateStaffTask(task({ status })), false);
+  for (const staffTaskStatus of [
+    'OFFERED',
+    'DECLINED',
+    'WITHDRAWN',
+    'EXPIRED',
+    'NOT_SENT',
+  ] as const)
+    assert.equal(canTerminateStaffTask(task({ staffTaskStatus })), false);
+  assert.equal(canTerminateStaffTask(task({ replacementConsent: 'PENDING' })), false);
+  assert.equal(canTerminateStaffTask(task({ completedAt: now })), false);
+});
+
+test('travel and offer clocks use the server anchor when the device clock is slow or changes', () => {
+  const b = task(),
+    opens = b.quote.startAt - 90 * 60000;
+  const anchor = { serverNow: opens - 1000, sampledAt: 500 };
+  assert.equal(staffTravelReady(b, serverClockNow(anchor, 1499)), false);
+  assert.equal(staffTravelReady(b, serverClockNow(anchor, 1500)), true);
+  // A two-minute-slow Date.now would still forbid travel; it is not a clock input anymore.
+  assert.equal(staffTravelReady(b, opens - 120000), false);
+  const afterDeviceClockChange = serverClockNow(anchor, 2500);
+  assert.equal(afterDeviceClockChange, opens + 1000);
+  assert.equal(serverClockNow(anchor, 499), opens - 1000);
+});
 test('confirmed in-store tasks can use messages without a customer home address', () => {
   const home = task(),
     venue = task({ quote: { ...home.quote, fulfillmentMode: 'IN_STORE' } });

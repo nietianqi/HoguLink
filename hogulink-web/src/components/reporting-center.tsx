@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { sv } from '@/lib/service-mode-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -184,7 +185,7 @@ export function ReportingCenter({
       fingerprint = JSON.stringify(body),
       n = generation.current;
     if (retry.current.body !== fingerprint)
-      retry.current = { body: fingerprint, key: crypto.randomUUID() };
+      retry.current = { body: fingerprint, key: newRequestKey() };
     lock.current = true;
     setBusy(true);
     setError('');

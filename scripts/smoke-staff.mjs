@@ -45,6 +45,19 @@ check(
   s.listing.staffId === 'staff-aoi' && !('pspAccount' in s.store) && !('totals' in s),
   'own private workspace',
 );
+check(Number.isSafeInteger(s.serverNow), 'workspace supplies the authoritative clock');
+function privateTask(view) {
+  for (const field of [
+    'capturedAmount',
+    'refundedAmount',
+    'platformFee',
+    'captureFeeRateBps',
+    'paymentId',
+    'holdId',
+    'customerId',
+  ])
+    check(!(field in view), `staff transport omits ${field}`);
+}
 const available = await call(
   null,
   'public/staff-listings/listing-aoi/availability?offeringId=store-nagi-60',
@@ -198,6 +211,8 @@ async function book(mode, startAt, key) {
 }
 let b = await book('INSTANT', instant.slots[0], 'staff-smoke-instant');
 check(!(await call(staff, `bookings/${b.id}`)).address, 'address hidden before ack');
+privateTask(await call(staff, `bookings/${b.id}`));
+for (const view of await call(staff, 'bookings')) privateTask(view);
 await call(mio, `staff/tasks/${b.id}/ack`, 'POST', { version: b.version, arrivalMinutes: 30 }, 404);
 await call(
   staff,
@@ -210,6 +225,7 @@ b = await call(staff, `staff/tasks/${b.id}/ack`, 'POST', {
   version: b.version,
   arrivalMinutes: 30,
 });
+privateTask(b);
 check(
   b.arrivalMinutes === 30 && b.address.room === 'STAFF-101',
   'chosen ETA and confirmed address',
@@ -240,6 +256,17 @@ b = await call(staff, `bookings/${b.id}`, 'GET');
 check(
   b.status === 'COMPLETED' && b.paymentStatus === 'PAID' && !b.address,
   'complete captures demo payment and hides address',
+);
+privateTask(b);
+const paid = await call(customer, `bookings/${b.id}`);
+await call(owner, `merchant/bookings/${b.id}/refunds`, 'POST', {
+  version: paid.version,
+  amount: 500,
+});
+privateTask(await call(staff, `bookings/${b.id}`));
+check(
+  (await call(customer, `bookings/${b.id}`)).refundedAmount === 500,
+  'customer retains refund facts',
 );
 await call(
   staff,

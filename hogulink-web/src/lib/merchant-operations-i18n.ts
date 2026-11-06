@@ -85,6 +85,7 @@ const words = {
   ],
   safetyOrder: ['関連予約を確認', 'Open related booking', '查看关联预约'],
   safetyContact: ['安全窓口と連携', 'Follow up with the safety desk', '进入安全跟进'],
+  safetyPending: ['安全対応が必要な予約', 'Bookings needing safety follow-up', '安全待跟进预约'],
   selectedServices: ['担当サービス', 'Assigned services', '可服务项目'],
 } as const;
 export type MerchantOperationsKey = keyof typeof words;

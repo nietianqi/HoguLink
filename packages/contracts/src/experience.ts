@@ -23,6 +23,16 @@ export type CustomerOverview = {
   /** All owned visits for which the customer can still submit or revise a review. */
   reviewBookingIds: string[];
   focus?: CustomerOverview['recent'][number] & { requiresConsent: boolean };
+  /** Owner-scoped, address-free PC summaries, independent of the three recent cards. */
+  desktop: {
+    actions: (CustomerOverview['recent'][number] & {
+      kind: 'consent' | 'completion' | 'payment' | 'review';
+      deadline?: number;
+    })[];
+    upcoming?: CustomerOverview['recent'][number];
+    recentCompleted: CustomerOverview['recent'][number][];
+    savedPlaces: number;
+  };
   recent: {
     id: string;
     status: BookingStatus;

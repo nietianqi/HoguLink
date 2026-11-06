@@ -42,6 +42,8 @@ import { useSession } from './booking-form';
 import { CustomerSignIn } from './customer-signin';
 import { InboxUnreadBadge } from './inbox-badge';
 import { H5PortraitThumbnail } from './h5-overlays';
+import { PcAccountHub } from './pc-account-hub';
+import { usePcLayout } from '@/lib/use-pc-layout';
 
 function BookingIdentity({ locale: l, booking: b }: { locale: Locale; booking: AccountBooking }) {
   return (
@@ -131,6 +133,7 @@ function RecentBooking({
 }
 
 export function CustomerHub({ locale: l }: { locale: Locale }) {
+  const isPc = usePcLayout();
   const { actor, loading } = useSession();
   const signed = actor?.role === 'CUSTOMER';
   const [snapshot, setSnapshot] = useState<{ owner: string; value: CustomerOverview }>();
@@ -195,6 +198,20 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
     return () => clearTimeout(timer);
   }, [overview, load]);
   const focus = overview?.focus;
+  useEffect(() => {
+    if (!isPc || !overview) return;
+    const deadline = Math.min(
+      ...(overview.desktop?.actions ?? [])
+        .map((x) => x.deadline ?? Infinity)
+        .filter((x) => x > overview.now),
+    );
+    if (!Number.isFinite(deadline)) return;
+    const timer = setTimeout(
+      () => void load(),
+      Math.min(2147483647, Math.max(1, deadline - overview.now + 100)),
+    );
+    return () => clearTimeout(timer);
+  }, [isPc, overview, load]);
   const action = focus && accountBookingAction(focus);
   const recent = overview ? accountRecent(overview) : [];
   const resume = overview?.resumeCheckout;
@@ -204,6 +221,18 @@ export function CustomerHub({ locale: l }: { locale: Locale }) {
     { key: 'completed', label: at(l, 'completed'), Icon: CheckCircle2 },
     { key: 'closed', label: at(l, 'closed'), Icon: XCircle },
   ] as const;
+  if (isPc)
+    return (
+      <PcAccountHub
+        locale={l}
+        actor={actor}
+        loading={loading}
+        overview={overview}
+        busy={busy}
+        error={error}
+        onRetry={() => void load()}
+      />
+    );
   return (
     <main id="main" className="wrap consumer-page consumer-account account-dashboard h5-surface">
       <header className="account-dashboard-header">

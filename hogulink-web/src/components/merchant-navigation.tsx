@@ -17,6 +17,7 @@ import {
   Settings2,
   LifeBuoy,
   MessagesSquare,
+  Star,
 } from 'lucide-react';
 const icons = {
   overview: LayoutDashboard,
@@ -79,6 +80,13 @@ export function MerchantNavigation({
           );
         })}
         <Link
+          href={`/${l}/merchant/quality`}
+          aria-current={selected === 'quality' ? 'page' : undefined}
+        >
+          <Star size={18} />
+          {st(l, 'reviews')}
+        </Link>
+        <Link
           href={`/${l}/merchant/support`}
           aria-current={selected === 'support' ? 'page' : undefined}
         >
@@ -101,6 +109,7 @@ export function MerchantNavigation({
                 {st(l, k)}
               </Link>
             ))}
+          <Link href={`/${l}/merchant/quality`}>{st(l, 'reviews')}</Link>
           <Link href={`/${l}/merchant/support`}>{st(l, 'support')}</Link>
         </nav>
       </details>

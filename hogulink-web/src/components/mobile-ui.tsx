@@ -57,12 +57,9 @@ export function MobileSheet({
   useEffect(() => {
     const dialog = ref.current;
     if (!mounted || !open || !dialog) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     dialog.showModal();
     return () => {
       dialog.close();
-      document.body.style.overflow = previous;
     };
   }, [open, mounted]);
   if (!mounted) return null;

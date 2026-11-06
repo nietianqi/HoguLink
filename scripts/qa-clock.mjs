@@ -63,9 +63,9 @@ export async function fixtureCall(cookie, path, body, expected = 200, key = rand
   return value;
 }
 export async function confirmVisit(customer, b) {
+  b = await fixtureCall(customer, `bookings/${b.id}`);
   assert.equal(b.status, 'AWAITING_COMPLETION');
   assert.equal(b.capturedAmount, 0, 'Therapist cannot capture');
-  b = await fixtureCall(customer, `bookings/${b.id}`);
   if (b.completion?.status === 'PAYMENT_REVIEW')
     b = await fixtureCall(customer, `bookings/${b.id}/completion`, {
       version: b.version,

@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { mo } from '@/lib/merchant-operations-i18n';
 import { StaffLanguage } from './staff-navigation';
 import { sv } from '@/lib/service-mode-i18n';
@@ -316,7 +317,7 @@ export function CareCenter({
         const body = { ...(bookingId ? { bookingId } : {}), category, subject, description };
         const fingerprint = JSON.stringify(body);
         if (creationRetry.current.body !== fingerprint)
-          creationRetry.current = { body: fingerprint, key: crypto.randomUUID() };
+          creationRetry.current = { body: fingerprint, key: newRequestKey() };
         const ticket =
           role === 'STAFF'
             ? await api<SupportTicket>('staff/customer-feedback', { bookingId, text: description })

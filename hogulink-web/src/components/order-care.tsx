@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, LifeBuoy, ReceiptText, RefreshCw } from 'lucide-react';
@@ -294,7 +295,7 @@ export function OrderCarePanel({
               const body = { bookingVersion: b.version, amount: Number(amount), reason, locale: l },
                 json = JSON.stringify(body);
               if (retry.current.body !== json)
-                retry.current = { body: json, key: crypto.randomUUID() };
+                retry.current = { body: json, key: newRequestKey() };
               try {
                 const r = await api<RefundRequestView>(
                   `customer/bookings/${b.id}/refund-requests`,
@@ -457,7 +458,7 @@ export function RefundCasePanel({
             : text,
       },
       json = JSON.stringify(body);
-    if (retry.current.body !== json) retry.current = { body: json, key: crypto.randomUUID() };
+    if (retry.current.body !== json) retry.current = { body: json, key: newRequestKey() };
     try {
       await api(`refund-requests/${r.id}/decision`, body, 'POST', retry.current.key);
       setConfirm(null);

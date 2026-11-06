@@ -140,7 +140,10 @@ test('HTTP exception workflows use authenticated parties, server clocks and atom
         const result = await action('REPORT', staffCookie);
         assert.equal(result.status, 200);
         b = result.body;
-        assert.equal(b.capturedAmount, 0);
+        assert.equal('capturedAmount' in b, false);
+        const customerView = await request(`bookings/${b.id}`, customer);
+        assert.equal(customerView.status, 200);
+        assert.equal(customerView.body.capturedAmount, 0);
         assert.equal((await action('CONFIRM', staffCookie)).status, 403);
       },
     );

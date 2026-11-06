@@ -3,6 +3,40 @@ import assert from 'node:assert/strict';
 import { api, ClientError } from '../hogulink-web/src/lib/api';
 import { flowDraftPrefix } from '../hogulink-web/src/lib/customer-flow-model';
 import { safeAccountReturn, ca } from '../hogulink-web/src/lib/customer-auth-i18n';
+import { newRequestKey } from '../hogulink-web/src/lib/request-key';
+
+test('HTTP previews can create operation IDs without crypto.randomUUID', () => {
+  const source = {
+    getRandomValues(values: Uint8Array) {
+      assert.equal(this, source);
+      values.set(Array.from({ length: 16 }, (_, i) => i));
+      return values;
+    },
+  };
+  assert.equal(newRequestKey(source), '00010203-0405-4607-8809-0a0b0c0d0e0f');
+});
+test('secure contexts keep their native UUID method and receiver', () => {
+  const source = {
+    randomUUID() {
+      assert.equal(this, source);
+      return 'native-operation-id';
+    },
+    getRandomValues(): Uint8Array {
+      throw new Error('Native UUID should be used');
+    },
+  };
+  assert.equal(newRequestKey(source), 'native-operation-id');
+});
+test('HTTP operation IDs stay unique and preserve UUID version and variant', () => {
+  const source = { getRandomValues: (values: Uint8Array) => crypto.getRandomValues(values) };
+  const keys = Array.from({ length: 1000 }, () => newRequestKey(source));
+  assert.equal(new Set(keys).size, keys.length);
+  assert.ok(
+    keys.every((key) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(key),
+    ),
+  );
+});
 test('account return URLs reject external origins and recursive authentication routes', () => {
   for (const value of [
     'https://evil.example',

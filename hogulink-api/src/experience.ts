@@ -9,6 +9,7 @@ import {
   type Booking,
   type CustomerExperience,
   type CustomerOverview,
+  type AddressBook,
   type Hold,
   type Quote,
   type SupportTicket,
@@ -245,7 +246,74 @@ export class ExperienceService {
           requiresConsent: current.replacementConsent === 'PENDING' && !!current.proposedListingId,
         };
       }
+      const terminal = new Set(['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED']);
+      const actions: CustomerOverview['desktop']['actions'] = [];
+      for (const b of bookings) {
+        const kind = terminal.has(b.status)
+          ? actionable.some((x) => x.id === b.id)
+            ? 'review'
+            : undefined
+          : b.replacementConsent === 'PENDING' && b.proposedListingId
+            ? 'consent'
+            : b.status === 'AWAITING_COMPLETION' && b.completion?.status === 'PENDING'
+              ? 'completion'
+              : b.status === 'AWAITING_COMPLETION' && b.completion?.status === 'PAYMENT_REVIEW'
+                ? 'payment'
+                : b.paymentStatus === 'FAILED' &&
+                    b.paymentActionBy &&
+                    b.paymentActionBy > this.now() &&
+                    b.startedAt === undefined
+                  ? 'payment'
+                  : undefined;
+        if (kind)
+          actions.push({
+            ...(await summary(b)),
+            kind,
+            deadline:
+              kind === 'consent'
+                ? b.replacementDeadline
+                : kind === 'completion'
+                  ? b.completion?.confirmBy
+                  : kind === 'payment'
+                    ? b.paymentActionBy
+                    : undefined,
+          });
+      }
+      const priority = { consent: 0, completion: 1, payment: 2, review: 3 };
+      actions.sort(
+        (a, b) =>
+          priority[a.kind] - priority[b.kind] ||
+          (a.deadline ?? a.startAt) - (b.deadline ?? b.startAt) ||
+          a.id.localeCompare(b.id),
+      );
+      const upcoming = bookings
+        .filter(
+          (b) =>
+            !terminal.has(b.status) &&
+            b.status !== 'AWAITING_COMPLETION' &&
+            (b.quote.endAt > this.now() ||
+              ['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status)),
+        )
+        .sort((a, b) => a.quote.startAt - b.quote.startAt || a.id.localeCompare(b.id))[0];
+      const completed = bookings
+        .filter((b) => b.status === 'COMPLETED')
+        .sort(
+          (a, b) =>
+            (b.completedAt ?? b.quote.endAt) - (a.completedAt ?? a.quote.endAt) ||
+            a.id.localeCompare(b.id),
+        )
+        .slice(0, 3);
+      const addressBook = await tx.get<AddressBook & { id: string }>(
+        'addressBooks',
+        createHash('sha256').update(JSON.stringify(actor.id)).digest('hex'),
+      );
       return {
+        desktop: {
+          actions,
+          upcoming: upcoming ? await summary(upcoming) : undefined,
+          recentCompleted: await Promise.all(completed.map(summary)),
+          savedPlaces: addressBook?.items.length ?? 0,
+        },
         counts: {
           checkout: resumable.length,
           completed: bookings.filter((b) => b.status === 'COMPLETED').length,

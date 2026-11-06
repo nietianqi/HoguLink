@@ -1,0 +1,1846 @@
+[
+  {
+    "path": "hogulink-web/src/components/pc-account-hub.tsx",
+    "hash": "1300F146B85FAD161EFF1BCFC4A6C5947E1C8311E1EC0E3F559EA1A958867044"
+  },
+  {
+    "path": "hogulink-web/src/components/pc-account-settings.tsx",
+    "hash": "383E9F368803D3EE65095C91899FBE326BA5933D3BEEEE71715A632373B2A433"
+  },
+  {
+    "path": "hogulink-web/src/components/pc-customer-booking-rows.tsx",
+    "hash": "8E3E36A37C2E3755CB3859C9C9CA55D3D4FE8140B3B485C7151C2FBCBF72A216"
+  },
+  {
+    "path": "hogulink-web/src/lib/pc-account-i18n.ts",
+    "hash": "67B775427A1FBC31FF68C6957D80F3BBA755439626264924D58080715EFD6D6F"
+  },
+  {
+    "path": "hogulink-web/src/lib/request-key.ts",
+    "hash": "D4782B1410731BD0CD4E25362AC4DB3724CBEB65B5DB49ADB3FB48132C1B3FCE"
+  },
+  {
+    "path": "hogulink-web/src/lib/use-pc-layout.ts",
+    "hash": "6B4A31ED001B5E5F93845A4C46C468E6222E170739CDD5D284BFF6CCA0827065"
+  },
+  {
+    "path": "hogulink-api/package.json",
+    "hash": "30D33EA1A4C3AC777BAEB6E41C1BF70A9F06643575800827DFC827590057BA41"
+  },
+  {
+    "path": "hogulink-api/src/addresses.ts",
+    "hash": "57E8836B0D0526EF68A11F194EDD48381B1410D1414AF88949B2B20AA23B25B6"
+  },
+  {
+    "path": "hogulink-api/src/admin-access.ts",
+    "hash": "B4C53F0944E182A2C4655CE64978FE8E765FA0B0DCF96350AD6F76FE3098B37B"
+  },
+  {
+    "path": "hogulink-api/src/admin-customers.ts",
+    "hash": "72236BF9446B623A21D3E0DD0B0E40EA43AC9F4D8D07EA79BB6FB6340E0A2012"
+  },
+  {
+    "path": "hogulink-api/src/admin.ts",
+    "hash": "F287245CD8F9C51D7548311B05EAEB9739804E7268CCDE2AE239B48B22E0B5D9"
+  },
+  {
+    "path": "hogulink-api/src/background.ts",
+    "hash": "302DAC45C9C69BDDB4EC3F9622943166D4A1CC5F56298F518D45E7456928C46E"
+  },
+  {
+    "path": "hogulink-api/src/backup-worker.ts",
+    "hash": "335004D1EEDFAF7AC5E3DAE5444E4D071DC28572039C9B52782A653D1D52CB9B"
+  },
+  {
+    "path": "hogulink-api/src/backup.ts",
+    "hash": "A5129F257ADB2A14506EB2B26DEADF504D7E6C5565FCE138277EF6FBBD652A28"
+  },
+  {
+    "path": "hogulink-api/src/booking-rules.ts",
+    "hash": "F8EE7D3D8701DC8FB62782932712596272236D989D4975A92695CB2EF210FB25"
+  },
+  {
+    "path": "hogulink-api/src/care.ts",
+    "hash": "8FF339B9EAEAC9C58F44F3339EAD8BAB1110E504DF730728E68B85E30A9AAFC2"
+  },
+  {
+    "path": "hogulink-api/src/community.ts",
+    "hash": "072895546E2A90137DC04876013939D80EAC79018A4D3C5EE51FA72103E39D0E"
+  },
+  {
+    "path": "hogulink-api/src/completion.ts",
+    "hash": "2B5089D66E98442E17D30928EB8836807AEAF9B3197A442A50B0970E1FB1373B"
+  },
+  {
+    "path": "hogulink-api/src/config.ts",
+    "hash": "7CFB30A11F741C2F0AF4641CE8BC955ADFD9647573D1B1EF93F46D7D6E53DF20"
+  },
+  {
+    "path": "hogulink-api/src/content-review.ts",
+    "hash": "9721BB303E9EDB487E23E304804E9D9DFDD2AEE875DBD5F5B8544051C05754CF"
+  },
+  {
+    "path": "hogulink-api/src/controller.ts",
+    "hash": "A557E19F056857CEAC9E1B463E36D1CA1B3CB6CE402E787EA2DA04F36EC910E4"
+  },
+  {
+    "path": "hogulink-api/src/coordination.ts",
+    "hash": "C22CB39B468AA31A21A5B15F7A5111DC046EA6EB3566C74B7AF17F3FA57BA82E"
+  },
+  {
+    "path": "hogulink-api/src/customer-auth.ts",
+    "hash": "24AB1028C2A71A22F70E70612B955C840EB2002E4B5BFEE507BFD6B015102283"
+  },
+  {
+    "path": "hogulink-api/src/discovery.ts",
+    "hash": "5637D55B0069DB6108CD8564B5D0895128A4DE3A2030D565C83F9AE8EFE413D7"
+  },
+  {
+    "path": "hogulink-api/src/employees.ts",
+    "hash": "D652E5A17B803965AA9D7E24B2A200904E58656E96D688D71F7025FDD700B513"
+  },
+  {
+    "path": "hogulink-api/src/engagement.ts",
+    "hash": "57590D03C93A37B01658E3D5C06849CA652F1BDF3261DBDCE13BDDFB7A44AECA"
+  },
+  {
+    "path": "hogulink-api/src/engine.ts",
+    "hash": "DD707EA468E193FFE25D0349DE072000E3E705FB733B27A312A5259724389366"
+  },
+  {
+    "path": "hogulink-api/src/entrypoint.ts",
+    "hash": "4F22BAA2CB38810E15447E19A18E6CC3BEEF1D0B7693B02BCDDD4CFE8A085517"
+  },
+  {
+    "path": "hogulink-api/src/errors.ts",
+    "hash": "1C05D0E8A6A76100124419315525A24E565F7A98251C3BC7BC704D44374D8184"
+  },
+  {
+    "path": "hogulink-api/src/evidence-storage.ts",
+    "hash": "CBB92A11E99E01523D8443B5CF6DE7E0DB19E9534CAAB9B8D23396D0E49BFCFF"
+  },
+  {
+    "path": "hogulink-api/src/experience.ts",
+    "hash": "65136BF0BD11B6E81D7BF3467A2B659438C74F4CD3DB8FA84E14294C5C031B2C"
+  },
+  {
+    "path": "hogulink-api/src/finance.ts",
+    "hash": "338BB5B02CD708010BD92F618F6965A177E390976A8A817010D3A4C03C8B8AFD"
+  },
+  {
+    "path": "hogulink-api/src/fulfillment.ts",
+    "hash": "76F98384ED3105B6F1FE43BC0E6F1DD072F21FBB67A002BDD771915103B833A8"
+  },
+  {
+    "path": "hogulink-api/src/governance.ts",
+    "hash": "5B4B99A32E4A06ECA4D402BBEAC45B4514A049419778FC9F26C75D3FC1F1E5B9"
+  },
+  {
+    "path": "hogulink-api/src/in-store.ts",
+    "hash": "2AD52A762CAB57A310098C80FF4075C91703E6A019C7F15CF9C223833F057366"
+  },
+  {
+    "path": "hogulink-api/src/invoicing.ts",
+    "hash": "7605611243C6CE16C62A25712416A874B9E61B127873172BBD79C3EBCA767088"
+  },
+  {
+    "path": "hogulink-api/src/main.ts",
+    "hash": "3BCF75822DDF12B9B07B1D818066D45B35AE64C09A78D4336E575C4B1F738A15"
+  },
+  {
+    "path": "hogulink-api/src/maintenance.ts",
+    "hash": "DCB7AC4B363D68611FBACC0567CA1D2CB948A12F613085812FB4CE5DAE42A557"
+  },
+  {
+    "path": "hogulink-api/src/media.ts",
+    "hash": "918F3DF94208EC122B82DA773B7A8F2419587684A0BBA8FA1E8B61A25D5B748D"
+  },
+  {
+    "path": "hogulink-api/src/merchant-services.ts",
+    "hash": "529740775B4FC1F50D7E79B6E4490F51E693EE2CB4DD117EA2F93E94C9B8F621"
+  },
+  {
+    "path": "hogulink-api/src/merchant.ts",
+    "hash": "F878494A76CB1289715600C66E33526BDAB25F2D9D470435D2247A565420051D"
+  },
+  {
+    "path": "hogulink-api/src/mobile.ts",
+    "hash": "63525C8CFCD98A5427B942FECB3B26ED95BA5586CA3D4D2AE4883D2D67AA1DF5"
+  },
+  {
+    "path": "hogulink-api/src/mp4.ts",
+    "hash": "50FF5B0774BB3CDBF87F0CA4D1817ED594378CB6CC49FC45446A72150777E126"
+  },
+  {
+    "path": "hogulink-api/src/notifications.ts",
+    "hash": "241D733916FC0B16F66689BC9C557788F2B9A126ED378D346A5D9D4A725D08A6"
+  },
+  {
+    "path": "hogulink-api/src/onboarding.ts",
+    "hash": "E43C9DB62C8FF26C0BA5EDE37C9313E7C521922B7596EC6F0166C2921E919F58"
+  },
+  {
+    "path": "hogulink-api/src/promotion-history.ts",
+    "hash": "03CAAE99FF33931D2DFC404F28F30010630500596E11F0B47DE9AA24BA137F3E"
+  },
+  {
+    "path": "hogulink-api/src/public-catalog.ts",
+    "hash": "2C3AE7C5DEA905B19B90760D92CB0A2D9D7946F9BD3F2BC07EEE931CF3DF1150"
+  },
+  {
+    "path": "hogulink-api/src/quality.ts",
+    "hash": "59C93D103C6A1EEA0E090DF07E5F6A8A65E1736BC03972CC652AA35C1707B236"
+  },
+  {
+    "path": "hogulink-api/src/rate-limit.ts",
+    "hash": "3340BEAA3B3CD39D1A18464A8F349EBC2CD605D689927AEA0F8DFE97F967267F"
+  },
+  {
+    "path": "hogulink-api/src/record-codec.ts",
+    "hash": "3D3FE5D0756C7C9AAD6F5BEF444ABC0596280FDBDBBCABC8615A7B3254E16A11"
+  },
+  {
+    "path": "hogulink-api/src/refund-requests.ts",
+    "hash": "0B02162493FE7ABA0DD04A47E34D6006A3D141424E832C0EDBAA1106047B55AD"
+  },
+  {
+    "path": "hogulink-api/src/reporting.ts",
+    "hash": "0FFC72860BE0EC1D77D351B7C5991966F8293E4AD1174A69C71D88F3EED03616"
+  },
+  {
+    "path": "hogulink-api/src/repository.ts",
+    "hash": "F813E1949F50BFF869E2EBB1FD12C9DB86DF737970130983895C83316F9CB18B"
+  },
+  {
+    "path": "hogulink-api/src/secrets.ts",
+    "hash": "8284CB14E3F04BC0705986E97E07819C814FA0EF9ED5A09C3058B13500099E64"
+  },
+  {
+    "path": "hogulink-api/src/seed.ts",
+    "hash": "61AB05A47D808C11F9EB7FC51872B236B03146E70D0853EE2EA202A4724A9643"
+  },
+  {
+    "path": "hogulink-api/src/smtp-email.ts",
+    "hash": "1CFFBB0DE4811CCBE2ADE6A4B47AD3AAAF18BF0CD0C9E8501CBF981985858088"
+  },
+  {
+    "path": "hogulink-api/src/smtp-verify.ts",
+    "hash": "97F432925382F2A11CC5F3B474AD04651C60AB4F58D7258FBF685975F445E0E7"
+  },
+  {
+    "path": "hogulink-api/src/staff-access.ts",
+    "hash": "94D49FFD302EEBA7C48744D260F4A521FDCD66DD6F0A66137D53E6D00177CC9C"
+  },
+  {
+    "path": "hogulink-api/src/staff.ts",
+    "hash": "D7EFD7349211FC1B8FD9C05CF43FF0C360326DE36536DAC703B502BB8F73BE06"
+  },
+  {
+    "path": "hogulink-api/src/storefront.ts",
+    "hash": "9B9A27BF385EF53687638766A1E1E80F85D8C1E22EFFA6A61FBD95F677D808FE"
+  },
+  {
+    "path": "hogulink-api/src/subscription.ts",
+    "hash": "45D1C5DEC64C632EB0DEDC8B96DAE980FB6F51E7C894BFCFF7962F65C9B549C6"
+  },
+  {
+    "path": "hogulink-api/src/ticket-handling.ts",
+    "hash": "84B7BA50C6BE252D027BBA3C8A48D8183A59B02210BD77535687FFD02763B1D8"
+  },
+  {
+    "path": "hogulink-api/src/totp.ts",
+    "hash": "682C55E0293B24ECEA086A46D0417D69BDF868BBCFD49B2249F14499F679949C"
+  },
+  {
+    "path": "hogulink-api/src/venues.ts",
+    "hash": "ED3B5A0C9C72BE8BE38B8DD4CC0C9D0BA25013C8CEAA2EF6195E795118D71D9B"
+  },
+  {
+    "path": "hogulink-api/src/worker.ts",
+    "hash": "35D6F73F61BC620C9A0200DCB166B94C5F52879E0A4A64BD31283B34DAFD0CCD"
+  },
+  {
+    "path": "hogulink-api/test/acceptance.test.ts",
+    "hash": "D42DA3B1D1C54508AC7B13F2BEB1D9A6DD0E6D179005C3A8F361D65890CA6F67"
+  },
+  {
+    "path": "hogulink-api/test/admin-operations.test.ts",
+    "hash": "48C1A9DA0F632C0B1A0503A0DF95D19F3000DAEF5F9ADE5B0679ACB43F766D22"
+  },
+  {
+    "path": "hogulink-api/test/admin.test.ts",
+    "hash": "D1A6C59CE780969E2D9E9858BCB63B4BEA8C7AEBA4BEC8EE0010DE937C7A9098"
+  },
+  {
+    "path": "hogulink-api/test/area-travel.test.ts",
+    "hash": "E190ABB2B95062F74E2C145B4CFC510E73FDF46C5A369C31E43430D749C5388B"
+  },
+  {
+    "path": "hogulink-api/test/booking-rules.test.ts",
+    "hash": "74A2F2029491F557DAF2A0F4BF56DE4448B1F957EA2E6ECC506C97CAFE0F487D"
+  },
+  {
+    "path": "hogulink-api/test/booking.test.ts",
+    "hash": "25CD9779D930D36644F182B86C8C4368FC790AEF747282B6B5031DFF461F80F4"
+  },
+  {
+    "path": "hogulink-api/test/business-invariants.test.ts",
+    "hash": "B68927AE37E1C6986B221DF6AC2F982B2A949BA617E466C5B67A731FBBA90140"
+  },
+  {
+    "path": "hogulink-api/test/care.test.ts",
+    "hash": "4872564C95220ADDBA5C52149BA6D29E4BCF33E764E0AA77890B3B695B6E7FD3"
+  },
+  {
+    "path": "hogulink-api/test/community-http.test.ts",
+    "hash": "F200F70850AA0FD86EC8A35FEB79585990AEA7642C05B1A69ABA8216610A38DB"
+  },
+  {
+    "path": "hogulink-api/test/community.test.ts",
+    "hash": "EEBD8D71BEB87E4EDB1507426F50C2084BE67232B17A04F8A6F3F98711464BB9"
+  },
+  {
+    "path": "hogulink-api/test/completion.test.ts",
+    "hash": "31709540C32B981D6E536EFC3E23D45F1CF98224AA6C72F6749BB05F3287F11D"
+  },
+  {
+    "path": "hogulink-api/test/coordination.test.ts",
+    "hash": "57DE62FBCD6266B0D43E322407A74CCAFBF70F7930F7EDF33C3B006266C15929"
+  },
+  {
+    "path": "hogulink-api/test/customer-flow.test.ts",
+    "hash": "3867F9B3040F431387C675371231DFA0720A0FE8D475F6E8EC70F8FC45728B4F"
+  },
+  {
+    "path": "hogulink-api/test/customer-overview.test.ts",
+    "hash": "828A60C9D1F5A379AD992991BB9CD1819B7D5D0805584EA02056081D15BE0919"
+  },
+  {
+    "path": "hogulink-api/test/demo-services.test.ts",
+    "hash": "81E106FDB6362ACC5C58E1C225904EC463014768E4B64F1456B1EE2159CD719B"
+  },
+  {
+    "path": "hogulink-api/test/discovery.test.ts",
+    "hash": "28B125AA03D8FA3F43DB0F1D59FB06709A1795DD502C70FEBAC05EAAEAC9A4F7"
+  },
+  {
+    "path": "hogulink-api/test/employees.test.ts",
+    "hash": "E2E7525C0A1C5D6342B12A1CF7A91BC3DA7B3C0E8E9F881391A06DAA0493708B"
+  },
+  {
+    "path": "hogulink-api/test/engagement.test.ts",
+    "hash": "2AC0839B9D4186BBD845AAA863D73AAC6D06BC5C595AFCAE6447CA18EAF10FD3"
+  },
+  {
+    "path": "hogulink-api/test/exceptions-http.test.ts",
+    "hash": "711311D2CD49373212637E09C4B2E76E520A4F313EB3F64EB1B570E2805C97C5"
+  },
+  {
+    "path": "hogulink-api/test/exceptions.test.ts",
+    "hash": "4660B8F900CDB8B5C1CA0E280B650ADBE3F986E6E0C7D9827107E6DD0D5A042E"
+  },
+  {
+    "path": "hogulink-api/test/experience.test.ts",
+    "hash": "1F147A39BDD24877AD9127D45B25AF7516B606454417C0C69C638E343D13A50C"
+  },
+  {
+    "path": "hogulink-api/test/finance.test.ts",
+    "hash": "28289A9B2A18C9A2676B9F29CCE8F69780F879238667640887366621712EB2C5"
+  },
+  {
+    "path": "hogulink-api/test/fulfillment.test.ts",
+    "hash": "A301E2A3D5A94A7AB744E3147529E27C7FF1E43C58E06EA77CFC068D189121F0"
+  },
+  {
+    "path": "hogulink-api/test/full-regression.test.ts",
+    "hash": "8CC437E1FA9D70BDE308CC94A96E35E4FE67404973889D8F6A9FA26F12D4B685"
+  },
+  {
+    "path": "hogulink-api/test/governance.test.ts",
+    "hash": "16C6E1C087F0A481E787F1C4A53DAE733698A7BD481347A4F50F3F36F7C06F54"
+  },
+  {
+    "path": "hogulink-api/test/helpers/business-hours.ts",
+    "hash": "0E707C0C2A5C69CEBE07F157CB4D128DC12011D478AD7D9D563376A9F72F40EC"
+  },
+  {
+    "path": "hogulink-api/test/helpers/experience-fixture.ts",
+    "hash": "8329B24FBC717438D1FD0858480042FE599D86D197E6E69B91AAE954F41C4EEA"
+  },
+  {
+    "path": "hogulink-api/test/helpers/subscription-fixture.ts",
+    "hash": "2A9196E9DD00962C344B20F18D74B89AAC8B165C74D26AEA7D27327FE94216C7"
+  },
+  {
+    "path": "hogulink-api/test/helpers/visit-fixture.ts",
+    "hash": "7960DB06E880502929928CDEA6CEB398ED6CBF510DB4832AD9D5D141919228AD"
+  },
+  {
+    "path": "hogulink-api/test/http-boundaries.test.ts",
+    "hash": "F7642CC7CD71AE19CF8CF4E40E4DEF6D504101225BA2BC2A4FBD94672F0465FB"
+  },
+  {
+    "path": "hogulink-api/test/in-store.test.ts",
+    "hash": "EF8D7087C15A507AAD6E020D14D0FB3B0F2B125A0985B517C516584FB8722A66"
+  },
+  {
+    "path": "hogulink-api/test/invoicing.test.ts",
+    "hash": "1D647B9D6FDCC6308B033823F5554E70B173CF36124F3D114AABBE0E6AA279C4"
+  },
+  {
+    "path": "hogulink-api/test/listing-media.test.ts",
+    "hash": "A6194C130A41C7B3E1B567F8DB4D9B01AE92FA67653E41DA2947B1AFF2198D71"
+  },
+  {
+    "path": "hogulink-api/test/merchant-operations-http.test.ts",
+    "hash": "D11F6A2343E559C4468667585483ED6FDA120EC60F16A792FB6A593A9D279A1D"
+  },
+  {
+    "path": "hogulink-api/test/merchant-operations.test.ts",
+    "hash": "B53EA9FCC3190507B64BD7C3F344D1A07F5FD1DA88500F376BDC896CCBE6B085"
+  },
+  {
+    "path": "hogulink-api/test/merchant.test.ts",
+    "hash": "36D30A80739364932475F9B7A2239C8DDA5CC8362AB57D546DA907A1047BC396"
+  },
+  {
+    "path": "hogulink-api/test/mobile.test.ts",
+    "hash": "5C7325227812B4822C7CE8DF9F406A1C56BF3E8DB28153142B95DDBBF7619608"
+  },
+  {
+    "path": "hogulink-api/test/onboarding-http.test.ts",
+    "hash": "6163030A2B69911C102D75E6F2785A4AF6F0EAB1AB12567997A72F656109A9CD"
+  },
+  {
+    "path": "hogulink-api/test/onboarding.test.ts",
+    "hash": "7DD004E79AB723E36A6F260D7B57B745332B1CBA56DFFCB6CC75D2ABF14C2230"
+  },
+  {
+    "path": "hogulink-api/test/platform-staff.test.ts",
+    "hash": "370C86DBE1DAFF842224C063E21B30A5434B5D4F5E347BC2D26802B216B0FD51"
+  },
+  {
+    "path": "hogulink-api/test/product-rules.test.ts",
+    "hash": "D1B70FB0DEB303410EE2F1352448F7423CFC63F241775C9F75BC1E5D9FEEC27F"
+  },
+  {
+    "path": "hogulink-api/test/production-foundation.test.ts",
+    "hash": "A7B363087597338762904B86CD76397D0E044E4B6B8E6C8D814A1F94149C3BD4"
+  },
+  {
+    "path": "hogulink-api/test/promotions.test.ts",
+    "hash": "F9A421811F174209128B487BC5A19B2D64B96DB52F1629E0AD5EE27BA2954ACB"
+  },
+  {
+    "path": "hogulink-api/test/reporting.test.ts",
+    "hash": "C77CCEFA08B442522A871624164ADFF87D225BC71C69BA5467F13535696C8107"
+  },
+  {
+    "path": "hogulink-api/test/smtp-email.test.ts",
+    "hash": "A7D4C1AFCA3405AB50084AD098D7949AA25E605C29E54F2D5D5CC642C8E3689F"
+  },
+  {
+    "path": "hogulink-api/test/staff-workflow.test.ts",
+    "hash": "CD95862A5970A6053F013355948D762D47E9B0F41801846897016103BD5C1BFF"
+  },
+  {
+    "path": "hogulink-api/test/staff.test.ts",
+    "hash": "0FF666CF14F1A000A11CF2577AD75497B31A1395212F730E19278F1C06C4C495"
+  },
+  {
+    "path": "hogulink-api/test/store-stats.test.ts",
+    "hash": "1F4CA2A7D534712D88AEC5C221A665EC90203184BA6FEEFFD8459AD29E6418E9"
+  },
+  {
+    "path": "hogulink-api/test/storefront.test.ts",
+    "hash": "7D842EF73C245AE8B11A2BEA61369A0F5218523CA70C4E66FAF7C5D640221624"
+  },
+  {
+    "path": "hogulink-api/test/subscription.test.ts",
+    "hash": "599A0C416EDC4179B563F52DA0D26DB6144004A6901412A9431AB07B7DEF1EEF"
+  },
+  {
+    "path": "hogulink-api/test/ticket-handling.test.ts",
+    "hash": "EED3D7814E2790F70A23301D085576971CBBFADD59802EBA837E9566EB84BD94"
+  },
+  {
+    "path": "hogulink-api/test/time-surcharge.test.ts",
+    "hash": "BF2CCBEC4099DD06149DBF07AFEA9F2A98E118E4B321312D181E7F15518504CC"
+  },
+  {
+    "path": "hogulink-api/tsconfig.json",
+    "hash": "375E8F49F9F41DA56053826490A9189F5587A3C79F6D3B70B5C32F3A17247A11"
+  },
+  {
+    "path": "hogulink-web/next.config.ts",
+    "hash": "5891205B540A19E6D6173DF592C84D595F233EA696B37472C38055F60FDD4EFF"
+  },
+  {
+    "path": "hogulink-web/package.json",
+    "hash": "C03596E59F51DEEAFBFC0CF12CF488F5B83A7BE157A451A72BE7C176BBEB17E2"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/[workspace]/page.tsx",
+    "hash": "EC70AEB034165F0F7B72B67BDCC0F287B05E7842ADD708D4F4113E5C61B7316E"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/[workspace]/quality/page.tsx",
+    "hash": "9D9938778779D8BE36A27D02076F19D2821A2C04555A9CD9F15B2639B214E90E"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/[workspace]/support/page.tsx",
+    "hash": "2A6E87FA3666A61E3DB9E78FCA4F461880A1A30B2576FD2045472230DA6B7F97"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/access/page.tsx",
+    "hash": "D6A2C87DB2F051BF44024BB566C9D98B50AD8F650C9CD70330A853B0AA513A4A"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/addresses/page.tsx",
+    "hash": "5A5FC14F209057099B6C4F56C614C982A54017285FE5CE6223B45FB1EBD7C3BB"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/benefits/page.tsx",
+    "hash": "01B66C4DF8FED1425561713F1A3BE8F54063F048995763A41ABBA5C4B8FDE492"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/bookings/[bookingId]/page.tsx",
+    "hash": "7F4B8846CF9D660DA93E7533F5C801C556BFD4E8D74AD8CEA219DB466BB2E0CF"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/bookings/page.tsx",
+    "hash": "2AC7A4C16C729ED48955ABB44F617F89544EB2644644007EBDC5D5B55CEA2C6C"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/favorites/page.tsx",
+    "hash": "089D7269E5A75BB85E333D7947E27BF3AC0A665B24D49B7BF0E4251464E74403"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/history/page.tsx",
+    "hash": "6F0E9D9C23957A60065BC388B487B59D64039963F42EAC0C9E1CAC9150912CEC"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/layout.tsx",
+    "hash": "0229B01A0CF558A8B00E8EA8C18F64AF17632E50D4C24A03726CCC587B2FDD37"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/messages/page.tsx",
+    "hash": "442E5656B5BFE9C7A2826EAE67F166D6C9C0147F0272CECCFDBF71E77163900D"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/page.tsx",
+    "hash": "045F55CEC06FD45592136DB6E6F7398052DE9145B5A0724343C9A4388FAD5139"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/settings/page.tsx",
+    "hash": "20BB24D45B9234EC30DCD20559B3CAC0B8599AFFA2EB1039458092DAFC9C8382"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/account/support/page.tsx",
+    "hash": "45BF6449312F419A3E5004E883F777C26B3B149C7C874B1F6475CD76E044C996"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/admin/activate/page.tsx",
+    "hash": "818150FD9F7417840FBD4E939000BDFB81282DF35846E3801F63CD402BEC1B18"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/admin/login/page.tsx",
+    "hash": "F392576AC3F641B92E0487BB2FAF457A3A1F32E8CBF5E4AB8D75847F2CAD9F79"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/admin/safety-review/page.tsx",
+    "hash": "F817749DFDFB283098ED1E8CA66E63FC54C2285ED483DEF8A73540AA6DA18754"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/areas/[prefecture]/[city]/page.tsx",
+    "hash": "17FB97F8EADCA7804A26EAEF52E665AEF5CE92180ADA6EBA52B579ED3DE5DCED"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/book/[listingSlug]/page.tsx",
+    "hash": "F34F8B9E67003A9D18AE030C901BABDA7DC8C25DC764A1A1FAF1744524F854FA"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/checkout/[holdId]/page.tsx",
+    "hash": "010A4A8617672CA1489B7E19D72092A64CDFE4231D90F981B705429AFD029953"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/discover/[postId]/not-found.tsx",
+    "hash": "7637F59234DD6F4929AA4540C4E35A0EE2A6A84B562D9B74A983C38FFCE89BC9"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/discover/[postId]/page.tsx",
+    "hash": "AFBD752C3D9FC9BB399C795BC624BCF95E170A98EAEAB2000D198363AA9E3AF8"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/discover/ask/page.tsx",
+    "hash": "9F1A9ADC88B191D5A7DB20F52D8EBC257BA5F5A92228F84D78D8F93D0DDA6E01"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/discover/mine/page.tsx",
+    "hash": "619EA3D61020016E44856C2B599D1CD541437EE15DB59C3E17C4A4CE12B9A01B"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/discover/page.tsx",
+    "hash": "4F74FD07B00863B4FE4CCE578D4A8CB4839E4514D5F3F523DE252CCA90C28E95"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/guides/[articleSlug]/page.tsx",
+    "hash": "5C2FBB03D308F3FBB5B93EE709581ABDF09935EF8D24DCF3F5F2F6139C5AF608"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/layout.tsx",
+    "hash": "45ACF7AB262D7845FDFCB2A75A083C1B00E6C9CB6A48E07AF15FA12A5715FBF1"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/legal/[document]/page.tsx",
+    "hash": "EDD3413F35BF444B53B72D7D307FC1B925985ED5B854A1C6E3EB974356B697A1"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/onboarding/page.tsx",
+    "hash": "FBB62B7400B0B7B8BAA289717F3CA0AB5B32F4E6A856060026EC2991EDDBBB3A"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/page.tsx",
+    "hash": "B379C21EEEDECADAE27288BC7F9F7B2F11D2F20908F22A1A15AC786E6258CB13"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/services/[serviceSlug]/page.tsx",
+    "hash": "1EC12D9CA269F508BB569154078ECFFE723154CFA136DB5D82BC604B812A8CFE"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/services/page.tsx",
+    "hash": "EF86B400EDBE9CB5A3D74B171AD5BCBDC0C32AB497EF49FAA17A4F88B5AAA12E"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/shops/[storeSlug]/page.tsx",
+    "hash": "C34E19E47222570C4BC285F152003742A093DFBFC391031667A297F08DEA4FB3"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/shops/page.tsx",
+    "hash": "A39ED553A6300D6E3F21F90F26D77C245F957E445190AA29F7CE537FB3639EAC"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/therapists/[listingSlug]/page.tsx",
+    "hash": "3D0E5827134DB62EEE1D55D06FECFD3F3E861015D97B170BA405D6D07B1D1AA2"
+  },
+  {
+    "path": "hogulink-web/src/app/[locale]/therapists/page.tsx",
+    "hash": "21106C0231EC0783517F53A86ABB0DCEE064EEE41409F01474837A700BE8A661"
+  },
+  {
+    "path": "hogulink-web/src/app/account.css",
+    "hash": "885D879C73F5A256D948788CD66F516401D770546BA6A830147A5050D0CFC613"
+  },
+  {
+    "path": "hogulink-web/src/app/admin.css",
+    "hash": "24A157C7F1C5E4162F1EAB0C28AF1C320010FF6714540FE2EA22666E6C4FAF72"
+  },
+  {
+    "path": "hogulink-web/src/app/booking-browse.css",
+    "hash": "AAD5F90B419A27ACBEC17243BBCF95DC44A3B942E72193B86857799ED387B312"
+  },
+  {
+    "path": "hogulink-web/src/app/business.css",
+    "hash": "9EDE7DF4BD9D90E1097A4F0EB3C1898BD389B2718F58BDB95C6FB044C6E2BFE6"
+  },
+  {
+    "path": "hogulink-web/src/app/community.css",
+    "hash": "AE0012D97DCEC451D6CCEF6345BDD9D464B59BCBF4405AFB7246B85CA6C81CB9"
+  },
+  {
+    "path": "hogulink-web/src/app/completion.css",
+    "hash": "B1FC15CCB9AB0D113EAC3BF2DE3823AB8BABB94553519629647362DCE9C4B7C5"
+  },
+  {
+    "path": "hogulink-web/src/app/consumer.css",
+    "hash": "87C84A2594B877936850C70C951452E314734D56881A03BDAD9D0485307FCD60"
+  },
+  {
+    "path": "hogulink-web/src/app/coordination.css",
+    "hash": "8E28D3919C6BF9FD948D3E054DFF9018A71AE432FAF9A00A125682FC27C54652"
+  },
+  {
+    "path": "hogulink-web/src/app/customer-auth.css",
+    "hash": "486BB6D32DFF8D1AC07E492D6682250CD8E056D0C1A2D5F15AC243A3C16DEEDF"
+  },
+  {
+    "path": "hogulink-web/src/app/customer-flow.css",
+    "hash": "AF9D988A610B1F26F5B6D9875303B49A8F22668D06DB4A8563D9E2E82D3879E9"
+  },
+  {
+    "path": "hogulink-web/src/app/desktop.css",
+    "hash": "6B5329CD1B5FA23413B6E255658263344BC5A388E12534CD2535D48ACD274787"
+  },
+  {
+    "path": "hogulink-web/src/app/directory.css",
+    "hash": "288DFB78949390B01CDCD33DCDBBA48ADF85336F3FC0817B2C5747106DAFEE47"
+  },
+  {
+    "path": "hogulink-web/src/app/discovery.css",
+    "hash": "76F45A6C7346B47ABD36406E3F1B669238F92214DFABE3FFF29D2548B7052F7E"
+  },
+  {
+    "path": "hogulink-web/src/app/error.tsx",
+    "hash": "7130EEBE8AC00978722EAA2AB2055C6D548878D1C27E4DE59C0A2163A5C0F026"
+  },
+  {
+    "path": "hogulink-web/src/app/finance.css",
+    "hash": "6B981FE28FCFBD3DCFBC126429E8C2AFF20A97B28FD53C1D94ACBB3053A4429B"
+  },
+  {
+    "path": "hogulink-web/src/app/globals.css",
+    "hash": "63CC0E60FA4B8483E5857C91EEE83DF01E4AFDC3E56B72C92D638EC1F363E996"
+  },
+  {
+    "path": "hogulink-web/src/app/governance.css",
+    "hash": "CCEC50F3BBFDE6F493CD2885F9A04BB3010758378D3F49F6F8B59196C19BE6ED"
+  },
+  {
+    "path": "hogulink-web/src/app/h5-home.css",
+    "hash": "F76139EC348DF6EB254E1E771F4B1D06AD9F8E34BBE052463179F9944D1E1B3A"
+  },
+  {
+    "path": "hogulink-web/src/app/icon.svg",
+    "hash": "306CB96F810C509EA142909DC697B46B4CF6AF8F128377D1A7C37E921CD0ED44"
+  },
+  {
+    "path": "hogulink-web/src/app/invoicing.css",
+    "hash": "BE53CE7259688074783262083FD642CB4B2016CEC7A5CE6AC35127AE1C4CAC51"
+  },
+  {
+    "path": "hogulink-web/src/app/layout.tsx",
+    "hash": "6C2B48B32721AFF0AB10A294FCDB6B4343D3A0D9BA6C482D52529C37B7376D7B"
+  },
+  {
+    "path": "hogulink-web/src/app/merchant-operations.css",
+    "hash": "C738383D8E19288074D7469BD4CE6FF621F270858F1199229FF7E8941A0281D2"
+  },
+  {
+    "path": "hogulink-web/src/app/merchant.css",
+    "hash": "CFEE7065AB66AAA41361F522F75BC3993ED99CAADED1FA96720084EF4F53397E"
+  },
+  {
+    "path": "hogulink-web/src/app/mobile.css",
+    "hash": "7694AD203AB0011146B9B259003317995B8D29217992D2AA2853BF9EB7BE4969"
+  },
+  {
+    "path": "hogulink-web/src/app/not-found.tsx",
+    "hash": "ECBF0FDBDDFB5B8DDF14DE10E2C633A43DCE3682DF32A4F8838C484101FF59AA"
+  },
+  {
+    "path": "hogulink-web/src/app/onboarding.css",
+    "hash": "144751FE553F53B30EB34FD663BE64EB29720198A3D8CEDE5619DAB418FDDCF1"
+  },
+  {
+    "path": "hogulink-web/src/app/page.tsx",
+    "hash": "2E589628C607DC4449237AC032FBB7BCEC4842C0F7B6614E21B6160118651B64"
+  },
+  {
+    "path": "hogulink-web/src/app/pc-consumer.css",
+    "hash": "89BBB45F78684E4C560485E6E8271A1B7E53CEB88AA1A7ABC4BD2F41F2D87577"
+  },
+  {
+    "path": "hogulink-web/src/app/quality.css",
+    "hash": "C25807C0B5AD03196F39CC262FDAEE342FE1BE88AC1018BAE131FC768D6477CB"
+  },
+  {
+    "path": "hogulink-web/src/app/refinement.css",
+    "hash": "FD5FFCEDFD4FFB9FECECDC70FB506D0AB3DE2F744884B9ED48F5934CFE5F90D6"
+  },
+  {
+    "path": "hogulink-web/src/app/reporting.css",
+    "hash": "3B3EE1DCD4162E0591D75506A06D7A58B240E0007578BD7AD8BDD45FFE6597C1"
+  },
+  {
+    "path": "hogulink-web/src/app/robots.ts",
+    "hash": "39FE9CDE8FAE9FEC24A6770B5BA009233B5B1B9861F86F520DABF885A3BD1645"
+  },
+  {
+    "path": "hogulink-web/src/app/service-mode.css",
+    "hash": "CCE24EC6D912E636FD0A30AC1C9E69E7222D1864358F7E2B355C3D70C1D48871"
+  },
+  {
+    "path": "hogulink-web/src/app/shops.css",
+    "hash": "4ED2008B2882812049A5428CCEA3E0265B40FBBF8561176AEE551D4795B16ABF"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap-areas.xml/route.ts",
+    "hash": "866947446BCA6163193DD21CB3E99920584619C617CE740476F07CAB36F518C4"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap-guides.xml/route.ts",
+    "hash": "97A38363D179337218D1703FAA3D6C9E39C1460A781BB1F0DF4F027ABAED662B"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap-services.xml/route.ts",
+    "hash": "DBABBFFB8099B0C610547939A35249FABFE42E1984FBEF400158BFE9D43FA6E0"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap-shops.xml/route.ts",
+    "hash": "713B6D669089D86ECA257BB68EA2AA1747D30D4C0C5880E03D58864AD717E261"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap-therapists.xml/route.ts",
+    "hash": "D652CE5BD604C353F435C0B8BFA946FED2EAC079FC34D54DFFF4AFE54CF82687"
+  },
+  {
+    "path": "hogulink-web/src/app/sitemap.xml/route.ts",
+    "hash": "96057794CAFCF63AFBF88C628989E801F2CA5C2B689CB29548C056DF1D08D6B1"
+  },
+  {
+    "path": "hogulink-web/src/app/staff-operations.css",
+    "hash": "FACC354023615252DAAAE457E266BA5614B55115B9A850D7EA55AE5A095398B1"
+  },
+  {
+    "path": "hogulink-web/src/app/staff.css",
+    "hash": "746ACC7AC0F8B20E03A716F1DF4ED2C6651D040AF800EF0D87DCCE140AA435EA"
+  },
+  {
+    "path": "hogulink-web/src/app/storefront.css",
+    "hash": "F08FC710C461C11B0C33C38CA51AFEF8BD76363B072C271EB1ADED79DC209246"
+  },
+  {
+    "path": "hogulink-web/src/app/subscription.css",
+    "hash": "63B3B531F9F622679A4DCC4FFE60D7BC28CAAD2E289CE508CCE0FB262B444E22"
+  },
+  {
+    "path": "hogulink-web/src/app/therapist-media.css",
+    "hash": "6A54279BA8BE2624ABD2353499C04ABC1D123B09F90623ED88EFCD167A06CDFE"
+  },
+  {
+    "path": "hogulink-web/src/app/visit.css",
+    "hash": "C89759A28B5E5223438DAF3E8A0AFA71B290F5AA2C369E144B6F6D883DCFE080"
+  },
+  {
+    "path": "hogulink-web/src/app/workday.css",
+    "hash": "2D1582E8FC60C86B6B0CD1EA9CC70F8998F99ED939D461FB684FE8A6E252D599"
+  },
+  {
+    "path": "hogulink-web/src/components/acceptance-settings.tsx",
+    "hash": "4580596DD3ABC986397330C9F03C4D4BA28DFFC2125D2F1B4C10B291954D1140"
+  },
+  {
+    "path": "hogulink-web/src/components/address-book.tsx",
+    "hash": "772DBE310AEDCE7FCF803F89E7EC9EB0C89EFFD15D18C638D756319505F18A9B"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-access-form.tsx",
+    "hash": "13B8C57E1BA7CA1BC7651D80EEC5862B375A69F52C139393A8542C1253DF7858"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-case-queue.tsx",
+    "hash": "FB10B59B6EBADF17FC95C130072097EE39440413064FCCBACDB793C2F7BE33F4"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-customers.tsx",
+    "hash": "FD44860BE510878F600FBF2F8E51E0DFD89176D9956683B451F65AF2106986D1"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-members.tsx",
+    "hash": "EF92C78A75C4CBB533FFDB67280D391B151B7B8CC3B17622705FB0C9806AFF8A"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-metrics.tsx",
+    "hash": "6427F346C3AA5B5A5F91783CE8657E1787087D3B40B7B6A44B42D08246423205"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-navigation.tsx",
+    "hash": "4C43A554BC955BBB33BA0FC552A0991FD2AE242F85A67344047D5DF2CD4FEE6B"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-todo.tsx",
+    "hash": "156DA00F167F6E88FC6D9375A76D2E1CC6AC75C66953090F81F9EB2206D940E9"
+  },
+  {
+    "path": "hogulink-web/src/components/admin-workspace.tsx",
+    "hash": "3FFB1D6AD24A8E39C8A96EDC91C2872D8DFE86F40AE990B50C577E15740BCE53"
+  },
+  {
+    "path": "hogulink-web/src/components/advanced-therapist-results.tsx",
+    "hash": "08751FE036425E2DF89B5E4753798CF0E22EFA602B0F7D4501090DDC8699DDA8"
+  },
+  {
+    "path": "hogulink-web/src/components/booking-browse.tsx",
+    "hash": "327C6AD33C24E24C22AEDD5CE8B1A622A2ACBBB060354745F790B23AC3C9C000"
+  },
+  {
+    "path": "hogulink-web/src/components/booking-form.tsx",
+    "hash": "086B0B4A8E5FEE5F31CBA3B25060F934CB18CF6EEDB10143F5F70050D0AE8A61"
+  },
+  {
+    "path": "hogulink-web/src/components/booking-queue.tsx",
+    "hash": "E9B1BDB421BA2BCF11DAFF627529C2AD223400D49D31D232B5387C2E5D4FC1DD"
+  },
+  {
+    "path": "hogulink-web/src/components/booking-rules-settings.tsx",
+    "hash": "20AC9360D1C0F7742C28CCB2FCEC04AEC154EDD1C295147FF57D0A97BF417BC0"
+  },
+  {
+    "path": "hogulink-web/src/components/care-center.tsx",
+    "hash": "E4482A67E87704FF2DCDC77C179798C3323692EABD2895C46CCDD61B93D90C3E"
+  },
+  {
+    "path": "hogulink-web/src/components/case-attachments.tsx",
+    "hash": "0C5EE34D0420EE98059D8E24221C421DC86B705ABB68EB4C1B369C30E69D6B00"
+  },
+  {
+    "path": "hogulink-web/src/components/case-decision.tsx",
+    "hash": "E7D9FC3EDE9AE2612220D00431D1A708AE03221CEFF32001A674640DD634610D"
+  },
+  {
+    "path": "hogulink-web/src/components/catalog.tsx",
+    "hash": "12018F96B3D35ED74EC8824C303FED522B066F029A07DB861118EA5398967684"
+  },
+  {
+    "path": "hogulink-web/src/components/checkout.tsx",
+    "hash": "E45C03F53547468C81FAB015130939252E63D668F415C0BE63E8BAC41339334D"
+  },
+  {
+    "path": "hogulink-web/src/components/community-compose.tsx",
+    "hash": "E848F39E544088DDBF710B1BC219EF856E2CA0EA2E5629767E9C10A75B3A8F43"
+  },
+  {
+    "path": "hogulink-web/src/components/community-review.tsx",
+    "hash": "3BECE5E1490B4883C66C17877DFAF41BB8A01D94AD5249461FE643C2118293BF"
+  },
+  {
+    "path": "hogulink-web/src/components/community-thread.tsx",
+    "hash": "AE9302AFA8DBD076DCA6D17A5EE5A2E62AB872902A06D9B19C54A16FA5DDAA52"
+  },
+  {
+    "path": "hogulink-web/src/components/community-workspace.tsx",
+    "hash": "0AA4C24917D2D74EC3EA0F49EBC0E3813BB29DC5B9D18A6E1244221FC410D6DA"
+  },
+  {
+    "path": "hogulink-web/src/components/completion-panel.tsx",
+    "hash": "76D7602BB0150E8424879C33291FCEE79AE2CCF8BB35B9D0DBCDF8C234110F07"
+  },
+  {
+    "path": "hogulink-web/src/components/consumer-journey.tsx",
+    "hash": "B08DE97F90EED533A2FF0748B644A5E25E603257E511FCC40E6D91728EAE387D"
+  },
+  {
+    "path": "hogulink-web/src/components/content-review.tsx",
+    "hash": "E664469FDC815C0F83042F884B5566BDE457941D0C8F618F724A1CF024330C77"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-account-hub.tsx",
+    "hash": "6A3341B3A0307472477F53091F113C3F843B1D8F889CA8789A51FC6B0834E93B"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-account-nav.tsx",
+    "hash": "B11AC2C7B3CF891751B5D88DC54CB792FEA01BA2AB86C6F7616596E964CE16E7"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-auth-form.tsx",
+    "hash": "E99B055BBC437DE1F971383CE65992F776F4B156C839F0F49A05830D17199FCA"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-order-progress.tsx",
+    "hash": "72FC3E62B1C09A2EA14FB3F2BF5C5B1485E0A9687EBD61898FC1E6C7695DABF6"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-order-summary.tsx",
+    "hash": "C01FA72481B8A78BB793BA0D2FF85C5AC6E506E643016C19AC4FCE7703DB1C56"
+  },
+  {
+    "path": "hogulink-web/src/components/customer-signin.tsx",
+    "hash": "8168F8649658FEEB8664D8C7E1AAADE8927DCF2687D671EB6CC3DB63CD2F614E"
+  },
+  {
+    "path": "hogulink-web/src/components/desktop-home-hero.tsx",
+    "hash": "DC6E1CFD4DC476C94AC55348693840BBEAC674FE3692B08491612F3EFE7AABDD"
+  },
+  {
+    "path": "hogulink-web/src/components/desktop-home-services.tsx",
+    "hash": "B89124EA72789A69672698E8A9F3189FB590E39467F758EF5448B9D5623616F0"
+  },
+  {
+    "path": "hogulink-web/src/components/desktop-therapist-pick.tsx",
+    "hash": "98E3D46D3DF1239374261F945809DACF3581ED8343C7BAEA31E20505AD3D33DF"
+  },
+  {
+    "path": "hogulink-web/src/components/discovery-filters.tsx",
+    "hash": "AFE5F1B0BDED330EFCF13F6475A51418930205C408A6477E09E65BC270248C64"
+  },
+  {
+    "path": "hogulink-web/src/components/discovery-hub.tsx",
+    "hash": "C2F8B661A6E093A00E2D322D626FC9F37891A18C4CACEF99DC2531FAA8278371"
+  },
+  {
+    "path": "hogulink-web/src/components/discovery-post.tsx",
+    "hash": "1BF549D68C093095511EBFECD834FE0C73B5133776CFEADAC99A558FC426B3AC"
+  },
+  {
+    "path": "hogulink-web/src/components/engagement-ui.tsx",
+    "hash": "A35DB98D137DB4DA9C423BEA8E51713D54BBD2B6C02F96B2928A01A955051FE5"
+  },
+  {
+    "path": "hogulink-web/src/components/experience-ui.tsx",
+    "hash": "4454CA0585373FE75E797031068185020C6F75977764987D51EEA6CD0676B5FE"
+  },
+  {
+    "path": "hogulink-web/src/components/finance-center.tsx",
+    "hash": "B7E7DEA1C368E26F0ACA09479C6A16B379E241B1B5706E80FA29AC61FD2F0206"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-business.tsx",
+    "hash": "EDEB8F7CD994224BD0332592BB1996D62A272EEA3E083F9C528DB9DADD0F7891"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-consumer.tsx",
+    "hash": "96A5265D8E49F8D551C16CA4ADBD1089DA4CC620B27EC46EDBA2CCC0686A533A"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-discovery-feed.tsx",
+    "hash": "46BF206DDFD3B61A42288A7EEF75472E2DE40164258A8A14EF4EEF40CC92A70D"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-overlays.tsx",
+    "hash": "FED1A94EFF6CD6551C4658986A9B7EAFB570F369FCB439A3084C932E0E199115"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-shops.tsx",
+    "hash": "C2FC2D5D4E2B344DF908EFA9F33020E4AFC390C84408B82B72F63702A1DFAE15"
+  },
+  {
+    "path": "hogulink-web/src/components/h5-therapist-directory.tsx",
+    "hash": "EA578A6805481B85A7920D747E3EB6431107B1E6726D58DFC32680D90B2D45BD"
+  },
+  {
+    "path": "hogulink-web/src/components/in-store-order.tsx",
+    "hash": "AF58A02E89DD2B2A584958B7AE29621F77A9317ABD998DE3B6AA2C74D62F44FA"
+  },
+  {
+    "path": "hogulink-web/src/components/inbox-badge.tsx",
+    "hash": "496365D63F8BA2163C374F2B9777719BACA4BE95A95D8AE6EDD1FADFA1C22DB0"
+  },
+  {
+    "path": "hogulink-web/src/components/invoicing-center.tsx",
+    "hash": "10EDA0E7478F33C40E8A3BA81D0CC1DDEBFC3E7C5897D1575C368A7A7A9D3F7B"
+  },
+  {
+    "path": "hogulink-web/src/components/media-manager.tsx",
+    "hash": "42145F4092A47FF3A520643DA867D9D73C6AF7926CBE38B6BCE0107C6DF60D01"
+  },
+  {
+    "path": "hogulink-web/src/components/media-review.tsx",
+    "hash": "D10965F0D6A62F18C3423EC4CA1AF044E30CACEAB4C6BD1D60E91A3094F10FF1"
+  },
+  {
+    "path": "hogulink-web/src/components/merchant-alerts.tsx",
+    "hash": "30E23276F09AA39AF17E17462BAE7FC5E15B2352A77E82C91FE6B5E11AB240A1"
+  },
+  {
+    "path": "hogulink-web/src/components/merchant-navigation.tsx",
+    "hash": "A09C7D9531952D9E77C3ADF6D955B773E7DFFDE55FF568131C5C9DCD6B6B138A"
+  },
+  {
+    "path": "hogulink-web/src/components/merchant-promotion.tsx",
+    "hash": "042BA73CD8D54E44F5782C390030CC1C0748705FC70AAF7F8616C496C95025DF"
+  },
+  {
+    "path": "hogulink-web/src/components/merchant-services.tsx",
+    "hash": "10BA981CE0354D23F488250EAF45C4865F7AAF22E90F20DAAF02FEDD80869C0B"
+  },
+  {
+    "path": "hogulink-web/src/components/merchant-workspace.tsx",
+    "hash": "10E425C076479AFBF1CBC209D34067B61563664569A14C846936BAA1F1537817"
+  },
+  {
+    "path": "hogulink-web/src/components/mobile-ui.tsx",
+    "hash": "F3B68D297B0CD096C9A061CB42417B533CC168AB6264B37AB567E251D66E4B29"
+  },
+  {
+    "path": "hogulink-web/src/components/no-show-panel.tsx",
+    "hash": "BE8771E307E48024EDD71D9E54A2A0DDA041E8DA97C4A5A6B30E6D9137477234"
+  },
+  {
+    "path": "hogulink-web/src/components/operations.tsx",
+    "hash": "D47467002090B078FF821237975FB5B80CEF1B6C25630FBBDF091A489DF6650A"
+  },
+  {
+    "path": "hogulink-web/src/components/order-care.tsx",
+    "hash": "837185F4DFA8CBD163B03BCACE79A61A2F22E04D3085E410F0FF1F54CF68FAC8"
+  },
+  {
+    "path": "hogulink-web/src/components/order-coordination.tsx",
+    "hash": "33882417E02FB280F1CD8BBEDB4B60F02FD91D4E2BC6CD30075DF3EEC375F372"
+  },
+  {
+    "path": "hogulink-web/src/components/order-monitor.tsx",
+    "hash": "61BFF17C699E945D3472673801F969E4C75EEB1CC8E79C8F096A461D2F078679"
+  },
+  {
+    "path": "hogulink-web/src/components/partner-order-flow.tsx",
+    "hash": "8DE400BCA5172671E77186CE2D9008803EE9B024E62B4D7E88BDB12DF6A80148"
+  },
+  {
+    "path": "hogulink-web/src/components/partner-portal.tsx",
+    "hash": "3145AFAF18AECA3A0EC048258626A1AD782F1DA9B6A84DB3B20C4A26A9884983"
+  },
+  {
+    "path": "hogulink-web/src/components/quality-workspace.tsx",
+    "hash": "640C9018DC6C6681E128591D3B22FB5C2DC832DC3249FC3B11BBE6ABC80FF890"
+  },
+  {
+    "path": "hogulink-web/src/components/reporting-center.tsx",
+    "hash": "46DD8D5ECF401ED1474209E30FD16804C84E470187D7C63BA0D117AE2C1DE1A6"
+  },
+  {
+    "path": "hogulink-web/src/components/safety-handling-panel.tsx",
+    "hash": "F2E758A71282CF79EA81F280F04F0B4BAFDDBFFE2EB98EEA5F1992BB8DF9BD3E"
+  },
+  {
+    "path": "hogulink-web/src/components/safety-help.tsx",
+    "hash": "D76240095D7A4C72C32AC95B0A7532FA4087C17826E02D2AD9D14174B2A48BF4"
+  },
+  {
+    "path": "hogulink-web/src/components/service-mode.tsx",
+    "hash": "D60D08A4962F8CB28590CCE738DA02E7CCEA2FC46593BD5C51D196CAF743DC73"
+  },
+  {
+    "path": "hogulink-web/src/components/shell.tsx",
+    "hash": "96087BD1DCD2FF4F3833EB0CDD855917830D5CDB2F386A0F2FFED5E70EDE1BEF"
+  },
+  {
+    "path": "hogulink-web/src/components/shift-editor.tsx",
+    "hash": "F044680BFBA150D9CA4B3F92A535137F6C096C06F8A4A57E5025909E6A493AD7"
+  },
+  {
+    "path": "hogulink-web/src/components/shop-brand.tsx",
+    "hash": "43463FF3378BCCEA643FF667F78EE84DDF67042D12182532B2070054F4AFA3C4"
+  },
+  {
+    "path": "hogulink-web/src/components/shop-directory.tsx",
+    "hash": "D044119636B00B1FFAA5395B46329C78C0A1D29604A90545CCFB11D1D0A1305C"
+  },
+  {
+    "path": "hogulink-web/src/components/shop-quality.tsx",
+    "hash": "8B7183E2532B92F660E4528A62FDDA1B817BEDDAD057DC41D2262342D6630331"
+  },
+  {
+    "path": "hogulink-web/src/components/shop-stats-notice.tsx",
+    "hash": "3F5D7935698CE5FA1520D3355C5CA0408837365BF446116BE8AA2183C49EC04F"
+  },
+  {
+    "path": "hogulink-web/src/components/shop-team.tsx",
+    "hash": "72C9299E945F98DF268D843C8697A712282E4402F1DD15D53591B805222E0F83"
+  },
+  {
+    "path": "hogulink-web/src/components/staff-alerts.tsx",
+    "hash": "1F202D0B8CF6699D7B3128FF7E6E3D1765C21BCC467A4A8F0FD3BFCF0C9E3328"
+  },
+  {
+    "path": "hogulink-web/src/components/staff-navigation.tsx",
+    "hash": "0E8867756D60DEC5E27B01FC22DD329C569811114CAE243D0523A97C0CA9B475"
+  },
+  {
+    "path": "hogulink-web/src/components/staff-performance.tsx",
+    "hash": "F73FF946F24B90DF21F47F72A74C7FCFB11606BB15540E3DE9CBBB478EF19E6D"
+  },
+  {
+    "path": "hogulink-web/src/components/staff-workspace.tsx",
+    "hash": "6966E5B3E01B6180EE67C3A554DCC25210A6151A4EE0BFA299F9228D9CC40808"
+  },
+  {
+    "path": "hogulink-web/src/components/storefront-editor.tsx",
+    "hash": "5CC81A660E05312893EED098E0210277ADF7F35B25525B702D95A1776DE8093A"
+  },
+  {
+    "path": "hogulink-web/src/components/storefront-reviews.tsx",
+    "hash": "E3C1C39615C09178CC6581FE1CD706A83E23316E14ACB74F638D16C65394DD3F"
+  },
+  {
+    "path": "hogulink-web/src/components/subscription-center.tsx",
+    "hash": "B88E8460E5DFE60B7FD7044A63C73B0CE6D32CF022DB856AC0AFBF2050D39D40"
+  },
+  {
+    "path": "hogulink-web/src/components/system-delivery.tsx",
+    "hash": "28A93A181B0BF3B272F2933FEF14B5E6BB8EECD5C86F5F96832B51E80A9ED7F1"
+  },
+  {
+    "path": "hogulink-web/src/components/therapist-facts.tsx",
+    "hash": "321428DE6AF5CD8FD665C2C64005C6F8469A89E3E434DD970B278811697A13D5"
+  },
+  {
+    "path": "hogulink-web/src/components/therapist-media.tsx",
+    "hash": "F20B044461AA6372F0C06999F4E1D5A51FD7B75F8E8B6E0269388E1DF89A2003"
+  },
+  {
+    "path": "hogulink-web/src/components/ticket-handling-panel.tsx",
+    "hash": "D554F656D5EE814926374FC9BCEE1635E61488D6F5E36EBFC238DF519C90F0D8"
+  },
+  {
+    "path": "hogulink-web/src/components/venue-schedule.tsx",
+    "hash": "858AF627E0B4F1EF83E69D03412A05B54FBD9C5B16816BCD74BEFB4F4A87AC29"
+  },
+  {
+    "path": "hogulink-web/src/components/venue-settings.tsx",
+    "hash": "DA0800C65E9482B710C3F2AF591CBC80E20B6B4441AD4B85B8580573CAFDDB4D"
+  },
+  {
+    "path": "hogulink-web/src/components/visit-shared.tsx",
+    "hash": "717394B6ACA72A6CB0B056FA6B2E3A0F87826E12E741271C0F719CFFC5CC7807"
+  },
+  {
+    "path": "hogulink-web/src/components/workday-tools.tsx",
+    "hash": "70EFAE28F5BCF8B08CBAAFFD672A2A12FED391DD0FFFE8E1CEEA88162BCA64B9"
+  },
+  {
+    "path": "hogulink-web/src/components/workspace-nav.tsx",
+    "hash": "5328FCEC7DE9E73B939192B6F6888803E63F95761F0FEA8EA1F5D312143EF75A"
+  },
+  {
+    "path": "hogulink-web/src/lib/acceptance-i18n.ts",
+    "hash": "6D9380CD89D2D48695DC983B594433AE08E97D003B8A94821F7B6A1E1C0EBD87"
+  },
+  {
+    "path": "hogulink-web/src/lib/account-i18n.ts",
+    "hash": "30CBFFCE5DABDB9772095BFF9630919D6F311B6D72A4756C91C2213BBC060173"
+  },
+  {
+    "path": "hogulink-web/src/lib/account-model.ts",
+    "hash": "B528F6FD30774B745192C2A8A563C62EEAF91EDB8308FCB648FDBBF5875B07AD"
+  },
+  {
+    "path": "hogulink-web/src/lib/admin-i18n.ts",
+    "hash": "E1B682BC9B69A4243A2D41CA931CE3D316CFE9419D66611F7F8F06B1385721EE"
+  },
+  {
+    "path": "hogulink-web/src/lib/admin-model.ts",
+    "hash": "0C9A47B9A7ADD79CFE711DE5AE66142F73EB6BF296C9E7DA959FE1351AE03383"
+  },
+  {
+    "path": "hogulink-web/src/lib/admin-operations-i18n.ts",
+    "hash": "3A5CC7D10FB66F0D66375FEE1EE484259D5055F85270D50FC6DB662E9FEFDD36"
+  },
+  {
+    "path": "hogulink-web/src/lib/api.ts",
+    "hash": "732028847F9C9219288730F10E71546578BDDAD059F64FA7CCCB371B9457A4F4"
+  },
+  {
+    "path": "hogulink-web/src/lib/booking-browse-i18n.ts",
+    "hash": "4FC31167FDB88161EB3EC651C86050551F25EDB2BF086A76F0BDBB6B1DDEADB0"
+  },
+  {
+    "path": "hogulink-web/src/lib/booking-browse-model.ts",
+    "hash": "576FF4D31E1CA252C065F6D560D5E59DC5607B7809AA89EAADCACA16851FB868"
+  },
+  {
+    "path": "hogulink-web/src/lib/booking-presentation.ts",
+    "hash": "7470FD18E6019143E9EEEF8D984D5EBA7DEA4D9CA7C5B6641365A7BE696C6BF7"
+  },
+  {
+    "path": "hogulink-web/src/lib/booking-rules-i18n.ts",
+    "hash": "77633A3632A195342C381EB76919440B4018FD2FD2E2C5D654E5295DB3B8B0D5"
+  },
+  {
+    "path": "hogulink-web/src/lib/care-i18n.ts",
+    "hash": "13301C79835B4609FA9EDF01C46B1A971CD2FBDB9A447AB3951F9B660B1C3A4B"
+  },
+  {
+    "path": "hogulink-web/src/lib/community-i18n.ts",
+    "hash": "F38EAB2E6426CE3033D2D3ECB69D1DDFE2B31C06A3A4EC1D2DE6BA5F7C44A24A"
+  },
+  {
+    "path": "hogulink-web/src/lib/community-model.ts",
+    "hash": "36C890CB2697F766332E7C853E6B3FCC1E3A086AB02DFE1F68651FD32C7A6A96"
+  },
+  {
+    "path": "hogulink-web/src/lib/completion-i18n.ts",
+    "hash": "58824497860308C9AC0B7E30E25B95263CA8945F9E8CFE2BE7DCAFFEA7C534A2"
+  },
+  {
+    "path": "hogulink-web/src/lib/consumer-i18n.ts",
+    "hash": "74FEFD4AC6E089DAEA4E3B253CD769AE5743BB5936A0913455431D883EE99F27"
+  },
+  {
+    "path": "hogulink-web/src/lib/consumer-model.ts",
+    "hash": "112693A4305790B470992F1A42D2488FBBD88771DEE3FB8EAAAF1F9E18D718B8"
+  },
+  {
+    "path": "hogulink-web/src/lib/coordination-i18n.ts",
+    "hash": "B2BA7691D52BC6CE737CEE4FF86441648CCEC5DFA057B4942EB1AD815471FCB4"
+  },
+  {
+    "path": "hogulink-web/src/lib/coordination-model.ts",
+    "hash": "36764A06B865C950E07A24DA12D4D71BDB1E2F8217255D04F4F43FB2E11C083B"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-auth-i18n.ts",
+    "hash": "AF8B0282A628016C1E6E7C21E4B1069725CB2E8C5E8C1B66C67C177433A41566"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-auth-model.ts",
+    "hash": "10A7B363D3CF294880B70E92FCA2B2C232DE73A06D0DB48A1BE57EDB314A5474"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-booking-data.ts",
+    "hash": "8D8189E53FC96DA71783B6CF3CAF116666B1D796DEB9091A796B9D0B952901C1"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-flow-i18n.ts",
+    "hash": "53F9B6FD1C1DC0A05A8577EB1B930E33B1E63C2332D7142D9B2DA69C8512F020"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-flow-model.ts",
+    "hash": "7FA74E769BD06C4E788485D64C913E4DC366E14BED8EF9A9C698B55C1DB9D228"
+  },
+  {
+    "path": "hogulink-web/src/lib/customer-order-model.ts",
+    "hash": "334EE01C2A77A9F24B62D8807018013DD8B9B26AC034589BD5D9193264D6E4DD"
+  },
+  {
+    "path": "hogulink-web/src/lib/desktop-i18n.ts",
+    "hash": "CB27007E6859802F48A23B60C41D440C05D81C14B6BF985C75769E3771FA36B8"
+  },
+  {
+    "path": "hogulink-web/src/lib/desktop-model.ts",
+    "hash": "B47C3367D3E19BE4BEC178F3990226DD7912B0CB359C3581BAB6EDCA1E7DDAB2"
+  },
+  {
+    "path": "hogulink-web/src/lib/discovery-content.ts",
+    "hash": "D7FF642D6C75AA53F0DD37D9DCF96682A5586F4A2525E842B452085D4A661A5A"
+  },
+  {
+    "path": "hogulink-web/src/lib/discovery-feed-model.ts",
+    "hash": "0144B8F8392B74512A956827BC7F2703FB720669EB893E3C1A9F4435A01BBBA2"
+  },
+  {
+    "path": "hogulink-web/src/lib/discovery-i18n.ts",
+    "hash": "BF5E8FFE463A08C1959A866CC2D684378D412BE371CA83E4646E2989B5209534"
+  },
+  {
+    "path": "hogulink-web/src/lib/discovery-model.ts",
+    "hash": "51D80045154BCC4A39AE3320794E257C335BE37F2ED0B51B365808D1CACB3954"
+  },
+  {
+    "path": "hogulink-web/src/lib/discovery-post-i18n.ts",
+    "hash": "8746546CAABE37F0339B06E6F113BF8E6B5EF3B940A9A57AAC43AF068246664D"
+  },
+  {
+    "path": "hogulink-web/src/lib/exception-i18n.ts",
+    "hash": "9343D11FBF96ED492BBA047A060B8C461B6C3E645DB9B12A010EDEF32F4F8053"
+  },
+  {
+    "path": "hogulink-web/src/lib/finance-i18n.ts",
+    "hash": "081687E018F6D53060A47195C8ED919BACC840E55D02B57290C5541D1B40CC71"
+  },
+  {
+    "path": "hogulink-web/src/lib/governance-i18n.ts",
+    "hash": "9E35CAD6AFEF619C4C367FFCBFD9139DBBCABBD86D54AA3A75335CE9BD9209BA"
+  },
+  {
+    "path": "hogulink-web/src/lib/h5-i18n.ts",
+    "hash": "131F589AF0CD668113880932412F32181C9976B70AA5F18E47CE61804486D188"
+  },
+  {
+    "path": "hogulink-web/src/lib/h5-media.ts",
+    "hash": "6790A3F2F015A07726D613365B035B42B5DC90D4368614356B5523DCEF32575B"
+  },
+  {
+    "path": "hogulink-web/src/lib/handling-i18n.ts",
+    "hash": "ADE3F322BAA8DE702E5FDDA097DA994ED660D86376F5D7CF3BE05CDDB5A52991"
+  },
+  {
+    "path": "hogulink-web/src/lib/i18n.ts",
+    "hash": "3953498890250158C4558CA8C4F3D3CB1DFCC73984B6819F39DA10FB3989A1E0"
+  },
+  {
+    "path": "hogulink-web/src/lib/image-upload.ts",
+    "hash": "DABEAC18C193E45AD6229D7D45553ABEAC5437C53F7552495C03AA493E531E76"
+  },
+  {
+    "path": "hogulink-web/src/lib/invoice-model.ts",
+    "hash": "185EF24B4E4B80FFAFEB09DAF588A2A545D66B5ACA9F5BAD20B724FECF7D69B1"
+  },
+  {
+    "path": "hogulink-web/src/lib/invoicing-i18n.ts",
+    "hash": "A547F5C3F7FFD21A20C4B4BDF146D6C30BB6E5567EE58813715E0C094A61F7F7"
+  },
+  {
+    "path": "hogulink-web/src/lib/media-i18n.ts",
+    "hash": "A030652659ED68298CFF02F47FF5DDB0D0D73B001069AEB30F8E1CD7F98A3562"
+  },
+  {
+    "path": "hogulink-web/src/lib/member-i18n.ts",
+    "hash": "908EFED308146D5BE0D55965369EE01683690D4F0467072A3422DCB11AE04801"
+  },
+  {
+    "path": "hogulink-web/src/lib/merchant-i18n.ts",
+    "hash": "33832112AB75E7A4B7451934EDA250DBA353CC458680A47070F5A0D25F3F8DED"
+  },
+  {
+    "path": "hogulink-web/src/lib/merchant-model.ts",
+    "hash": "CB6CF8FB3AA03EE963133FF3DC7037B951E75DC05CCE2A31BC44CC91680BB714"
+  },
+  {
+    "path": "hogulink-web/src/lib/merchant-operations-i18n.ts",
+    "hash": "0D6F20580840F6B5533E138C649E119B46AD5BB98A702E81CE343F31C70D55F2"
+  },
+  {
+    "path": "hogulink-web/src/lib/mobile-i18n.ts",
+    "hash": "2A8BB0D2A9C32CD2FCE4AB8D6EF5E97975D36F7D8B28FA8AD9D3F20CF23B21AF"
+  },
+  {
+    "path": "hogulink-web/src/lib/onboarding-i18n.ts",
+    "hash": "393580F0137290D82E2FC4584FA1C996EC4D78A3F7A7F66199507D37533097C8"
+  },
+  {
+    "path": "hogulink-web/src/lib/partner-booking-data.ts",
+    "hash": "2863B15CD5C06EFBA5BD01063CE725B19B035B75260151B8C122EF86C1F235CC"
+  },
+  {
+    "path": "hogulink-web/src/lib/partner-flow-i18n.ts",
+    "hash": "12204E16B6BD304A35BE5ED5641522A6BFE949146DC50F5A805AE14C861DB349"
+  },
+  {
+    "path": "hogulink-web/src/lib/pc-consumer-i18n.ts",
+    "hash": "1242B8C1D8B8680B8FE4B444090D518B9C0A355A1E5DE0DC556676B87BB57AE0"
+  },
+  {
+    "path": "hogulink-web/src/lib/promotion-model.ts",
+    "hash": "8D7A0B5C463C05E9B809DD41508FD8F128213E43D6B0492C2EBBCBBE2A6FBB7D"
+  },
+  {
+    "path": "hogulink-web/src/lib/quality-i18n.ts",
+    "hash": "0B6D3CE0CE5EC9CA5D2C5E32A60C77AC962A8C3DA2542280EAD0401608AAD996"
+  },
+  {
+    "path": "hogulink-web/src/lib/reporting-i18n.ts",
+    "hash": "24E27FE891F833B8103AC09A9A92B5ADF8022B79AB611A1E3A745391A80343CF"
+  },
+  {
+    "path": "hogulink-web/src/lib/reporting-model.ts",
+    "hash": "23CC5DB416344B8C557D6D075748048868787A4068B73CA4EACEFD584116825C"
+  },
+  {
+    "path": "hogulink-web/src/lib/runtime-i18n.ts",
+    "hash": "A5FDD1927CFD48D3EED12BB085A7D6347A54EA71A54CAC1C680CAB21B003EEF0"
+  },
+  {
+    "path": "hogulink-web/src/lib/seo.ts",
+    "hash": "22CB45F39ED7A676ED22A19D8E9EBA3E071061785ECBA1E00517BF15009FD4AC"
+  },
+  {
+    "path": "hogulink-web/src/lib/service-availability.ts",
+    "hash": "D3E0B2C0E151094AD75957698457FB49666497E4380CB46D8FB45F315A1A292A"
+  },
+  {
+    "path": "hogulink-web/src/lib/service-mode-i18n.ts",
+    "hash": "86021449BAE5089D32D79F2E1DABED42217A3F333AB21BDC05F4E5A80FB5C26C"
+  },
+  {
+    "path": "hogulink-web/src/lib/service-mode-model.ts",
+    "hash": "AA6B5B7B46C3F517C6E7ED5EDF3B73E5A9F931DB012E2C7A2CB2D8B843E39962"
+  },
+  {
+    "path": "hogulink-web/src/lib/shift-i18n.ts",
+    "hash": "3F8F69F6B484D24ABAB4B836D7A01AF7CFAB4AAAA7AA2566530D99C9CD00667B"
+  },
+  {
+    "path": "hogulink-web/src/lib/shop-model.ts",
+    "hash": "CE8AEA2DC1A9B842C6804B823E86CA646757715DB64D4A07AC97D5411D463557"
+  },
+  {
+    "path": "hogulink-web/src/lib/shop-stats.ts",
+    "hash": "6C0BF94976AB7D7CB028685ECFBBCDB99D36525DED246CF08E7B429283BD489D"
+  },
+  {
+    "path": "hogulink-web/src/lib/sitemap.ts",
+    "hash": "B0B3B33A653DE9773290D67D06ACA421FBDD326B81906B8FAB875A8D40C9A0F6"
+  },
+  {
+    "path": "hogulink-web/src/lib/staff-i18n.ts",
+    "hash": "1D7218300CC7FA005E027E24624C31C235192CA92BFDE4C947E13A6D885D20BF"
+  },
+  {
+    "path": "hogulink-web/src/lib/staff-model.ts",
+    "hash": "B8612EFB4F579BDA506E71CEA8AB4490B97A6D18879FA84509CF36C0FB985CC0"
+  },
+  {
+    "path": "hogulink-web/src/lib/staff-operations-i18n.ts",
+    "hash": "E3417ABF11758330BE8B10096D0E911E7DCD08918F92BFAB1DD63C4A00C9D002"
+  },
+  {
+    "path": "hogulink-web/src/lib/storefront-i18n.ts",
+    "hash": "6B86058CC4A30922252343DCBFEA8435F2347983E59A64CBE14A254398BB372C"
+  },
+  {
+    "path": "hogulink-web/src/lib/storefront-model.ts",
+    "hash": "3C8E87F0E3601C4FACBD79CED0E4B97A3D78E350A2021692D33FCAF1A4A34B3D"
+  },
+  {
+    "path": "hogulink-web/src/lib/subscription-i18n.ts",
+    "hash": "F4C285CE873B6751FA35E6C18A3104858E1D3CD147C7E61CF5233506893D08CC"
+  },
+  {
+    "path": "hogulink-web/src/lib/supply-quality-i18n.ts",
+    "hash": "3EC610ACAAB5AD755579A43217A73B0317B777EBF061A82CE9056AFB222C7A37"
+  },
+  {
+    "path": "hogulink-web/src/lib/therapist-directory-model.ts",
+    "hash": "2AF837A35E19C7D3513919273C6A368FAB3E592384B9A8C3233BB4071C1F09E0"
+  },
+  {
+    "path": "hogulink-web/src/lib/use-live-refresh.ts",
+    "hash": "F102A9571FFBC16C3AAB18F4F277A35412113C64B9284ED2916CA863BF08D7DA"
+  },
+  {
+    "path": "hogulink-web/src/lib/use-runtime.ts",
+    "hash": "0C6CAA187C77D40A18A949BE4F89BBA282BCC5FD1CF71E5B99391E6145A01150"
+  },
+  {
+    "path": "hogulink-web/src/lib/video-upload.ts",
+    "hash": "5193A0D97750F3CE2E44777C7FAB749F01BFFF534E2DF48DBF189EEA65384F06"
+  },
+  {
+    "path": "hogulink-web/src/lib/visit-i18n.ts",
+    "hash": "CB9A2A2C8BB2882BE54C6BDBFC7657902E37EC1514F19C664DFB2217441CE2A7"
+  },
+  {
+    "path": "hogulink-web/src/lib/visit-model.ts",
+    "hash": "D7AEDC668F8FDB5D9737BF3BBF2AE6E73463E7A99D7BA332013E0A8ED46F3715"
+  },
+  {
+    "path": "hogulink-web/src/lib/workday-i18n.ts",
+    "hash": "4948B32A3CDED63B2EDE9661F05B2FDDB9BB535835A7FE26234F9FA97F04999D"
+  },
+  {
+    "path": "hogulink-web/src/lib/workday-model.ts",
+    "hash": "0482F7847152778A98B165DE84BC1C76C2EFE28AA0F9880D75DCB1E4FFA2724D"
+  },
+  {
+    "path": "hogulink-web/src/proxy.ts",
+    "hash": "CF4071D7B8CB84077D7FFFADA6AB890A513380B362A79CB527EC4828A9C3FFD0"
+  },
+  {
+    "path": "hogulink-web/tsconfig.json",
+    "hash": "CA3AF742DA7B3371990DF7B13553CC8B3893888D4418955115E6A9EF10C97D29"
+  },
+  {
+    "path": "package-lock.json",
+    "hash": "16FAEC3CBA401B2076788C580BFC1B612D262B116368D6FAC329115D1D39F380"
+  },
+  {
+    "path": "package.json",
+    "hash": "06340F2657152C52862CC823FB9B1E2C1C7BC260E1098778F0DB182DFB5B3276"
+  },
+  {
+    "path": "packages/contracts/package.json",
+    "hash": "D3DAB554913C2FC2F649F19BD094C5EA22E075B89F29DCD0D2990D6245E4B7AD"
+  },
+  {
+    "path": "packages/contracts/src/admin-operations.ts",
+    "hash": "0859C8591D591B329329C0D149B30464EC215C902A74D098EE82C1963ABAA05F"
+  },
+  {
+    "path": "packages/contracts/src/coordination.ts",
+    "hash": "67CDD9A6394E946D688A94B09D5D540B529D8C82FE9B0567177458271EA66285"
+  },
+  {
+    "path": "packages/contracts/src/customer-flow.ts",
+    "hash": "409A7FAD2CEBA0C259C2EAAE30C8CDC322B9A0B2DD4F101957A7ACB4037A5C73"
+  },
+  {
+    "path": "packages/contracts/src/discovery-content.ts",
+    "hash": "5AA0A39B80C69551D1FC68F7C518413A88758E495B5A3FDFC410C5662A06016C"
+  },
+  {
+    "path": "packages/contracts/src/discovery.ts",
+    "hash": "DCCA684B266F6775D276F33089ED87FBC40CA105D07F75C6C00BA8A5492EE149"
+  },
+  {
+    "path": "packages/contracts/src/engagement.ts",
+    "hash": "43E3C6E8C249C5C3C65E0052CE34CC351A8C3E3DFE79FFEDC91AB89183C25BE7"
+  },
+  {
+    "path": "packages/contracts/src/experience.ts",
+    "hash": "B7F8E206979168B503D6108EC4698961A1233CBF738F3C82033BD848EF9398F5"
+  },
+  {
+    "path": "packages/contracts/src/finance.ts",
+    "hash": "33A1F526904659AF962AD668ABD8572D6CE510C3A56C6469EAD5E6666957D4C3"
+  },
+  {
+    "path": "packages/contracts/src/governance.ts",
+    "hash": "EE787D43386EFD984721DB93AA0986DB3430D405DAB3D5419AC406C2207E7651"
+  },
+  {
+    "path": "packages/contracts/src/index.ts",
+    "hash": "8F5A14E4A42FF09D87A5B29133940B272204F58C676CC9ADCE8D4A52428013A7"
+  },
+  {
+    "path": "packages/contracts/src/invoicing.ts",
+    "hash": "DDBADF9D6302D12C49E4CDEEFD4873FC239A28AC8248D11139C18356B1EE24AD"
+  },
+  {
+    "path": "packages/contracts/src/merchant-operations.ts",
+    "hash": "F07A952D0FF0546A3174758D4874DC68B9AA5D993F8776EE39DA2D70339CBF3C"
+  },
+  {
+    "path": "packages/contracts/src/mobile.ts",
+    "hash": "C48761185B9BE8A6C267AFCC3B07AEAB43803D525AD3145FE0B2E2FCF270096B"
+  },
+  {
+    "path": "packages/contracts/src/onboarding.ts",
+    "hash": "86A00D6F585565AE6CA0E60105076070E7AF5064BDA6AE0B8B2BA67AE0144B9B"
+  },
+  {
+    "path": "packages/contracts/src/reporting.ts",
+    "hash": "593F9A57001ECBC4820E5F1375CA864604709A502C72E26F6B1CC597BAFF9AD8"
+  },
+  {
+    "path": "packages/contracts/src/service-mode.ts",
+    "hash": "F1BBEE78780888C57473DCE8924443F76636FFF2E6F6A21E08880BB0FBE946D2"
+  },
+  {
+    "path": "packages/contracts/src/subscription.ts",
+    "hash": "AE0C1E0D095CB9E8F2B4662675AE657CA862A54F87DE1217A5A8E43C8C7E5D56"
+  },
+  {
+    "path": "scripts/account-model.test.ts",
+    "hash": "3E92B4A67F3A2743F5BCEDEBC32ED1EE044B739F9F1441B73E6ADE693B9650F3"
+  },
+  {
+    "path": "scripts/admin-operations-model.test.ts",
+    "hash": "ED78619FA7B1B816692D34A642C0D24A5790FE117BAC549555C3400EF3B7172B"
+  },
+  {
+    "path": "scripts/benchmark-discovery.mts",
+    "hash": "D4FAD8A774DD82E6EEDA03ACF720254A074C5B9E1E27776696870C6090DD8E57"
+  },
+  {
+    "path": "scripts/booking-browse-model.test.ts",
+    "hash": "49B4AD500315CD040177D1610E4F0A22E31EC8BC9EA20DB1A292E20F7A82244C"
+  },
+  {
+    "path": "scripts/booking-presentation.test.ts",
+    "hash": "55E1E13F12D34C594617FFCFE97ED0DEE0B81C7418B61B584B618D8160AE9101"
+  },
+  {
+    "path": "scripts/check-postgres.mts",
+    "hash": "AEAB62C5F7098C01E572232276F39346CBCBF473A63BE689B1E863F11C96BA89"
+  },
+  {
+    "path": "scripts/community-model.test.ts",
+    "hash": "B72E793B5D2DF450A22847520D68A64E699C37188098240CF298FDAEA6E9A611"
+  },
+  {
+    "path": "scripts/consumer-model.test.ts",
+    "hash": "06859399E69700BF803C615045AD06491BB0515969D30EAD23A754CE3E850418"
+  },
+  {
+    "path": "scripts/coordination-model.test.ts",
+    "hash": "6AA8DE4507478F11259EFD418BF7CC061E5616F1854D0874957F760728D15F7D"
+  },
+  {
+    "path": "scripts/customer-api-session.test.ts",
+    "hash": "7788E3468571EA8CF9A0CB4B10CC750F7A5A302E87D5E7C1A29E42E9370EEF2B"
+  },
+  {
+    "path": "scripts/customer-auth-model.test.ts",
+    "hash": "0D36069A85099130ACA2D60E77A241C606A21F8B98F5BCF1CE2C9B291BD338C6"
+  },
+  {
+    "path": "scripts/customer-booking-data.test.ts",
+    "hash": "4275ECD753DB9FEA3CBD6C6B53CF9EF677CD08DFBF3037C32DE3C8A3406BED93"
+  },
+  {
+    "path": "scripts/customer-flow-model.test.ts",
+    "hash": "710A8C1FEE594F3D79E2F4C5E4B0C03E0B55EDA216DD295941F659F4F9374B05"
+  },
+  {
+    "path": "scripts/customer-pc-flow.test.ts",
+    "hash": "D1E169BD660634BE1CD58C95DD6CC353A65A1273F299CBB8F0D8D48423DF8CB3"
+  },
+  {
+    "path": "scripts/demo-media.test.mjs",
+    "hash": "324BF4C4CEB30F1264B4824ADF1823F37252FD6C03931AA7F8D641D183B967B1"
+  },
+  {
+    "path": "scripts/desktop-model.test.ts",
+    "hash": "1624D4F441395E1A9E537E7CCF38FDF400DB27DD52F1C8D6C24A292E6AA482CC"
+  },
+  {
+    "path": "scripts/discovery-model.test.ts",
+    "hash": "130E3DC691C5E0D4CCDF567ED7E6FE0F0C3FA5DB4FBF38D92FE969F03765DBD6"
+  },
+  {
+    "path": "scripts/fixtures/api-test-server.mts",
+    "hash": "73D059861719F7FC7786B11CF1C368E6DA56AD143B886EE6059082398CCEB245"
+  },
+  {
+    "path": "scripts/fixtures/demo-media-data.json",
+    "hash": "D69CDAC7287EE585B4D42F8AD1F3167155E805E4AF76DDEF22854E70D98A8F69"
+  },
+  {
+    "path": "scripts/fixtures/demo-media-manifest.json",
+    "hash": "93E1CBC404D55F24D28BDD6DAB66494AF3C7EA90C12002141111F12E5D518AE2"
+  },
+  {
+    "path": "scripts/fixtures/seed-catalog.mts",
+    "hash": "E81853E4717D94D9FDABE26F3746B8EA3EAF51ED6F70C69E8DD0BBC8D6FFAACE"
+  },
+  {
+    "path": "scripts/fixtures/seed-server.mts",
+    "hash": "E9ED7BE56FBC78D306531241BF94CB323701DAD6B9FCAB38227F918CE6ADF8A2"
+  },
+  {
+    "path": "scripts/generate-demo-assets.mjs",
+    "hash": "3C9829AC98BE2E06782C59EF30981734FFEA8E4A37F751E80101F81AB582E798"
+  },
+  {
+    "path": "scripts/invoice-model.test.ts",
+    "hash": "0C8926CD80085B96A9AAB3CA16EBAB6F068A9BA7502BA07A44EF8DAED40D2B11"
+  },
+  {
+    "path": "scripts/merchant-operations-model.test.ts",
+    "hash": "672B8DFE832F4ED297987E1F057B755D694DFB7EF83B6C241EECB9DEB5AAC835"
+  },
+  {
+    "path": "scripts/partner-booking-data.test.ts",
+    "hash": "457CBA327EE9B1D2F61681CD3E03E9B5954BAE160E2FACB69B94198522904FB5"
+  },
+  {
+    "path": "scripts/promotion-model.test.ts",
+    "hash": "2D66DA890DC813C7374E011488D7503DC98AABF6364A206093ACA2FF3F3D4BBD"
+  },
+  {
+    "path": "scripts/qa-clock.mjs",
+    "hash": "23C2EB1F0956E4BB5C8AEB36E9E46687E9F461951E2DE14798819C904EADA560"
+  },
+  {
+    "path": "scripts/reporting-model.test.ts",
+    "hash": "A3B5BDD90623F057D580A99683A255B4B5260EA046C69D282C6A7526C2EE0963"
+  },
+  {
+    "path": "scripts/seed-demo-media.mjs",
+    "hash": "05E44339AEC00B32D1EFDAA4C2CAC621DD9E83B307D00B88A28EF451066115F7"
+  },
+  {
+    "path": "scripts/seed-more-orders.mjs",
+    "hash": "96B6CFE5D31E8791E31A72BA41B0E62C6ABA7B1E9D4A6BB4261F5EB22FCB194A"
+  },
+  {
+    "path": "scripts/seed-test-data.mjs",
+    "hash": "CE0FCCA6483ECAD7BD0DE28D46C5A58A21B0F121005C992B979199AEB478F71A"
+  },
+  {
+    "path": "scripts/seed-test-data.sh",
+    "hash": "1F3AE95A1B8F8A5668D7412A38A9CF0548BAC9E40DAC89C92AB9497A2F7ECC17"
+  },
+  {
+    "path": "scripts/service-availability.test.ts",
+    "hash": "74171C7DB6CEBFF9DA080EFE06A655F51C6310EF22389164C7C4416C9893791A"
+  },
+  {
+    "path": "scripts/service-mode-model.test.ts",
+    "hash": "3366919BEDDC392A119ABDE06BB373012A7CB73371E1931656432E099A186A90"
+  },
+  {
+    "path": "scripts/smoke-accounts.mjs",
+    "hash": "CE4418C76487A41EF0420015EB897B952234ADFF14339F36AE0C87E6356A7351"
+  },
+  {
+    "path": "scripts/smoke-admin.mjs",
+    "hash": "C4AA943DC09D7D21EF33B3D57ABA9774F2DEC9417F6EB8E1FB1569F31BBB4961"
+  },
+  {
+    "path": "scripts/smoke-booking-browse.mjs",
+    "hash": "66C5CA7A07C3D25066DEE5606F7FC432C06B45F16A2264CDC4477E186C45781E"
+  },
+  {
+    "path": "scripts/smoke-care.mjs",
+    "hash": "5E76A37FA593BEEF064273FD4549DE12E17E92CAE4615ABFDAA75AFFD15EA80C"
+  },
+  {
+    "path": "scripts/smoke-completion.mjs",
+    "hash": "751CC292B4F01AE62D56CF62B1949F921FB7A5719EB580CFF0491BF1ECC28FA9"
+  },
+  {
+    "path": "scripts/smoke-coordination.mjs",
+    "hash": "28173784576D478ACD49A0C1A4A9022BBE6EB29CAE545D617E1F617161E38BF5"
+  },
+  {
+    "path": "scripts/smoke-customer-flow.mjs",
+    "hash": "B813D5AC9E870F33D881055226F01603FAA4CA33C2D909F196795EA1CB7D45DD"
+  },
+  {
+    "path": "scripts/smoke-employees.mjs",
+    "hash": "C7056A0F35F42EB1906449D387F1A0408C66C55B271ABC103DEC8271A95E8189"
+  },
+  {
+    "path": "scripts/smoke-engagement.mjs",
+    "hash": "DEAE9B4CFE518B7CC4E1BC5245E45C082D3EBCA4905AF614C2BC5A377B392980"
+  },
+  {
+    "path": "scripts/smoke-experience.mjs",
+    "hash": "21306E6BB8D2B9F199A80C1866D4FDA396139832B3A1B2B659ACDCA2584587A6"
+  },
+  {
+    "path": "scripts/smoke-finance.mjs",
+    "hash": "B0E0F2133F4318C50C0D547917F5E1FD696994B0D59029B86043249F2554F4A0"
+  },
+  {
+    "path": "scripts/smoke-governance.mjs",
+    "hash": "1F2BF4424C391B082FE6C8B3E46CE13A319D6E9CA70616C05D996524D99B09FB"
+  },
+  {
+    "path": "scripts/smoke-h5.mjs",
+    "hash": "50E9F85529BF2166F68908ED35D8F4439380BF12B1EC6566CA7580A120403681"
+  },
+  {
+    "path": "scripts/smoke-handling.mjs",
+    "hash": "FBE3203F014145CFFDAD295B0BEAB92D1F670CB395F870A221A94018BCDCBDA2"
+  },
+  {
+    "path": "scripts/smoke-in-store.mjs",
+    "hash": "97ADECA5056AC3F03588BF10603EFDDBCC65D87EB5410FB96393191947D07534"
+  },
+  {
+    "path": "scripts/smoke-invoicing.mjs",
+    "hash": "18010EB3262931D35673D116B2383162F8E3B812A9AEDC097D8C053A7CAC1F29"
+  },
+  {
+    "path": "scripts/smoke-isolated.mjs",
+    "hash": "7419BDB242F5EF0934D212F0B1692BC77209B3F27C03DC8907E87E06E224F6A2"
+  },
+  {
+    "path": "scripts/smoke-merchant.mjs",
+    "hash": "1CE3F4EECDD1481F87FB7D191A30B20B55A54EA4299FCED525505075C2755DFD"
+  },
+  {
+    "path": "scripts/smoke-reporting.mjs",
+    "hash": "9D3156AB1CEB95017D66FF8E28C7E06E7C4A855D5E2A59044250365D86EA20A1"
+  },
+  {
+    "path": "scripts/smoke-staff.mjs",
+    "hash": "377A1F6BEF6F189477B0D97545E36D115E02AB26281D957D019837109B6583C6"
+  },
+  {
+    "path": "scripts/smoke-storefront.mjs",
+    "hash": "3DBDF1386267D8BF8F05FD321DD63F0B1DBEE0E4EAE01A5921FF46DFE7B5F644"
+  },
+  {
+    "path": "scripts/smoke-subscription.mjs",
+    "hash": "9C847926C60670AFC1ACCEF7CE1B7EB8723178672B466AA0B443852841E246C3"
+  },
+  {
+    "path": "scripts/smoke.mjs",
+    "hash": "62CB3C17430204AF05E7CFFCB5A4E203D7F335A002A4DA4193558AC6FC2EF163"
+  },
+  {
+    "path": "scripts/staff-operations-model.test.ts",
+    "hash": "ED91CE317DD29EFEBD3CBDC52D4644ED26708C6DDB8E7046606FF908E8086691"
+  },
+  {
+    "path": "scripts/storefront-model.test.ts",
+    "hash": "BEA9BD7E231051C688CFCF35BFF2A28B9A801DDDE7C4F0ADB9CEC15EE5C04347"
+  },
+  {
+    "path": "scripts/therapist-directory-model.test.ts",
+    "hash": "1650EA9DFA5AA4648761C91CFB8E5BE4E08C5A32C831CE079C502757722A6D6C"
+  }
+]

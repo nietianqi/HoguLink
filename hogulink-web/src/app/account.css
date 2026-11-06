@@ -1,4 +1,7 @@
 /* Account overview only. Keep the shared green palette and the other pages intact. */
+.pc-account-mobile-settings {
+  display: contents;
+}
 .consumer-account.account-dashboard {
   padding-block: 0 30px;
   display: grid;

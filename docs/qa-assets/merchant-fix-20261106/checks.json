@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-06",
+  "status": "FIXED_AND_VERIFIED",
+  "backend": {
+    "passed": 817,
+    "failed": 0
+  },
+  "frontendModels": {
+    "passed": 187,
+    "failed": 0
+  },
+  "demoMedia": {
+    "passed": 5,
+    "failed": 0
+  },
+  "businessSmoke": {
+    "suites": 20,
+    "assertions": 2132,
+    "exitCode": 0
+  },
+  "targetBackend": {
+    "passed": 13,
+    "failed": 0
+  },
+  "targetModels": {
+    "passed": 6,
+    "failed": 0
+  },
+  "workspaceTypecheck": "PASS",
+  "productionBuild": "PASS",
+  "viewports": ["1440x1000", "390x844"],
+  "payments": "demo only",
+  "database": "disposable in-memory",
+  "externalNotifications": "disabled",
+  "mainPreviewTestWrites": false,
+  "commitOrPush": false
+}

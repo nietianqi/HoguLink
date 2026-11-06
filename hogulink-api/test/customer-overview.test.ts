@@ -59,8 +59,158 @@ test('customer overview starts empty and rejects workspace identities', () =>
     });
     assert.deepEqual(o.recent, []);
     assert.deepEqual(o.reviewBookingIds, []);
+    assert.deepEqual(o.desktop, {
+      actions: [],
+      upcoming: undefined,
+      recentCompleted: [],
+      savedPlaces: 0,
+    });
     for (const actor of [staff, shop, admin])
       await assert.rejects(() => e.experience.overview(actor), fail('FORBIDDEN'));
+  }));
+
+test('PC summaries retain older actionable and completed orders outside recent history without exposing private facts', () =>
+  fixture(async (e) => {
+    const b = await booking(e);
+    await e.repo.transaction(async (tx) => {
+      for (const [id, status, extra] of [
+        [
+          'old-consent',
+          'CONFIRMED',
+          { replacementConsent: 'PENDING', proposedListingId: 'listing-mio' },
+        ],
+        ['old-completion', 'AWAITING_COMPLETION', { completion: { status: 'PENDING' } }],
+        [
+          'old-payment',
+          'CONFIRMED',
+          { paymentStatus: 'FAILED', paymentActionBy: e.now() + 100000 },
+        ],
+        [
+          'old-completed',
+          'COMPLETED',
+          { capturedAmount: b.quote.total, completedAt: e.now() - 1000 },
+        ],
+      ] as const)
+        await tx.put('bookings', {
+          ...b,
+          ...extra,
+          id,
+          status,
+          createdAt: b.createdAt - 1000,
+        } as Booking);
+      for (let i = 0; i < 4; i++)
+        await tx.put('bookings', {
+          ...b,
+          id: `new-cancelled-${i}`,
+          status: 'CANCELLED',
+          createdAt: b.createdAt + i + 1,
+        });
+      await tx.put('bookings', {
+        ...b,
+        id: 'foreign-private-order',
+        customerId: other.id,
+        status: 'AWAITING_COMPLETION',
+        completion: { status: 'PENDING' },
+      } as Booking);
+    });
+    const o = await e.experience.overview(customer);
+    assert(o.recent.every((x) => x.status === 'CANCELLED'));
+    assert.deepEqual(
+      o.desktop.actions.map((x) => [x.id, x.kind]),
+      [
+        ['old-consent', 'consent'],
+        ['old-completion', 'completion'],
+        ['old-payment', 'payment'],
+        ['old-completed', 'review'],
+      ],
+    );
+    assert.deepEqual(
+      o.desktop.recentCompleted.map((x) => x.id),
+      ['old-completed'],
+    );
+    assert.equal(o.desktop.upcoming?.startAt, b.quote.startAt);
+    const text = JSON.stringify(o.desktop);
+    for (const forbidden of [
+      'Private QA address',
+      'room',
+      'customerId',
+      'paymentId',
+      'foreign-private-order',
+    ])
+      assert(!text.includes(forbidden), forbidden);
+    assert.equal((await e.booking(customer, 'old-completion')).capturedAmount, 0);
+  }));
+
+test('PC pending decisions exclude disputed completion, expired payment updates and cancelled consent', () =>
+  fixture(async (e) => {
+    const b = await booking(e);
+    await e.repo.transaction(async (tx) => {
+      await tx.put('bookings', {
+        ...b,
+        status: 'AWAITING_COMPLETION',
+        completion: { status: 'DISPUTED', history: [], confirmBy: e.now() + 86400000 },
+      } as unknown as Booking);
+      await tx.put('bookings', {
+        ...b,
+        id: 'expired-payment',
+        paymentId: 'expired-payment-record',
+        paymentStatus: 'FAILED',
+        paymentActionBy: e.now() - 1,
+      });
+      const payment = (await tx.get<{ id: string; status: string }>('payments', b.paymentId))!;
+      await tx.put('payments', {
+        ...payment,
+        id: 'expired-payment-record',
+        bookingId: 'expired-payment',
+      });
+      await tx.put('bookings', {
+        ...b,
+        id: 'closed-consent',
+        status: 'CANCELLED',
+        replacementConsent: 'PENDING',
+        proposedListingId: 'listing-mio',
+      });
+    });
+    assert.deepEqual((await e.experience.overview(customer)).desktop.actions, []);
+  }));
+
+test('PC keeps expired completion authorization visible as a payment task without capturing funds', () =>
+  fixture(async (e, clock) => {
+    let b = await start(e, clock);
+    clock.now = b.quote.endAt;
+    b = await e.event(staff, b.id, b.version, 'COMPLETE');
+    await e.repo.transaction(async (tx) => {
+      const p = (await tx.get<{ id: string; status: string }>('payments', b.paymentId))!;
+      await tx.put('payments', { ...p, status: 'VOIDED' });
+    });
+    const overview = await e.experience.overview(customer);
+    assert.equal(overview.desktop.actions.find((x) => x.id === b.id)?.kind, 'payment');
+    assert.equal((await e.booking(customer, b.id)).capturedAmount, 0);
+  }));
+
+test('PC saved-place count belongs to the current customer and contains no address details', () =>
+  fixture(async (e) => {
+    await e.addresses.save(
+      customer,
+      undefined,
+      {
+        version: 0,
+        label: 'QA home',
+        setDefault: true,
+        address: {
+          name: 'QA Visitor',
+          type: 'HOME',
+          area: 'shinjuku',
+          detail: 'Private summary address 201',
+          hotelName: '',
+        },
+      },
+      'pc-address-summary-001',
+    );
+    const overview = await e.experience.overview(customer);
+    assert.equal(overview.desktop.savedPlaces, 1);
+    assert.equal((await e.experience.overview(other)).desktop.savedPlaces, 0);
+    assert(!JSON.stringify(overview.desktop).includes('Private summary address'));
   }));
 test('a resumable checkout is a live unsubmitted hold, never an accepted booking or captured charge', () =>
   fixture(async (e) => {

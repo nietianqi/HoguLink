@@ -15,6 +15,7 @@ import {
   withinShifts,
   lateNight,
   travelRecordOpensAt,
+  canTerminateStaffTask,
   fulfillmentMode,
   venueAvailable,
   venueSnapshot,
@@ -2986,6 +2987,13 @@ export class Engine {
     return this.run(async (tx) => {
       const b = await this.getBooking(tx, actor, bookingId, version);
       ensure(!terminal.has(b.status), 'INVALID_STATE', 'This task has ended.', 409);
+      if (type === 'SAFETY_TERMINATION')
+        ensure(
+          canTerminateStaffTask(b),
+          'INVALID_STATE',
+          'Only an acknowledged task that has not ended can be terminated. Report safety concerns separately.',
+          409,
+        );
       const existing = (await tx.list<SafetyEvent>('safety')).find(
         (x) => x.bookingId === b.id && x.type === type && x.status === 'OPEN',
       );

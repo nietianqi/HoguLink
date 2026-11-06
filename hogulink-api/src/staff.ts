@@ -78,6 +78,7 @@ export class StaffService {
     return this.run(async (tx) => {
       const { listing, store } = await this.member(tx, actor);
       return {
+        serverNow: this.now(),
         listing,
         store: {
           id: store.id,

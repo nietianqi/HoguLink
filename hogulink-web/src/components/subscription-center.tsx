@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CalendarClock, Check, Download, FileText, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
@@ -114,7 +115,7 @@ export function SubscriptionCenter({
     setNotice('');
     setNote('');
     setConfirmed(false);
-    setReference('plan_demo_' + crypto.randomUUID().replaceAll('-', '').slice(0, 16));
+    setReference('plan_demo_' + newRequestKey().replaceAll('-', '').slice(0, 16));
     setConfirmation({ action, invoice: i, snapshot: data, policy });
   }
   async function submit() {
@@ -139,7 +140,7 @@ export function SubscriptionCenter({
         };
     const fingerprint = JSON.stringify([path, body]);
     if (retry.current.body !== fingerprint)
-      retry.current = { body: fingerprint, key: crypto.randomUUID() };
+      retry.current = { body: fingerprint, key: newRequestKey() };
     const n = generation.current;
     lock.current = true;
     setBusy(true);

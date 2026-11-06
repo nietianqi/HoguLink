@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -292,7 +293,7 @@ export function Checkout({ locale: l, holdId }: { locale: Locale; holdId: string
         try {
           retryKey.current = sessionStorage.getItem(keyName) ?? '';
         } catch {}
-        if (!retryKey.current) retryKey.current = crypto.randomUUID();
+        if (!retryKey.current) retryKey.current = newRequestKey();
         try {
           sessionStorage.setItem(keyName, retryKey.current);
         } catch {}

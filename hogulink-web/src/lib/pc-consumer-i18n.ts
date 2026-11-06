@@ -138,6 +138,7 @@ const copy = {
   reviewService: ['サービスを確認', 'Review your service', '核对服务记录'],
   reviewReplacement: ['担当者の変更を確認', 'Review replacement', '查看改派方案'],
   venueArea: ['店舗エリア', 'Shop area', '门店所在地区'],
+  visitAddress: ['訪問先の住所', 'Visit address', '上门地址'],
   therapist: ['サービス担当者', 'Service therapist', '服务技师'],
   notAssigned: ['お店が手配中', 'Being arranged by the shop', '店铺安排中'],
   support: ['ヘルプ・サポート', 'Help and support', '帮助与售后'],

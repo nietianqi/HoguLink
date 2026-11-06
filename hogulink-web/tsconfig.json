@@ -35,7 +35,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next-production/types/**/*.ts",
-    ".next-production/dev/types/**/*.ts"
+    ".next-production/dev/types/**/*.ts",
+    ".next-h5-qa/types/**/*.ts",
+    ".next-h5-qa/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

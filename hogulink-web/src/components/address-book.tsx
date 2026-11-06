@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -61,7 +62,7 @@ function AddressEditor({
         };
         const fingerprint = JSON.stringify(body);
         if (retry.current.body !== fingerprint)
-          retry.current = { body: fingerprint, key: crypto.randomUUID() };
+          retry.current = { body: fingerprint, key: newRequestKey() };
         try {
           const next = await api<AddressBook>(
             `customer/addresses${initial ? `/${initial.id}` : ''}`,
@@ -168,7 +169,13 @@ function AddressEditor({
     </form>
   );
 }
-export function AddressBookPage({ locale: l }: { locale: Locale }) {
+export function AddressBookPage({
+  locale: l,
+  initialAdd = false,
+}: {
+  locale: Locale;
+  initialAdd?: boolean;
+}) {
   const { actor, setActor, loading } = useSession(),
     router = useRouter(),
     [book, setBook] = useState<AddressBook>(),
@@ -179,6 +186,20 @@ export function AddressBookPage({ locale: l }: { locale: Locale }) {
   const generation = useRef(0),
     authEpoch = useRef(0);
   const pageEpoch = authEpoch.current;
+  const addOpened = useRef(false);
+  useEffect(() => {
+    if (
+      initialAdd &&
+      !addOpened.current &&
+      actor?.role === 'CUSTOMER' &&
+      book &&
+      book.items.length < 10 &&
+      window.matchMedia('(min-width: 1101px)').matches
+    ) {
+      addOpened.current = true;
+      setEditor({});
+    }
+  }, [initialAdd, actor, book]);
   useEffect(() => {
     const reset = () => {
       authEpoch.current++;

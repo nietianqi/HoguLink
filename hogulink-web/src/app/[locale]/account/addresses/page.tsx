@@ -7,6 +7,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     robots: { index: false, follow: false },
   };
 }
-export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
-  return <AddressBookPage locale={asLocale((await params).locale)} />;
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ action?: string }>;
+}) {
+  return (
+    <AddressBookPage
+      locale={asLocale((await params).locale)}
+      initialAdd={(await searchParams).action === 'add'}
+    />
+  );
 }

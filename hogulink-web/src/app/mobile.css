@@ -28,6 +28,11 @@
 .mobile-sheet::backdrop {
   background: #10261ec2;
 }
+/* Derive the lock from actual open dialogs; overlapping sheets and route unmounts
+   cannot leave a stale inline overflow value behind. */
+html:has(dialog.mobile-sheet[open]) {
+  overflow: hidden;
+}
 .mobile-sheet[open] {
   position: fixed;
   inset: auto 0 0;

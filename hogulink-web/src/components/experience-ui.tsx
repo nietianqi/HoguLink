@@ -289,8 +289,10 @@ export function CustomerExperiencePanel({
       setBusy(false);
     }
   }
+  // Only an approved review is public; withdrawing a pending one just stops moderation.
+  const withdrawKey = data?.review?.status === 'APPROVED' ? 'withdraw' : 'withdrawPending';
   return (
-    <section className="quality-order">
+    <section className="quality-order" id={`customer-review-${b.id}`}>
       <div className="quality-actions">
         <button
           className="quality-button"
@@ -343,7 +345,7 @@ export function CustomerExperiencePanel({
               setOpen('withdraw');
             }}
           >
-            {qt(l, 'withdraw')}
+            {qt(l, withdrawKey)}
           </button>
         )}
       </div>
@@ -372,7 +374,7 @@ export function CustomerExperiencePanel({
         onClose={() => {
           if (!busy) setOpen(null);
         }}
-        title={qt(l, open === 'withdraw' ? 'withdraw' : 'write')}
+        title={qt(l, open === 'withdraw' ? withdrawKey : data?.review ? 'edit' : 'write')}
         locale={l}
         className="quality-dialog"
       >
@@ -429,7 +431,7 @@ export function CustomerExperiencePanel({
           </form>
         ) : (
           <>
-            <p>{qt(l, 'withdrawNote')}</p>
+            <p>{qt(l, withdrawKey === 'withdraw' ? 'withdrawNote' : 'withdrawPendingNote')}</p>
             {error && <p role="alert">{error}</p>}
             <button className="quality-primary" disabled={busy} onClick={() => void save(true)}>
               {qt(l, 'confirm')}

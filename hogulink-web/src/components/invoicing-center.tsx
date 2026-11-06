@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, FileCheck2, FileText, RefreshCw, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import {
@@ -211,7 +212,7 @@ export function InvoicingCenter({
     } else return;
     const fingerprint = JSON.stringify([path, body]);
     if (retry.current.body !== fingerprint)
-      retry.current = { body: fingerprint, key: crypto.randomUUID() };
+      retry.current = { body: fingerprint, key: newRequestKey() };
     const n = generation.current;
     lock.current = true;
     setBusy(true);

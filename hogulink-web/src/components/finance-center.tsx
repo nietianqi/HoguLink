@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Download, RefreshCw, ReceiptText, Scale, FileCheck2 } from 'lucide-react';
@@ -169,7 +170,7 @@ export function FinanceCenter({
     setError('');
     setNotice('');
     const json = JSON.stringify([path, body]);
-    if (retry.current.body !== json) retry.current = { body: json, key: crypto.randomUUID() };
+    if (retry.current.body !== json) retry.current = { body: json, key: newRequestKey() };
     try {
       await api(path, body, method, retry.current.key);
       setAction(null);

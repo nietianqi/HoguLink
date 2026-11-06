@@ -141,8 +141,10 @@ check(
   'service completion captures the demo payment',
 );
 check(!b.address, 'completion response redacts address');
+check(!('capturedAmount' in b), 'staff completion response omits financial amounts');
 await request(`staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' }, 'POST', 409);
 await login('MERCHANT', { storeId: 'store-nagi' });
+b = await request(`bookings/${b.id}`);
 b = await request(`merchant/bookings/${b.id}/refunds`, {
   version: b.version,
   amount: b.capturedAmount,

@@ -475,6 +475,21 @@ export type Booking = {
   paymentId: string;
   holdId: string;
 };
+/** Safety reports remain available separately; only a live, accepted task can be terminated. */
+export function canTerminateStaffTask(
+  booking: Pick<
+    Booking,
+    'status' | 'staffTaskStatus' | 'replacementConsent' | 'completion' | 'completedAt'
+  >,
+) {
+  return (
+    ['CONFIRMED', 'EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(booking.status) &&
+    booking.staffTaskStatus === 'ACKNOWLEDGED' &&
+    booking.replacementConsent !== 'PENDING' &&
+    booking.completion === undefined &&
+    booking.completedAt === undefined
+  );
+}
 export type Audit = {
   id: string;
   bookingId?: string;

@@ -17,6 +17,7 @@ const words = {
   finance: ['売上・手数料', 'Finance', '财务与计费'],
   settings: ['店舗設定', 'Shop settings', '店铺设置'],
   support: ['相談・安全', 'Support & safety', '售后与安全'],
+  reviews: ['クチコミ', 'Reviews', '服务评价'],
   title: [
     'お店の一日を、見通しよく。',
     'A clear view of your day.',

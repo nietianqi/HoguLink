@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useEffect, useRef, useState } from 'react';
 import {
   IN_STORE_NO_SHOW_REPLY_MINUTES,
@@ -27,19 +28,22 @@ export function NoShowPanel({
   booking: b,
   role,
   onUpdated,
+  serverNow,
 }: {
   locale: Locale;
   booking: NoShowBooking;
   role: Role;
   onUpdated: () => Promise<unknown> | void;
+  serverNow?: number;
 }) {
-  const [now, setNow] = useState(0),
+  const [localNow, setNow] = useState(0),
     [text, setText] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [review, setReview] = useState(false),
     [agreed, setAgreed] = useState(false);
   const request = useRef('');
+  const now = serverNow ?? localNow;
   const inStore = b.quote.fulfillmentMode === 'IN_STORE';
   const atVenue = inStore && b.status === 'CONFIRMED' && !b.checkIn;
   const arrived = b.status === 'ARRIVED' || atVenue;
@@ -59,11 +63,11 @@ export function NoShowPanel({
     if (!arrived || b.noShow?.status !== 'REPORTED') setReview(false);
   }, [b.status, b.noShow?.status]);
   useEffect(() => {
-    if (!arrived || (role !== 'STAFF' && role !== 'MERCHANT')) return;
+    if (serverNow !== undefined || !arrived || (role !== 'STAFF' && role !== 'MERCHANT')) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [b.id, b.status, role]);
+  }, [b.id, b.status, role, serverNow]);
   const policy = b.quote.cancellationPolicy.noShow,
     report = b.noShow;
   if (inStore && !report && (!now || now < b.quote.startAt)) return null;
@@ -82,7 +86,7 @@ export function NoShowPanel({
     }
     setBusy(true);
     setError('');
-    request.current ||= crypto.randomUUID();
+    request.current ||= newRequestKey();
     try {
       await api(
         `bookings/${b.id}/no-show`,

@@ -1,0 +1,86 @@
+Browser tab: 2, Title: "技师端 | HoguLink", URL: "http://qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#staff-task-detail".
+1 AXWebArea 技师端 | HoguLink, URL: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#staff-task-detail
+	2 container
+		3 link Description: 跳至正文, Value: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#main
+		4 container main
+			5 container
+				6 text 技师工作台
+				7 heading 我的任务, Value: 1
+					8 text 我的任务
+				9 pop up button (collapsed, settable) Description: Language, Value: 简体中文, Secondary Actions: Expand
+					10 menu
+						11 日本語
+						12 English
+						13 (selected) 简体中文
+				14 button 刷新
+				15 link Description: 求助与安全, Value: qa.localhost:3122/zh-cn/staff/support
+			16 button (collapsed) 演示技师 ·葵, Secondary Actions: Expand
+				17 text 演示技师
+				18 text  ·
+				19 text 葵
+			20 text 操作已保存。
+			21 container
+				22 text 安全事项处理进度
+				23 link Description: 紧急帮助与位置分享, Value: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#contact-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+			24 container 任务提醒
+				25 button (collapsed) 任务提醒, Secondary Actions: Expand
+					26 text 任务提醒
+			27 container
+				28 link Description: 全部 · 我的任务, Value: qa.localhost:3122/zh-cn/staff?tab=tasks
+				29 text 预约编号  ·  81DC83E1 已取消 上门服务
+				30 heading 舒缓放松, Value: 2
+					31 text 舒缓放松
+				32 text 11月7日 09:00  JST 60 分钟 新宿区 当前处理
+				33 text 此订单已关闭，保留原始记录和售后入口。
+				34 container 订单进程
+					35 link Description: 履约与验收, Value: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#fulfillment-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+					36 link Description: 售后与协作, Value: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#cooperation-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+					37 link Description: 沟通与安全, Value: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#contact-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+				38 container Description: 履约与验收, ID: fulfillment-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+					39 text 01
+					40 heading 履约与验收, Value: 3
+						41 text 履约与验收
+					42 text 按出发、到达、开始和提交结束依次记录。达到购买时长后仍需用户验收，验收前不会扣款。
+					43 container
+						44 heading 上门地点 · 新宿区, Value: 3
+							45 text 上门地点  ·  新宿区
+						46 text 任务确认前与结束后，详细地址均隐藏。
+				47 container cooperation-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+					48 container
+						49 heading 订单协作, Value: 3
+							50 text 订单协作
+						51 button 刷新状态
+					52 button (collapsed) 查看订单进程 · 2, Secondary Actions: Expand
+						53 text 查看订单进程
+						54 text  ·
+						55 text 2
+					56 heading 店内协作, Value: 4
+						57 text 店内协作
+					58 text 仅本店和对应技师可见。顾客沟通、取消与退款须从原订单或工单单独处理。
+					59 text 暂无店内协作记录
+				60 container contact-booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+					61 container
+						62 heading 求助与安全, Value: 3
+							63 text 求助与安全
+						64 text 店铺紧急联系人 演示联系人 · 尚未接通
+						65 link Description: 提交顾客非公开反馈, Value: qa.localhost:3122/zh-cn/staff/support?booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1
+						66 text 反馈仅用于安全审查，不会作为公开评价展示。 演示环境 · 通知仅写入本地记录。
+					67 container
+						68 heading 安全事项已记录, Value: 3
+							69 text 安全事项已记录
+						70 text 外部通知尚未接通，请直接联系紧急联系人。
+						71 text 安全事项处理进度
+						72 text  · 等待店铺／平台跟进
+						73 text 如有生命危险，请立即拨打 110（警察）或 119（急救）。
+						74 link Description: 110, Value: tel:110
+						75 link Description: 119, Value: tel:119
+						76 text 仅共享一次，只有店铺和 HoguLink 安全团队可见；事件结束后不再显示。
+						77 button 共享当前位置
+			78 text 已同步最新任务
+		79 container 底部导航
+			80 link Description: 今日工作台, Value: qa.localhost:3122/zh-cn/staff?tab=overview
+			81 link Description: 我的任务, Value: qa.localhost:3122/zh-cn/staff?tab=tasks
+			82 link Description: 日程与休息, Value: qa.localhost:3122/zh-cn/staff?tab=schedule
+			83 link Description: 我的资料, Value: qa.localhost:3122/zh-cn/staff?tab=profile
+
+The focused UI element is 1 AXWebArea 技师端 | HoguLink, URL: qa.localhost:3122/zh-cn/staff?tab=tasks&booking=booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1#staff-task-detail

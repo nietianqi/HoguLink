@@ -1,0 +1,39 @@
+{
+  "checks": [
+    {
+      "case": "AWAITING_COMPLETION",
+      "termination": 409,
+      "sos": "preserved",
+      "capturedAmount": 0
+    },
+    {
+      "case": "DECLINED",
+      "bookingStatus": "ACCEPTED",
+      "termination": 409,
+      "sos": "preserved",
+      "capturedAmount": 0
+    },
+    {
+      "case": "acceptance/refund/privacy",
+      "status": "COMPLETED",
+      "capturedAmount": 8700,
+      "refundedAmount": 500,
+      "staffFinancialFields": "absent"
+    }
+  ],
+  "live": {
+    "id": "booking_4611843a-720e-491a-9631-51863845a834",
+    "startAt": 1794016800000,
+    "serverNow": 1794011400014,
+    "deviceNow": 1793950125725,
+    "offsetHours": 17.020635833333333,
+    "final": {
+      "status": "CANCELLED",
+      "paymentStatus": "VOIDED",
+      "capturedAmount": 0,
+      "cancelReason": "SAFETY_TERMINATION",
+      "travelAndServiceRecorded": true,
+      "staffAddressHidden": true
+    }
+  }
+}

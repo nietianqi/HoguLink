@@ -8,10 +8,12 @@ export function MerchantAlerts({
   locale: l,
   bookings,
   loaded,
+  now,
 }: {
   locale: Locale;
   bookings: Booking[];
   loaded: boolean;
+  now: number;
 }) {
   const prior = useRef<Set<string> | null>(null),
     audio = useRef<AudioContext | null>(null);
@@ -20,7 +22,7 @@ export function MerchantAlerts({
     [newCount, setNewCount] = useState(0);
   useEffect(() => {
     if (!loaded) return;
-    const ids = merchantAttentionKeys(bookings);
+    const ids = merchantAttentionKeys(bookings, now);
     const count = merchantNewAttention(prior.current, ids);
     prior.current = ids;
     if (!count) return;
@@ -44,7 +46,7 @@ export function MerchantAlerts({
       try {
         new Notification('HoguLink', { body: mo(l, 'newWork'), tag: 'hogulink-merchant-work' });
       } catch {}
-  }, [bookings, loaded, enabled, l]);
+  }, [bookings, loaded, enabled, l, now]);
   useEffect(
     () => () => {
       void audio.current?.close();

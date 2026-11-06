@@ -37,6 +37,12 @@ const words = {
     '直ちに非公開となり、元の記録は対応のため保管されます。',
     'This immediately hides the review. The record is retained for support.',
   ],
+  withdrawPending: ['撤回评价', 'クチコミを取り下げる', 'Withdraw review'],
+  withdrawPendingNote: [
+    '撤回后不再审核，也不会公开；原始记录保留供售后核验。',
+    '審査を中止し、掲載されません。元の記録は対応のため保管されます。',
+    'Review stops and nothing is published. The record is retained for support.',
+  ],
   reviewHelp: [
     '仅评价本次服务。请勿填写联系方式、地址、外貌评价或医疗疗效宣传。修改后需重新审核。',
     '今回のサービスのみを評価してください。連絡先、住所、容姿や医療効果に関する内容は記載できません。編集後は再審査となります。',
@@ -88,6 +94,7 @@ const words = {
   ],
   reason: ['处理说明（10–500字）', '理由（10〜500文字）', 'Reason (10–500 characters)'],
   moderation: ['评价内容审核', 'クチコミ審査', 'Content moderation'],
+  moderate: ['审核', '審査する', 'Review'],
   history: ['最近处理记录', '最近の審査履歴', 'Recent decisions'],
   REVIEW: ['顾客评价', '顧客クチコミ', 'Customer review'],
   REPLY: ['店铺回复', '店舗返信', 'Shop reply'],

@@ -46,6 +46,11 @@ check(
   workspace.listings.every((x) => x.storeId === 'store-nagi'),
   'scoped team',
 );
+check(Number.isSafeInteger(workspace.serverNow), 'server clock anchor');
+check(
+  Array.isArray(workspace.urgentSafetyBookingIds) && workspace.urgentSafetyBookingIds.length === 0,
+  'empty scoped safety summary',
+);
 await call(customer, 'merchant/workspace', 'GET', undefined, 403);
 const availability = await call(
   null,
@@ -210,6 +215,21 @@ for (const event of ['EN_ROUTE', 'ARRIVED', 'START', 'COMPLETE']) {
     version: booking.version,
     event,
   });
+  if (event === 'START') {
+    booking = await call(staff, 'staff/safety-alerts', 'POST', {
+      bookingId: booking.id,
+      version: booking.version,
+      type: 'SOS',
+    });
+    check(
+      (await call(owner, 'merchant/workspace')).urgentSafetyBookingIds.includes(booking.id),
+      'SOS appears in merchant summary',
+    );
+    check(
+      !(await call(other, 'merchant/workspace')).urgentSafetyBookingIds.includes(booking.id),
+      'SOS summary cannot cross shop scope',
+    );
+  }
 }
 booking = await confirmVisit(customer, booking);
 check(booking.capturedAmount === quote.total, 'submitted quote remains frozen');

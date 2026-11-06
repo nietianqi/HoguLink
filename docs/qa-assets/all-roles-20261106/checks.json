@@ -1,0 +1,64 @@
+{
+  "testedAt": "2026-11-06T06:56:22.454Z",
+  "baseline": "4fa74df9b809afc9f28058868508fa6b6560a433",
+  "workingTree": "includes uncommitted changes",
+  "sourceFilesCompared": 461,
+  "sourceFilesChanged": [],
+  "apiTests": 807,
+  "webTests": 182,
+  "mediaTests": 5,
+  "businessSuites": 20,
+  "businessAssertions": 2078,
+  "accountAssertions": 37,
+  "crossRoleAssertions": 45,
+  "allChecks": 3154,
+  "allPassed": true,
+  "buildPassed": true,
+  "exitCodes": {
+    "api": 0,
+    "web": 0,
+    "media": 0,
+    "business": 0,
+    "accounts": 0,
+    "build": 0,
+    "crossRole": 0
+  },
+  "browser": {
+    "desktop": [1440, 900],
+    "mobile": [390, 844],
+    "locales": ["zh-cn", "en", "ja"],
+    "manualTravel": false
+  },
+  "realPayments": false,
+  "realEmails": false,
+  "screenshots": [
+    "01-payment-failed.jpg",
+    "02-address-modal.jpg",
+    "03-customer-submitted.jpg",
+    "04-merchant-accepted.jpg",
+    "05-duration-guard.jpg",
+    "06-customer-paid.jpg",
+    "07-merchant-partial-refund.jpg",
+    "08-platform-resolved.jpg",
+    "09-finance-refund-ledger.jpg",
+    "10-customer-refund-closed.jpg",
+    "12-h5-refund-scrolled.jpg",
+    "13-account-summary.jpg"
+  ],
+  "merchantFollowUp": {
+    "report": "docs/QA_MERCHANT_BUSINESS_AUDIT_2026-11-06.md",
+    "knownIssueCategories": 2,
+    "severity": "P2",
+    "status": "FIXED_AND_VERIFIED",
+    "fixReport": "docs/MERCHANT_BUSINESS_FIXES_2026-11-06.md",
+    "note": "Safety summary and server clock fixes passed new regression tests and PC/H5 verification; original run counts remain historical."
+  },
+  "followUp": {
+    "report": "docs/QA_STAFF_BUSINESS_AUDIT_2026-11-06.md",
+    "knownIssueCategories": 3,
+    "reproducedScenarios": 4,
+    "status": "FIXED_AND_VERIFIED",
+    "fixReport": "docs/STAFF_BUSINESS_FIXES_2026-11-06.md",
+    "note": "Staff edge cases fixed with new regression coverage and PC/H5 verification; original run counts above remain historical."
+  }
+}

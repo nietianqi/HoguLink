@@ -1,4 +1,4 @@
-import type { CustomerOverview, Locale } from '@hogulink/contracts';
+import type { Booking, CustomerOverview, Locale } from '@hogulink/contracts';
 import { at } from './account-i18n';
 import { japanDay } from './desktop-model';
 
@@ -61,6 +61,64 @@ export function accountCountdown(locale: Locale, startAt: number, now: number) {
 /** Focus has its own card; history does not show the same order a second time. */
 export function accountRecent(overview: CustomerOverview) {
   return overview.recent.filter((b) => b.id !== overview.focus?.id).slice(0, 3);
+}
+
+/** PC groups are a presentation of existing decisions; actions stay on the original order. */
+export function customerTaskKind(b: Booking, reviewIds: readonly string[] = [], now = Date.now()) {
+  if (['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status))
+    return b.status === 'COMPLETED' && reviewIds.includes(b.id) ? ('review' as const) : undefined;
+  if (b.replacementConsent === 'PENDING' && b.proposedListingId) return 'consent' as const;
+  if (b.status === 'AWAITING_COMPLETION' && b.completion?.status === 'PENDING')
+    return 'completion' as const;
+  if (b.status === 'AWAITING_COMPLETION' && b.completion?.status === 'PAYMENT_REVIEW')
+    return 'payment' as const;
+  if (
+    b.paymentStatus === 'FAILED' &&
+    b.paymentActionBy &&
+    b.paymentActionBy > now &&
+    b.startedAt === undefined
+  )
+    return 'payment' as const;
+  return undefined;
+}
+export function groupCustomerBookings(
+  bookings: readonly Booking[],
+  reviewIds: readonly string[] = [],
+  now = Date.now(),
+) {
+  const groups: Record<'attention' | 'upcoming' | 'completed' | 'closed', Booking[]> = {
+    attention: [],
+    upcoming: [],
+    completed: [],
+    closed: [],
+  };
+  for (const b of bookings) {
+    const key = customerTaskKind(b, reviewIds, now)
+      ? 'attention'
+      : b.status === 'COMPLETED'
+        ? 'completed'
+        : ['CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status)
+          ? 'closed'
+          : 'upcoming';
+    groups[key].push(b);
+  }
+  const priority = { consent: 0, completion: 1, payment: 2, review: 3 };
+  groups.attention.sort(
+    (a, b) =>
+      priority[customerTaskKind(a, reviewIds, now)!] -
+        priority[customerTaskKind(b, reviewIds, now)!] ||
+      a.quote.startAt - b.quote.startAt ||
+      a.id.localeCompare(b.id),
+  );
+  groups.upcoming.sort((a, b) => a.quote.startAt - b.quote.startAt || a.id.localeCompare(b.id));
+  for (const key of ['completed', 'closed'] as const)
+    groups[key].sort(
+      (a, b) =>
+        (b.completedAt ?? b.quote.endAt) - (a.completedAt ?? a.quote.endAt) ||
+        b.createdAt - a.createdAt ||
+        a.id.localeCompare(b.id),
+    );
+  return groups;
 }
 
 export type Rebooking = {

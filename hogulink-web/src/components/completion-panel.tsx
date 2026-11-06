@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Clock3, ShieldCheck, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
@@ -8,6 +9,7 @@ import { dateTime, money } from '@/lib/i18n';
 import { cpt } from '@/lib/completion-i18n';
 import { MobileSheet } from './mobile-ui';
 import { so } from '@/lib/staff-operations-i18n';
+import { serverClockNow, type ServerClock } from '@/lib/server-clock';
 
 type View = {
   autoConfirmationEligible?: boolean;
@@ -37,7 +39,7 @@ export function CompletionPanel({
   const [action, setAction] = useState<string>(),
     [note, setNote] = useState(''),
     [consent, setConsent] = useState(false);
-  const clock = useRef({ server: 0, local: 0 }),
+  const clock = useRef<ServerClock | undefined>(undefined),
     retry = useRef<{ payload: string; key: string } | null>(null);
   const generation = useRef(0);
   const submitLock = useRef(false);
@@ -53,7 +55,7 @@ export function CompletionPanel({
     try {
       const value = await api<View>(`bookings/${b.id}/completion`);
       if (request !== generation.current) return value;
-      clock.current = { server: value.serverNow, local: Date.now() };
+      clock.current = { serverNow: value.serverNow, sampledAt: performance.now() };
       setNow(value.serverNow);
       setView(value);
       setError('');
@@ -72,10 +74,9 @@ export function CompletionPanel({
       });
     void refresh();
     const poll = setInterval(refresh, 15000),
-      tick = setInterval(
-        () => setNow(clock.current.server + Math.max(0, Date.now() - clock.current.local)),
-        1000,
-      );
+      tick = setInterval(() => {
+        if (clock.current) setNow(serverClockNow(clock.current, performance.now()));
+      }, 1000);
     return () => {
       active = false;
       generation.current++;
@@ -131,7 +132,7 @@ export function CompletionPanel({
         };
         const encoded = JSON.stringify(payload);
         if (retry.current?.payload !== encoded)
-          retry.current = { payload: encoded, key: crypto.randomUUID() };
+          retry.current = { payload: encoded, key: newRequestKey() };
         await api(`bookings/${b.id}/completion`, payload, 'POST', retry.current.key);
       }
       setAction(undefined);
@@ -420,19 +421,19 @@ export function CompletionPanel({
           )}
           <div className="completion-actions">
             <button
-              className="button"
-              disabled={locked || (action === 'CONFIRM' && !consent)}
-              type="submit"
-            >
-              {cpt(l, 'submit')}
-            </button>
-            <button
               className="button secondary"
               type="button"
               disabled={busy}
               onClick={() => setAction(undefined)}
             >
               {cpt(l, 'cancel')}
+            </button>
+            <button
+              className="button"
+              disabled={locked || (action === 'CONFIRM' && !consent)}
+              type="submit"
+            >
+              {cpt(l, ['stop', 'dispute', 'exception'].includes(title) ? 'submit' : title)}
             </button>
           </div>
         </form>

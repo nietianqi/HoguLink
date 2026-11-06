@@ -1,0 +1,34 @@
+{
+  "approval": {
+    "serverNow": 1793937723523,
+    "deviceNow": 1793952595520,
+    "pcStart": 1793944800000,
+    "h5Start": 1793946600000,
+    "pc": "APPROVED",
+    "h5": "APPROVED"
+  },
+  "overrun": {
+    "id": "booking_c22cf990-44d5-431d-9737-19d1a10fb639",
+    "status": "IN_SERVICE",
+    "startAt": 1793937600000,
+    "endAt": 1793941200000,
+    "serverNow": 1793952595545,
+    "safetyOrders": 1,
+    "check": "ESCALATED",
+    "event": "OPEN"
+  },
+  "eventId": "safety_79bc1cc8-057a-44d0-ada7-916387227a81",
+  "eventVersion": 1,
+  "resolution": {
+    "contactKeptSafetyCount": 1,
+    "afterResolution": 0,
+    "completedStatus": "COMPLETED",
+    "capturedAmount": 8700
+  },
+  "calendar": {
+    "serverNow": 1793977500000,
+    "deviceNow": 1793952957522,
+    "expectedJapanDay": "2026-11-07",
+    "observedJapanDay": "2026-11-07"
+  }
+}

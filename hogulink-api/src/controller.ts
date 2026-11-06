@@ -16,6 +16,7 @@ import { listingStats, mobileBootstrap, mobileTherapists, storeStats } from './m
 import { DomainError, ensure } from './errors.js';
 import { authorizeAdminRoute, bootstrapMember, currentAdmin } from './admin-access.js';
 import { activeStaffMembership } from './staff-access.js';
+import { staffResponse } from './staff-response.js';
 import { stores as demoStores, listings as demoListings } from './seed.js';
 
 type Session = { id: string; actor: Actor; expiresAt: number };
@@ -550,6 +551,11 @@ export class ApiController {
         return res.send(portrait.bytes);
       }
       const actor = await this.actor(req);
+      if (actor.role === 'STAFF') {
+        // One response boundary for every staff read and write route, including envelopes.
+        const json = res.json.bind(res);
+        res.json = (value: unknown) => json(staffResponse(value));
+      }
       if (path === 'customer/discovery/saved' && method === 'GET')
         return res.json(await this.engine.discovery.saved(actor));
       const discoveryAction = path.match(/^customer\/discovery\/([a-zA-Z0-9_-]{1,160})(\/view)?$/);

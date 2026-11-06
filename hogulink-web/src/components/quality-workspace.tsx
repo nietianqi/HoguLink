@@ -725,7 +725,7 @@ export function QualityWorkspace({ locale: l, role }: { locale: Locale; role: Op
                                   setDecision(i.type === 'APPEAL' ? 'UPHOLD' : 'APPROVE');
                                 }}
                               >
-                                {qt(l, 'moderation')}
+                                {qt(l, 'moderate')}
                                 <ArrowUpRight size={16} />
                               </button>
                             </article>

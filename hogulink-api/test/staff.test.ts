@@ -63,6 +63,7 @@ const quote = (e: Engine, startAt: number) =>
 test('staff snapshot includes only own membership, calendar, requests and safety, without payment routing', () =>
   fixture(async (e) => {
     const s = await e.staff.snapshot(staff);
+    assert.equal(s.serverNow, e.now());
     assert.equal(s.listing.id, 'listing-aoi');
     assert.ok(!('pspAccount' in s.store));
     assert.ok(!('totals' in s));

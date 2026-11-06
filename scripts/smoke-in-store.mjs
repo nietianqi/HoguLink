@@ -279,7 +279,9 @@ await advanceVisit(b, 'COMPLETE');
 b = await call(s, `bookings/${b.id}`);
 b = await call(s, `staff/tasks/${b.id}/events`, { version: b.version, event: 'COMPLETE' });
 check(
-  b.status === 'AWAITING_COMPLETION' && b.capturedAmount === 0,
+  b.status === 'AWAITING_COMPLETION' &&
+    !('capturedAmount' in b) &&
+    (await call(c, `bookings/${b.id}`)).capturedAmount === 0,
   'Staff completion still requires acceptance',
 );
 b = await call(c, `bookings/${b.id}/completion`, {

@@ -1,6 +1,6 @@
 import type { Booking } from '@hogulink/contracts';
 import { needsAttention } from './desktop-model';
-export function merchantWorkday(bookings: Booking[]) {
+export function merchantWorkday(bookings: Booking[], now = Date.now()) {
   const live = bookings.filter(
     (b) => !['COMPLETED', 'CANCELLED', 'REJECTED', 'EXPIRED'].includes(b.status),
   );
@@ -8,7 +8,8 @@ export function merchantWorkday(bookings: Booking[]) {
     attention: live
       .filter(
         (b) =>
-          needsAttention(b, 'MERCHANT') &&
+          (needsAttention(b, 'MERCHANT') ||
+            (['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status) && b.quote.endAt <= now)) &&
           !(b.replacementConsent === 'PENDING' && b.proposedListingId),
       )
       .sort((a, b) => a.deadline - b.deadline || a.quote.startAt - b.quote.startAt),

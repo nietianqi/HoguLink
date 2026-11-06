@@ -56,7 +56,7 @@ export function CustomerOrderSummary({
         <div>
           <dt>
             <MapPin size={16} />
-            {inStore ? sv(l, 'venue') : t(l, 'area')}
+            {inStore ? sv(l, 'venue') : place ? pc(l, 'visitAddress') : t(l, 'area')}
           </dt>
           <dd>{place || areaName(l, b.quote.area)}</dd>
         </div>

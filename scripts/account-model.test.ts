@@ -8,7 +8,82 @@ import {
   accountStartTime,
   rebookingHref,
   type AccountBooking,
+  customerTaskKind,
+  groupCustomerBookings,
 } from '../hogulink-web/src/lib/account-model';
+
+test('PC order groups prioritize owned review eligibility and urgent decisions before future or closed orders without mutating H5 history', () => {
+  const now = Date.UTC(2026, 10, 6);
+  const base = { quote: { startAt: now + 3600000, endAt: now + 7200000 }, createdAt: now };
+  const bookings = [
+    {
+      ...base,
+      id: 'cancelled',
+      status: 'CANCELLED',
+      replacementConsent: 'PENDING',
+      proposedListingId: 'x',
+    },
+    { ...base, id: 'reviewed', status: 'COMPLETED' },
+    {
+      ...base,
+      id: 'next-later',
+      status: 'CONFIRMED',
+      quote: { startAt: now + 86400000, endAt: now + 90000000 },
+    },
+    { ...base, id: 'review', status: 'COMPLETED' },
+    {
+      ...base,
+      id: 'payment',
+      status: 'CONFIRMED',
+      paymentStatus: 'FAILED',
+      paymentActionBy: now + 1000,
+    },
+    { ...base, id: 'complete', status: 'AWAITING_COMPLETION', completion: { status: 'PENDING' } },
+    {
+      ...base,
+      id: 'consent',
+      status: 'CONFIRMED',
+      replacementConsent: 'PENDING',
+      proposedListingId: 'x',
+    },
+    { ...base, id: 'next', status: 'CONFIRMED' },
+  ] as Booking[];
+  const before = bookings.map((b) => b.id);
+  const groups = groupCustomerBookings(bookings, ['review', 'cancelled'], now);
+  assert.deepEqual(
+    groups.attention.map((b) => b.id),
+    ['consent', 'complete', 'payment', 'review'],
+  );
+  assert.deepEqual(
+    groups.upcoming.map((b) => b.id),
+    ['next', 'next-later'],
+  );
+  assert.deepEqual(
+    groups.completed.map((b) => b.id),
+    ['reviewed'],
+  );
+  assert.deepEqual(
+    groups.closed.map((b) => b.id),
+    ['cancelled'],
+  );
+  assert.deepEqual(
+    bookings.map((b) => b.id),
+    before,
+  );
+  assert.equal(customerTaskKind({ ...bookings[4], paymentActionBy: now }, [], now), undefined);
+  assert.equal(
+    customerTaskKind(
+      { ...bookings[5], completion: { status: 'PAYMENT_REVIEW' } } as Booking,
+      [],
+      now,
+    ),
+    'payment',
+  );
+  assert.equal(
+    customerTaskKind({ ...bookings[5], completion: { status: 'DISPUTED' } } as Booking, [], now),
+    undefined,
+  );
+});
 import { filterBookings } from '../hogulink-web/src/lib/desktop-model';
 
 test('pending-review filter requires authoritative eligibility, intersects dates and search, and never exposes the entire completed history', () => {

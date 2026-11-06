@@ -2,17 +2,17 @@
 
 ## 店铺品牌主页（2026-10-27）
 
-| 方法 | 路径（省略 /v1） | 说明 |
-| --- | --- | --- |
-| GET | /merchant/storefront | 本店草稿、公开版、图片库、可选项目与团队、真实收藏/评价/近90天完成数 |
-| PUT | /merchant/storefront | `{version, content}` 保存本店草稿；待审内容须先撤回 |
-| POST | /merchant/storefront/images | `{mime, data}` 上传 JPEG/PNG，350 KB以内；服务端重编码、去元数据、加密保存 |
-| DELETE | /merchant/storefront/images/{id} | 删除本店未使用图片；草稿、待审稿或当前公开版引用时409，不允许破坏在用素材 |
-| POST | /merchant/storefront/submit | `{version}` 提交审核；三语介绍各至少8字符 |
-| POST | /merchant/storefront/withdraw | `{version}` 撤回当前待审稿，原公开版继续展示 |
-| GET | /admin/storefronts | supply.read；待审内容、引用图片、项目和团队资料 |
-| POST | /admin/storefronts/{storeId}/review | supply.write；`{version, approved, note}`；意见至少4字符 |
-| GET | /public/shop-assets/{id} | 当前公开版引用的品牌图片；其余仅本店及有审核权限的员工可预览，未授权404 |
+| 方法   | 路径（省略 /v1）                    | 说明                                                                       |
+| ------ | ----------------------------------- | -------------------------------------------------------------------------- |
+| GET    | /merchant/storefront                | 本店草稿、公开版、图片库、可选项目与团队、真实收藏/评价/近90天完成数       |
+| PUT    | /merchant/storefront                | `{version, content}` 保存本店草稿；待审内容须先撤回                        |
+| POST   | /merchant/storefront/images         | `{mime, data}` 上传 JPEG/PNG，350 KB以内；服务端重编码、去元数据、加密保存 |
+| DELETE | /merchant/storefront/images/{id}    | 删除本店未使用图片；草稿、待审稿或当前公开版引用时409，不允许破坏在用素材  |
+| POST   | /merchant/storefront/submit         | `{version}` 提交审核；三语介绍各至少8字符                                  |
+| POST   | /merchant/storefront/withdraw       | `{version}` 撤回当前待审稿，原公开版继续展示                               |
+| GET    | /admin/storefronts                  | supply.read；待审内容、引用图片、项目和团队资料                            |
+| POST   | /admin/storefronts/{storeId}/review | supply.write；`{version, approved, note}`；意见至少4字符                   |
+| GET    | /public/shop-assets/{id}            | 当前公开版引用的品牌图片；其余仅本店及有审核权限的员工可预览，未授权404    |
 
 `content` 包括三语 `tagline/about`，`logoId/coverId`，最多12张 `photoIds`，最多6项 `featuredOfferingIds` 和最多30人的 `teamListingIds`。引用必须属于本店，提交与通过时重新校验公开资格。图片库最多50张；本轮不增加套餐收费或付费排序。公开 `PublicStore.storefront` 只包含审核通过的发布快照，不含草稿、审核意见、内部存储信息。待审期间保留原公开版；版本冲突409，非法跨店引用400，角色无权403。发布品牌内容不改变交易规则版本，不使已有报价/保留失效。产品边界见 [店铺主页方案](SHOP_STOREFRONT_PLAN.md)。
 
@@ -210,12 +210,20 @@ Store/Listing 的 `moderationVersion` 对旧数据默认 1，服务使用已有 
 
 ## 技师工作台与休息审批
 
+`GET /merchant/workspace` 另包含 `serverNow`（服务端毫秒时间戳）及 `urgentSafetyBookingIds`（本店需要安全跟进的预约编号，去重排序）。后者来自 `ESCALATED` 安全签到与 `OPEN` 安全事件；同一预约只返回一次，不含私密处置说明。记录联系不清除此待办，正式结案后再清除。店铺概览、审批、日历和提醒使用服务端时钟锚点，审批接口仍按服务端现状检查。
+
 | 方法 | 路径（省略 /v1）                 | 权限与输入                                                                                        |
 | ---- | -------------------------------- | ------------------------------------------------------------------------------------------------- |
 | GET  | /staff/workspace                 | 本人资料、所属店铺摘要、服务、有效日程、休息申请和安全摘要；不含支付路由或其他技师                |
 | POST | /staff/time-off-requests         | 本人；startAt、endAt（JST 对应时间戳）、reason：BREAK / TIME_OFF / TRAINING；Idempotency-Key 必填 |
 | PUT  | /staff/time-off-requests/{id}    | 本人待审批申请；version、decision=WITHDRAWN                                                       |
 | PUT  | /merchant/time-off-requests/{id} | 本店待审批申请；version、decision=APPROVED / REJECTED                                             |
+
+`GET /staff/workspace` 包含 `serverNow`（服务端毫秒时间戳）。技师页面以此为时间锚点判断任务截止、出发窗口、日期、待机和请假，不用设备本地日期代替服务端时间。
+
+技师角色的订单 HTTP 响应统一采用字段白名单，覆盖 `/bookings` 列表、详情、写操作返回值和嵌套订单：保留冻结报价及必要履约／支付状态；不返回 `capturedAmount`、`refundedAmount`、`platformFee`、`captureFeeRateBps`、顾客账号、支付／保留内部标识及商户受理授权细节。顾客与店铺的财务字段不受此过滤影响。
+
+`POST /staff/safety-alerts` 的 `SAFETY_TERMINATION` 仅允许本人已确认且处于 `CONFIRMED / EN_ROUTE / ARRIVED / IN_SERVICE`、没有完成记录或结束时间、没有等待改派同意的任务；其他情况返回 `409 INVALID_STATE`，不修改订单或支付。`SOS` 仍按原权限独立记录求助事实。
 
 申请状态：PENDING / APPROVED / REJECTED / WITHDRAWN / EXPIRED。申请提交不占用时段；批准在事务中再次检查预约、交通缓冲与禁约冲突，成功后写共享忙碌区间。店铺可用已有 time-blocks 删除接口解除批准时段。待审批申请到开始时间自动过期，状态变更均检查版本并审计。storeId、staffId、listingId 从会话推导；请求体不接受这些字段。店铺工作台返回本店 `timeOffRequests`，本人工作台返回自己的 `requests`，均包含所有待审批和最近 100 条历史。
 

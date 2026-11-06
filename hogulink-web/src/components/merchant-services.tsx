@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   venueAvailable,
@@ -65,7 +66,7 @@ export function MerchantServiceProposals({
         <button
           className="button small"
           onClick={() => {
-            key.current = crypto.randomUUID();
+            key.current = newRequestKey();
             setError('');
             setMode('HOME_VISIT');
             setCopy(undefined);
@@ -98,7 +99,7 @@ export function MerchantServiceProposals({
             <button
               className="text-button"
               onClick={() => {
-                key.current = crypto.randomUUID();
+                key.current = newRequestKey();
                 setMode(p.fulfillmentMode);
                 setCopy(p);
                 setOpen(true);

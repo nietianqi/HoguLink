@@ -117,7 +117,10 @@ for (const actor of [c, m])
 check((await call(c, `bookings/${b.id}`)).capturedAmount === 0, 'No early capture');
 b = await request(b);
 check(
-  b.status === 'AWAITING_COMPLETION' && b.capturedAmount === 0 && !b.address,
+  b.status === 'AWAITING_COMPLETION' &&
+    !('capturedAmount' in b) &&
+    !b.address &&
+    (await call(c, `bookings/${b.id}`)).capturedAmount === 0,
   'Staff request is not completion or capture, and hides address',
 );
 for (const actor of [s, m, a])

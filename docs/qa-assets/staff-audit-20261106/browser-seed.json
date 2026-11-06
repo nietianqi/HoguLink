@@ -1,0 +1,14 @@
+{
+  "awaiting": {
+    "id": "booking_1b44c8d9-f09e-4853-9348-0913f57b5f48",
+    "status": "AWAITING_COMPLETION",
+    "payment": "AUTHORIZED",
+    "total": 8700,
+    "captured": 0
+  },
+  "declined": {
+    "id": "booking_2e4f4e81-cbd5-49b7-9874-484981dc83e1",
+    "status": "ACCEPTED",
+    "staffTaskStatus": "DECLINED"
+  }
+}

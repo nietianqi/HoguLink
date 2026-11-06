@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { rt } from '@/lib/runtime-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
 import { FinanceCenter } from './finance-center';
@@ -61,6 +62,8 @@ import {
   japanInput,
   merchantNumbers,
   merchantTrend,
+  merchantCanApproveTimeOff,
+  merchantUpcoming,
   parseJapanInput,
   type FeeEntry,
 } from '@/lib/merchant-model';
@@ -85,6 +88,7 @@ import { useLiveRefresh } from '@/lib/use-live-refresh';
 import { mo } from '@/lib/merchant-operations-i18n';
 import { merchantBookingStatus } from '@/lib/merchant-model';
 import { MerchantTeamManagement } from './partner-portal';
+import { serverClockNow, type ServerClock } from '@/lib/server-clock';
 
 type Block = {
   id: string;
@@ -98,6 +102,8 @@ type Block = {
   active: boolean;
 };
 type Workspace = {
+  serverNow: number;
+  urgentSafetyBookingIds: string[];
   unrepliedReviews?: number;
   billingRates: Record<Store['plan'], number>;
   store: Omit<Store, 'pspAccount'>;
@@ -138,7 +144,8 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
     [error, setError] = useState(''),
     [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
-  const [day, setDay] = useState(japanDay(Date.now())),
+  const [now, setNow] = useState(0),
+    [day, setDay] = useState(''),
     [member, setMember] = useState('');
   const [editor, setEditor] = useState<Offering | null>(null),
     [blockOpen, setBlockOpen] = useState(false);
@@ -150,6 +157,9 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
   });
   const requestKey = useRef(''),
     generation = useRef(0);
+  const serverClock = useRef<ServerClock | undefined>(undefined);
+  const currentTime = () =>
+    serverClock.current ? serverClockNow(serverClock.current, performance.now()) : 0;
   const hasRole = actor?.role === 'MERCHANT';
   const href = (view: MerchantTab, booking?: string) =>
     `/${l}/merchant?${new URLSearchParams({ tab: view, ...(booking ? { booking } : {}) })}`;
@@ -158,12 +168,20 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
     if (actor?.role !== 'MERCHANT') return;
     setFetching(true);
     try {
-      const [workspace, orders, cases] = await Promise.all([
-        api<Workspace>('merchant/workspace'),
+      const [snapshot, orders, cases] = await Promise.all([
+        api<Workspace>('merchant/workspace').then((workspace) => ({
+          workspace,
+          sampledAt: performance.now(),
+        })),
         api<Booking[]>('bookings'),
         api<SupportTicket[]>('support-tickets'),
       ]);
       if (version !== generation.current) return;
+      const { workspace, sampledAt } = snapshot;
+      serverClock.current = { serverNow: workspace.serverNow, sampledAt };
+      const syncedNow = serverClockNow(serverClock.current, performance.now());
+      setNow(syncedNow);
+      setDay((selectedDay) => selectedDay || japanDay(syncedNow));
       setData(workspace);
       setBookings(orders);
       setTickets(cases);
@@ -182,6 +200,15 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       if (version === generation.current) setFetching(false);
     }
   }, [actor, l]);
+  useEffect(() => {
+    serverClock.current = undefined;
+    setNow(0);
+    setDay('');
+    const timer = window.setInterval(() => {
+      if (serverClock.current) setNow(serverClockNow(serverClock.current, performance.now()));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
   useLiveRefresh(refresh, hasRole && !busy, `${actor?.id}:${actor?.storeId}`);
   useEffect(() => {
     if (demoAccess)
@@ -244,25 +271,23 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       setBusy(false);
     }
   }
-  const stats = { ...merchantNumbers(bookings, data?.feeEntries ?? []), ...data?.totals },
-    trend = merchantTrend(bookings),
+  const stats = { ...merchantNumbers(bookings, data?.feeEntries ?? [], now), ...data?.totals },
+    trend = merchantTrend(bookings, now),
     peak = Math.max(1, ...trend.map((x) => x.count));
-  const { attention, waitingStaff, waitingCustomer } = merchantWorkday(bookings);
-  const upcoming = bookings
-    .filter(
-      (b) =>
-        !['CANCELLED', 'EXPIRED', 'REJECTED', 'COMPLETED'].includes(b.status) &&
-        b.quote.endAt > Date.now(),
-    )
-    .sort((a, b) => a.quote.startAt - b.quote.startAt);
+  const { attention, waitingStaff, waitingCustomer } = merchantWorkday(bookings, now);
+  const upcoming = merchantUpcoming(bookings, now);
   const openCases = tickets.filter((x) => !['RESOLVED', 'CLOSED'].includes(x.status)).length;
+  const safetyCount = data?.urgentSafetyBookingIds.length ?? 0;
+  const supportCount = openCases + safetyCount;
   const pendingLeaveCount = data?.timeOffRequests.filter((r) => r.status === 'PENDING').length ?? 0;
-  const hasWork = attention.length + openCases + pendingLeaveCount > 0;
+  const hasWork = attention.length + supportCount + pendingLeaveCount > 0;
   const currentMember = data?.listings.some((x) => x.id === member) ? member : '';
   function openBlock(listingId = currentMember || data?.listings[0]?.id || '') {
+    const syncedNow = currentTime();
+    if (!syncedNow) return;
     const start = Math.max(
       Date.parse(`${day}T09:00:00+09:00`),
-      Math.ceil((Date.now() + 60_000) / 900_000) * 900_000,
+      Math.ceil((syncedNow + 60_000) / 900_000) * 900_000,
     );
     setBlockDraft({
       listingId,
@@ -270,7 +295,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
       end: japanInput(start + 3600_000),
       reason: 'BREAK',
     });
-    requestKey.current = crypto.randomUUID();
+    requestKey.current = newRequestKey();
     setError('');
     setBlockOpen(true);
   }
@@ -291,7 +316,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
     );
     const a = document.createElement('a');
     a.href = url;
-    a.download = `HoguLink-fees-${japanDay(Date.now())}.csv`;
+    a.download = `HoguLink-fees-${japanDay(now)}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -340,7 +365,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
         locale={l}
         name={data?.store.name}
         count={attention.length}
-        cases={openCases}
+        cases={supportCount}
       />
       <div className="merchant-content">
         {hasRole && (
@@ -349,6 +374,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
             locale={l}
             bookings={bookings}
             loaded={!!data}
+            now={now}
           />
         )}
         {hasRole && (
@@ -548,7 +574,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                       <span>{wt(l, 'waitingStaff')}</span>
                     </Link>
                     <Link href={`/${l}/merchant/support`}>
-                      <strong>{openCases}</strong>
+                      <strong>{supportCount}</strong>
                       <span>{st(l, 'support')}</span>
                     </Link>
                     <Link href={href('schedule')}>
@@ -559,6 +585,16 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                     </Link>
                   </div>
                   {attention.length > 0 && orderRows(attention, 2)}
+                  {safetyCount > 0 && (
+                    <p>
+                      <Link
+                        className="text-button"
+                        href={`/${l}/merchant/support#merchant-safety-events`}
+                      >
+                        {mo(l, 'safetyPending')} · {safetyCount}
+                      </Link>
+                    </p>
+                  )}
                   {!!data.unrepliedReviews && (
                     <p>
                       <Link className="text-button" href={`/${l}/merchant/quality`}>
@@ -710,7 +746,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                               </button>
                               <button
                                 className="button small"
-                                disabled={busy || r.startAt <= Date.now()}
+                                disabled={busy || !merchantCanApproveTimeOff(r, now)}
                                 onClick={() =>
                                   mutate(() =>
                                     api(
@@ -862,7 +898,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                           <span className="merchant-pill">
                             {st(
                               l,
-                              x.onDuty && Date.now() - x.dutyUpdatedAt < 4 * 3600_000
+                              x.onDuty && now > 0 && now - x.dutyUpdatedAt < 4 * 3600_000
                                 ? 'standby'
                                 : 'scheduled',
                             )}
@@ -1261,7 +1297,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                 value={blockDraft.listingId}
                 onChange={(e) => {
                   setBlockDraft({ ...blockDraft, listingId: e.target.value });
-                  requestKey.current = crypto.randomUUID();
+                  requestKey.current = newRequestKey();
                 }}
               >
                 {data?.listings
@@ -1282,7 +1318,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                   value={blockDraft[key]}
                   onChange={(e) => {
                     setBlockDraft({ ...blockDraft, [key]: e.target.value });
-                    requestKey.current = crypto.randomUUID();
+                    requestKey.current = newRequestKey();
                   }}
                 />
               </label>
@@ -1293,7 +1329,7 @@ export function MerchantWorkspace({ locale: l }: { locale: Locale }) {
                 value={blockDraft.reason}
                 onChange={(e) => {
                   setBlockDraft({ ...blockDraft, reason: e.target.value });
-                  requestKey.current = crypto.randomUUID();
+                  requestKey.current = newRequestKey();
                 }}
               >
                 {(['BREAK', 'TIME_OFF', 'TRAINING'] as const).map((r) => (

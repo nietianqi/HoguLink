@@ -1,4 +1,4 @@
-import type { Booking, Locale } from '@hogulink/contracts';
+import type { Booking, Locale, TimeOffRequest } from '@hogulink/contracts';
 import { statusText } from './i18n';
 import { mo } from './merchant-operations-i18n';
 export function merchantBookingStatus(l: Locale, b: Booking) {
@@ -20,6 +20,21 @@ export function merchantNewAttention(
   next: ReadonlySet<string>,
 ) {
   return previous === null ? 0 : [...next].filter((id) => !previous.has(id)).length;
+}
+export function merchantCanApproveTimeOff(
+  request: Pick<TimeOffRequest, 'status' | 'startAt'>,
+  serverNow: number,
+) {
+  return serverNow > 0 && request.status === 'PENDING' && request.startAt > serverNow;
+}
+export function merchantUpcoming(bookings: Booking[], serverNow: number) {
+  return bookings
+    .filter(
+      (b) =>
+        !['CANCELLED', 'EXPIRED', 'REJECTED', 'COMPLETED'].includes(b.status) &&
+        (['EN_ROUTE', 'ARRIVED', 'IN_SERVICE'].includes(b.status) || b.quote.endAt > serverNow),
+    )
+    .sort((a, b) => a.quote.startAt - b.quote.startAt);
 }
 export type FeeEntry = {
   id: string;

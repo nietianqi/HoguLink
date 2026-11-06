@@ -1,0 +1,126 @@
+{
+  "checks": 45,
+  "passed": true,
+  "bookingId": "booking_61e58c84-aa73-44fa-a826-915b10082f73",
+  "care": {
+    "bookingVersion": 9,
+    "captured": 8700,
+    "refunded": 500,
+    "remaining": 8200,
+    "canRequest": true,
+    "requests": [
+      {
+        "id": "refund_ee49c2f2-ace1-4301-9970-a3879a6c720c",
+        "ticketId": "case_942aa758-1047-4fcb-ba50-0fee859b3611",
+        "bookingId": "booking_61e58c84-aa73-44fa-a826-915b10082f73",
+        "amount": 1000,
+        "reason": "隔离测试：申请退回部分服务费用，验证原店铺处理与账务同步。",
+        "status": "PARTIALLY_APPROVED",
+        "version": 2,
+        "createdAt": 1794013332867,
+        "updatedAt": 1794013372654,
+        "approvedAmount": 500,
+        "decision": "隔离测试：原店铺本次同意退款500日元，保留其余争议供平台协助。"
+      }
+    ],
+    "cases": [
+      {
+        "id": "case_942aa758-1047-4fcb-ba50-0fee859b3611",
+        "subject": "退款申请",
+        "status": "CLOSED",
+        "updatedAt": 1794013714135
+      }
+    ]
+  },
+  "finance": {
+    "rows": [
+      {
+        "id": "money_fee_203e6378-e415-403e-8073-06e2709ede2c",
+        "storeId": "store-nagi",
+        "bookingId": "booking_61e58c84-aa73-44fa-a826-915b10082f73",
+        "kind": "CAPTURE",
+        "at": 1794013293853,
+        "captured": 8700,
+        "refunded": 0,
+        "platformFee": 770,
+        "source": "DEMO",
+        "report": null,
+        "hold": false,
+        "holdReason": null,
+        "history": []
+      },
+      {
+        "id": "money_fee_c6da39e5-dfc1-402d-ab9f-d673d007b139",
+        "storeId": "store-nagi",
+        "bookingId": "booking_61e58c84-aa73-44fa-a826-915b10082f73",
+        "kind": "REFUND",
+        "at": 1794013372651,
+        "captured": 0,
+        "refunded": 500,
+        "platformFee": -44,
+        "source": "DEMO",
+        "reversalOf": "money_fee_203e6378-e415-403e-8073-06e2709ede2c",
+        "report": null,
+        "hold": false,
+        "holdReason": null,
+        "history": []
+      }
+    ],
+    "totals": {
+      "captured": 8700,
+      "refunded": 500,
+      "platformFee": 726,
+      "net": 7474,
+      "unmatched": 2,
+      "held": 0,
+      "unsettled": 7474
+    }
+  },
+  "results": [
+    "CUSTOMER: completed",
+    "CUSTOMER: partially refunded",
+    "CUSTOMER: captured once",
+    "CUSTOMER: actual refund",
+    "CUSTOMER: frozen quote",
+    "CUSTOMER: original shop",
+    "MERCHANT: completed",
+    "MERCHANT: partially refunded",
+    "MERCHANT: captured once",
+    "MERCHANT: actual refund",
+    "MERCHANT: frozen quote",
+    "MERCHANT: original shop",
+    "STAFF: completed",
+    "STAFF: partially refunded",
+    "STAFF: captured once",
+    "STAFF: actual refund",
+    "STAFF: frozen quote",
+    "STAFF: original shop",
+    "Staff: finished address hidden",
+    "ADMIN: completed",
+    "ADMIN: partially refunded",
+    "ADMIN: captured once",
+    "ADMIN: actual refund",
+    "ADMIN: frozen quote",
+    "ADMIN: original shop",
+    "Before acceptance: awaiting customer",
+    "Before acceptance: zero capture",
+    "Care: capture",
+    "Care: refund",
+    "Care: remaining",
+    "Request: requested amount",
+    "Request: approved amount",
+    "Request: partial label",
+    "Case: customer closed original case",
+    "Finance: one capture row",
+    "Finance: one refund row",
+    "Finance: capture",
+    "Finance: refund",
+    "Finance: net platform fee",
+    "Finance: shop net before provider fee",
+    "Fee: excludes travel",
+    "Fee: refund reversal",
+    "Fee: reversal linked",
+    "MERCHANT: other shop denied",
+    "STAFF: other shop denied"
+  ]
+}

@@ -26,6 +26,9 @@ import { withServiceMode } from '@/lib/visit-model';
 import { at } from '@/lib/account-i18n';
 import { merchantBookingStatus } from '@/lib/merchant-model';
 import { mo } from '@/lib/merchant-operations-i18n';
+import { usePcLayout } from '@/lib/use-pc-layout';
+import { customerTaskKind, groupCustomerBookings } from '@/lib/account-model';
+import { PcCustomerBookingRows } from './pc-customer-booking-rows';
 
 export function BookingQueue({
   locale: l,
@@ -43,6 +46,7 @@ export function BookingQueue({
   onStatus,
   period,
   onPeriod,
+  now,
 }: {
   locale: Locale;
   role: Role;
@@ -62,7 +66,9 @@ export function BookingQueue({
   onStatus: (v: BookingFilter) => void;
   period: string;
   onPeriod: (v: string) => void;
+  now?: number;
 }) {
+  const pcCustomer = usePcLayout() && role === 'CUSTOMER';
   const [view, setView] = useState('queue');
   const router = useRouter();
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -70,7 +76,10 @@ export function BookingQueue({
   useEffect(() => setPage(0), [search, status, period]);
   const pageCount = Math.max(1, Math.ceil(bookings.length / 8));
   const safePage = Math.min(page, pageCount - 1);
-  const rows = bookings.slice(safePage * 8, (safePage + 1) * 8);
+  const ordered = pcCustomer
+    ? Object.values(groupCustomerBookings(bookings, reviewBookingIds, now)).flat()
+    : bookings;
+  const rows = ordered.slice(safePage * 8, (safePage + 1) * 8);
   const reviewFailed = role === 'CUSTOMER' && status === 'review' && reviewUnavailable;
   const shop = (b: Booking) =>
     catalog?.stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot;
@@ -198,7 +207,12 @@ export function BookingQueue({
                         (b) => b.status === 'COMPLETED' && reviewBookingIds.includes(b.id),
                       ).length
                   : tab === 'attention'
-                    ? allBookings.filter((b) => needsAttention(b, role)).length
+                    ? pcCustomer
+                      ? reviewUnavailable
+                        ? '—'
+                        : allBookings.filter((b) => customerTaskKind(b, reviewBookingIds, now))
+                            .length
+                      : allBookings.filter((b) => needsAttention(b, role)).length
                     : tab === 'active'
                       ? allBookings.filter(
                           (b) =>
@@ -276,113 +290,131 @@ export function BookingQueue({
           </button>
         </div>
       </div>
+      {pcCustomer && reviewUnavailable && status !== 'review' && (
+        <p className="quality-error" role="alert">
+          {at(l, 'reviewUnavailable')}
+        </p>
+      )}
       {!reviewFailed && (
         <>
           {view === 'queue' ? (
             <>
-              <div className="mobile-booking-queue">
-                {rows.map((b) => (
-                  <button
-                    type="button"
-                    className="mobile-booking-row"
-                    key={b.id}
-                    aria-pressed={role === 'CUSTOMER' ? undefined : b.id === selectedId}
-                    onClick={() => select(b.id)}
-                  >
-                    <span className="mobile-booking-top">
-                      <span className={`status-badge status-${b.status.toLowerCase()}`}>
-                        {role === 'MERCHANT'
-                          ? merchantBookingStatus(l, b)
-                          : statusText(l, b.status)}
-                      </span>
-                      <small>{b.id.slice(-8).toUpperCase()}</small>
-                    </span>
-                    <strong>{staff(b)}</strong>
-                    <span>
-                      {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
-                      {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
-                    </span>
-                    <time>
-                      <CalendarDays size={15} />
-                      {dateTime(l, b.quote.startAt)} JST
-                    </time>
-                    <span className="mobile-booking-bottom">
-                      <strong>{money(l, b.quote.total)}</strong>
-                      <span>
-                        {dt(l, needsAttention(b, role) ? 'attention' : 'details')}
-                        <ArrowUpRight size={16} />
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="data-table queue-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{dt(l, 'reference')}</th>
-                      <th>{dt(l, 'session')}</th>
-                      <th>{dt(l, 'scheduled')}</th>
-                      <th>{t(l, 'status')}</th>
-                      <th>{t(l, 'total')}</th>
-                      <th>
-                        <span className="sr-only">{dt(l, 'view')}</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              {pcCustomer ? (
+                <PcCustomerBookingRows
+                  locale={l}
+                  bookings={rows}
+                  reviewIds={reviewBookingIds}
+                  catalog={catalog}
+                  now={now}
+                  status={status}
+                />
+              ) : (
+                <>
+                  <div className="mobile-booking-queue">
                     {rows.map((b) => (
-                      <tr key={b.id} data-selected={b.id === selectedId}>
-                        <td>
-                          <button
-                            className="reference-button"
-                            onClick={() => select(b.id)}
-                            aria-label={`${dt(l, 'view')} ${b.id.slice(-8).toUpperCase()}`}
-                          >
-                            {b.id.slice(-8).toUpperCase()}
-                          </button>
-                          <small>
-                            {t(l, b.quote.bookingMode === 'INSTANT' ? 'instant' : 'scheduled')}
-                          </small>
-                        </td>
-                        <td>
-                          <strong>{staff(b)}</strong>
-                          <small>
-                            {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
-                            {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
-                          </small>
-                        </td>
-                        <td>
-                          {dateTime(l, b.quote.startAt)}
-                          <small>JST</small>
-                        </td>
-                        <td>
+                      <button
+                        type="button"
+                        className="mobile-booking-row"
+                        key={b.id}
+                        aria-pressed={role === 'CUSTOMER' ? undefined : b.id === selectedId}
+                        onClick={() => select(b.id)}
+                      >
+                        <span className="mobile-booking-top">
                           <span className={`status-badge status-${b.status.toLowerCase()}`}>
                             {role === 'MERCHANT'
                               ? merchantBookingStatus(l, b)
                               : statusText(l, b.status)}
                           </span>
-                          {needsAttention(b, role) && (
-                            <small className="attention-label">{dt(l, 'attention')}</small>
-                          )}
-                        </td>
-                        <td>
+                          <small>{b.id.slice(-8).toUpperCase()}</small>
+                        </span>
+                        <strong>{staff(b)}</strong>
+                        <span>
+                          {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
+                          {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
+                        </span>
+                        <time>
+                          <CalendarDays size={15} />
+                          {dateTime(l, b.quote.startAt)} JST
+                        </time>
+                        <span className="mobile-booking-bottom">
                           <strong>{money(l, b.quote.total)}</strong>
-                        </td>
-                        <td>
-                          <button
-                            className="queue-open"
-                            onClick={() => select(b.id)}
-                            aria-label={`${dt(l, 'details')} ${b.id.slice(-8).toUpperCase()}`}
-                          >
-                            <ArrowUpRight size={17} />
-                          </button>
-                        </td>
-                      </tr>
+                          <span>
+                            {dt(l, needsAttention(b, role) ? 'attention' : 'details')}
+                            <ArrowUpRight size={16} />
+                          </span>
+                        </span>
+                      </button>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                  <div className="data-table queue-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>{dt(l, 'reference')}</th>
+                          <th>{dt(l, 'session')}</th>
+                          <th>{dt(l, 'scheduled')}</th>
+                          <th>{t(l, 'status')}</th>
+                          <th>{t(l, 'total')}</th>
+                          <th>
+                            <span className="sr-only">{dt(l, 'view')}</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((b) => (
+                          <tr key={b.id} data-selected={b.id === selectedId}>
+                            <td>
+                              <button
+                                className="reference-button"
+                                onClick={() => select(b.id)}
+                                aria-label={`${dt(l, 'view')} ${b.id.slice(-8).toUpperCase()}`}
+                              >
+                                {b.id.slice(-8).toUpperCase()}
+                              </button>
+                              <small>
+                                {t(l, b.quote.bookingMode === 'INSTANT' ? 'instant' : 'scheduled')}
+                              </small>
+                            </td>
+                            <td>
+                              <strong>{staff(b)}</strong>
+                              <small>
+                                {sv(l, b.quote.fulfillmentMode ?? 'HOME_VISIT')} · {shop(b)} ·{' '}
+                                {(b.quote.endAt - b.quote.startAt) / 60000} {t(l, 'minutes')}
+                              </small>
+                            </td>
+                            <td>
+                              {dateTime(l, b.quote.startAt)}
+                              <small>JST</small>
+                            </td>
+                            <td>
+                              <span className={`status-badge status-${b.status.toLowerCase()}`}>
+                                {role === 'MERCHANT'
+                                  ? merchantBookingStatus(l, b)
+                                  : statusText(l, b.status)}
+                              </span>
+                              {needsAttention(b, role) && (
+                                <small className="attention-label">{dt(l, 'attention')}</small>
+                              )}
+                            </td>
+                            <td>
+                              <strong>{money(l, b.quote.total)}</strong>
+                            </td>
+                            <td>
+                              <button
+                                className="queue-open"
+                                onClick={() => select(b.id)}
+                                aria-label={`${dt(l, 'details')} ${b.id.slice(-8).toUpperCase()}`}
+                              >
+                                <ArrowUpRight size={17} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div className="agenda-list">

@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { at } from '@/lib/admin-i18n';
+import { st } from '@/lib/merchant-i18n';
 import { AdminFrame } from '@/components/admin-navigation';
 import { MerchantNavigation } from '@/components/merchant-navigation';
 import { StaffNavigation, StaffLanguage } from '@/components/staff-navigation';
@@ -12,8 +13,10 @@ export async function generateMetadata({
   params: Promise<{ locale: string; workspace: string }>;
 }) {
   const p = await params;
+  const l = asLocale(p.locale);
   return {
-    title: at(asLocale(p.locale), 'experienceNav'),
+    // Only the platform moderates; shops and therapists read and reply to their reviews.
+    title: p.workspace === 'admin' ? at(l, 'experienceNav') : st(l, 'reviews'),
     robots: { index: false, follow: false },
   };
 }

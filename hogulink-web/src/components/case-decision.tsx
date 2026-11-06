@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Scale, CheckCircle2, Clock3, AlertTriangle } from 'lucide-react';
 import {
@@ -128,7 +129,7 @@ export function CaseDecisionPanel({
         merchantUnreachable: absent,
       },
       json = JSON.stringify(body);
-    if (retry.current.body !== json) retry.current = { body: json, key: crypto.randomUUID() };
+    if (retry.current.body !== json) retry.current = { body: json, key: newRequestKey() };
     try {
       await api(`support-tickets/${ticket.id}/decision`, body, 'POST', retry.current.key);
       setOpen(false);
@@ -155,7 +156,7 @@ export function CaseDecisionPanel({
     setBusy(true);
     const body = { ...receiptSnapshot.current, text: receiptText },
       json = JSON.stringify(body);
-    if (retry.current.body !== json) retry.current = { body: json, key: crypto.randomUUID() };
+    if (retry.current.body !== json) retry.current = { body: json, key: newRequestKey() };
     try {
       await api(
         `support-tickets/${ticket.id}/decision/acknowledgment`,

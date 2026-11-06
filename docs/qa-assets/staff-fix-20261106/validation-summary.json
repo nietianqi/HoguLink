@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-06",
+  "status": "FIXED_AND_VERIFIED",
+  "backendTests": { "passed": 814, "failed": 0 },
+  "frontendModelTests": { "passed": 184, "failed": 0 },
+  "demoMediaTests": { "passed": 5, "failed": 0 },
+  "businessSmoke": { "suites": 20, "assertions": 2125, "exitCode": 0 },
+  "targetedBackendTests": { "passed": 19, "failed": 0 },
+  "targetedModelTests": { "passed": 6, "failed": 0 },
+  "workspaceTypecheck": "PASS",
+  "finalProductionBuild": "PASS",
+  "browserViewports": ["1440x1000", "390x844"],
+  "database": "disposable in-memory",
+  "payments": "demo only",
+  "externalNotifications": "disabled",
+  "mainPreviewTestWrites": false,
+  "gitCommitOrPush": false
+}

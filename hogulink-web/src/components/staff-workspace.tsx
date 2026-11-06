@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { InStoreOrder } from './in-store-order';
 import { rt } from '@/lib/runtime-i18n';
 import { useDemoAccess } from '@/lib/use-runtime';
@@ -68,7 +69,13 @@ import { StaffNavigation, StaffLanguage } from './staff-navigation';
 import { StaffAlerts } from './staff-alerts';
 import { StaffPerformance } from './staff-performance';
 import { SafetyHelp } from './safety-help';
-import { fulfillmentMode, listingSupports, travelRecordOpensAt } from '@hogulink/contracts';
+import {
+  canTerminateStaffTask,
+  fulfillmentMode,
+  listingSupports,
+  travelRecordOpensAt,
+} from '@hogulink/contracts';
+import { serverClockNow, type ServerClock } from '@/lib/server-clock';
 import {
   staffCanMessage,
   staffPerformance,
@@ -87,6 +94,7 @@ type Block = {
   active: boolean;
 };
 type Workspace = {
+  serverNow: number;
   listing: Listing;
   store: {
     id: string;
@@ -135,9 +143,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     [error, setError] = useState(''),
     [readError, setReadError] = useState(''),
     [notice, setNotice] = useState('');
-  const [now, setNow] = useState(Date.now()),
+  const [now, setNow] = useState(0),
     [updated, setUpdated] = useState<number>(),
-    [day, setDay] = useState(japanDay(Date.now())),
+    [day, setDay] = useState(''),
     [filter, setFilter] = useState('active'),
     [search, setSearch] = useState('');
   const [review, setReview] = useState<Review | null>(null),
@@ -159,6 +167,9 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
   const [safetyOpen, setSafetyOpen] = useState(false),
     [connected, setConnected] = useState(true);
   const actionLock = useRef(false);
+  const serverClock = useRef<ServerClock | undefined>(undefined);
+  const currentTime = () =>
+    serverClock.current ? serverClockNow(serverClock.current, performance.now()) : 0;
   const generation = useRef(0),
     retry = useRef({ payload: '', key: '' });
   const hasRole = actor?.role === 'STAFF';
@@ -186,16 +197,23 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     const version = ++generation.current;
     setFetching(true);
     try {
-      const [workspace, orders] = await Promise.all([
-        api<Workspace>('staff/workspace'),
+      const [snapshot, orders] = await Promise.all([
+        api<Workspace>('staff/workspace').then((workspace) => ({
+          workspace,
+          sampledAt: performance.now(),
+        })),
         api<Booking[]>('bookings'),
       ]);
       if (version !== generation.current) return;
+      const { workspace, sampledAt } = snapshot;
+      serverClock.current = { serverNow: workspace.serverNow, sampledAt };
+      const syncedNow = serverClockNow(serverClock.current, performance.now());
       setData(workspace);
       setBookings(orders);
       setAccount(workspace.listing.staffId);
-      setUpdated(Date.now());
-      setNow(Date.now());
+      setUpdated(syncedNow);
+      setNow(syncedNow);
+      setDay((selectedDay) => selectedDay || japanDay(syncedNow));
       setReadError('');
     } catch (e) {
       if (version === generation.current) {
@@ -224,11 +242,16 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     setReview(null);
     setLeaveOpen(false);
     setReadError('');
+    serverClock.current = undefined;
+    setNow(0);
+    setDay('');
     void refresh();
     const poll = window.setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
     }, 30000);
-    const clock = window.setInterval(() => setNow(Date.now()), 1000);
+    const clock = window.setInterval(() => {
+      if (serverClock.current) setNow(serverClockNow(serverClock.current, performance.now()));
+    }, 1000);
     const resume = () => {
       setConnected(navigator.onLine);
       if (document.visibilityState === 'visible' && navigator.onLine) void refresh();
@@ -397,6 +420,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           ? ft(l, 'pending')
           : statusText(l, b.status);
   function openReview(b: Booking, action: Review['action']) {
+    if (action === 'SAFETY_TERMINATION' && !canTerminateStaffTask(b)) return;
     setSafetyOpen(false);
     setReview({ booking: b, action });
     setEta(b.arrivalMinutes ?? 45);
@@ -421,9 +445,10 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
     if (await mutate(() => api(path, payload))) setReview(null);
   }
   function openLeave() {
+    if (!serverClock.current) return;
     const start = Math.max(
       Date.parse(`${day}T09:00:00+09:00`),
-      Math.ceil((Date.now() + 60000) / 900000) * 900000,
+      Math.ceil((currentTime() + 60000) / 900000) * 900000,
     );
     setLeaveDraft({ start: japanInput(start), end: japanInput(start + 3600000), reason: 'BREAK' });
     setLeaveOpen(true);
@@ -691,7 +716,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           {!closed && b.quote.fulfillmentMode !== 'IN_STORE' && (
             <ArrivalPanel locale={l} booking={b} staff onUpdated={() => void refresh()} />
           )}
-          <NoShowPanel locale={l} booking={b} role="STAFF" onUpdated={refresh} />
+          <NoShowPanel locale={l} booking={b} role="STAFF" onUpdated={refresh} serverNow={now} />
         </section>
         {actor && (
           <OrderCoordination
@@ -849,13 +874,15 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                 >
                   {ft(l, 'sos')}
                 </button>
-                <button
-                  className="staff-text-button danger"
-                  disabled={busy}
-                  onClick={() => openReview(b, 'SAFETY_TERMINATION')}
-                >
-                  {ft(l, 'terminate')}
-                </button>
+                {canTerminateStaffTask(b) && (
+                  <button
+                    className="staff-text-button danger"
+                    disabled={busy}
+                    onClick={() => openReview(b, 'SAFETY_TERMINATION')}
+                  >
+                    {ft(l, 'terminate')}
+                  </button>
+                )}
               </div>
             )}
             <Link href={`/${l}/staff/support?booking=${encodeURIComponent(b.id)}`}>
@@ -899,12 +926,14 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
           </div>
           <div className="staff-heading-tools">
             <time>
-              {new Intl.DateTimeFormat(l, {
-                timeZone: 'Asia/Tokyo',
-                month: 'short',
-                day: 'numeric',
-                weekday: 'short',
-              }).format(now)}
+              {now
+                ? new Intl.DateTimeFormat(l, {
+                    timeZone: 'Asia/Tokyo',
+                    month: 'short',
+                    day: 'numeric',
+                    weekday: 'short',
+                  }).format(now)
+                : '—'}
               <small>JST</small>
             </time>
             <StaffLanguage locale={l} />
@@ -1632,13 +1661,15 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
                     ? so(l, 'safetyRecorded')
                     : ft(l, 'sos')}
                 </button>
-                <button
-                  className="staff-text-button danger"
-                  disabled={busy || !connected}
-                  onClick={() => openReview(selected, 'SAFETY_TERMINATION')}
-                >
-                  {ft(l, 'terminate')}
-                </button>
+                {canTerminateStaffTask(selected) && (
+                  <button
+                    className="staff-text-button danger"
+                    disabled={busy || !connected}
+                    onClick={() => openReview(selected, 'SAFETY_TERMINATION')}
+                  >
+                    {ft(l, 'terminate')}
+                  </button>
+                )}
               </div>
             )}
             <SafetyHelp
@@ -1788,7 +1819,8 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             if (
               !Number.isFinite(startAt) ||
               !Number.isFinite(endAt) ||
-              startAt <= Date.now() ||
+              !serverClock.current ||
+              startAt <= currentTime() ||
               endAt <= startAt
             ) {
               setError(ft(l, 'INVALID_TIME'));
@@ -1797,7 +1829,7 @@ export function StaffWorkspace({ locale: l }: { locale: Locale }) {
             const body = { startAt, endAt, reason: leaveDraft.reason },
               payload = JSON.stringify(body);
             if (retry.current.payload !== payload)
-              retry.current = { payload, key: crypto.randomUUID() };
+              retry.current = { payload, key: newRequestKey() };
             if (await mutate(() => api('staff/time-off-requests', body, 'POST', retry.current.key)))
               setLeaveOpen(false);
           }}

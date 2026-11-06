@@ -1,0 +1,47 @@
+{
+  "reproduced": 4,
+  "results": [
+    {
+      "case": "safety-after-full-service",
+      "before": {
+        "status": "AWAITING_COMPLETION",
+        "payment": "AUTHORIZED",
+        "captured": 0
+      },
+      "after": {
+        "status": "CANCELLED",
+        "payment": "VOIDED",
+        "captured": 0,
+        "confirmError": "INVALID_STATE"
+      }
+    },
+    {
+      "case": "declined-staff-can-cancel-shop-order",
+      "before": {
+        "status": "ACCEPTED",
+        "staffTaskStatus": "DECLINED"
+      },
+      "after": {
+        "status": "CANCELLED",
+        "payment": "VOIDED"
+      }
+    },
+    {
+      "case": "staff-financial-fields",
+      "fields": {
+        "capturedAmount": 8700,
+        "refundedAmount": 500,
+        "platformFee": 770,
+        "inferredRefundBalance": 8200
+      },
+      "addressHidden": true
+    },
+    {
+      "case": "two-minute-device-clock-drift",
+      "serverNow": 1792287000000,
+      "deviceNow": 1792286880000,
+      "uiTravelEnabled": false,
+      "serverStatus": "EN_ROUTE"
+    }
+  ]
+}

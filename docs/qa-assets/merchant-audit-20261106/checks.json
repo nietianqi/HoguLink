@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-06",
+  "baselineCommit": "4fa74df9b809afc9f28058868508fa6b6560a433",
+  "branch": "main",
+  "includesExistingWorkingTreeChanges": true,
+  "backend": { "passed": 814, "failed": 0, "exitCode": 0 },
+  "frontendModels": { "passed": 184, "failed": 0, "exitCode": 0 },
+  "httpSsrSmoke": { "suites": 20, "assertions": 2125, "exitCode": 0 },
+  "targetedFlow": "flow-result.json",
+  "targetedEdgeCases": "edge-case-results.json",
+  "knownIssues": [
+    { "id": "MERCHANT-OVERVIEW-SAFETY", "severity": "P2", "status": "FIXED_AND_VERIFIED" },
+    { "id": "MERCHANT-DEVICE-CLOCK", "severity": "P2", "status": "FIXED_AND_VERIFIED" }
+  ],
+  "followUpReport": "docs/MERCHANT_BUSINESS_FIXES_2026-11-06.md",
+  "note": "Counts above describe the original audit; follow-up verification is recorded separately.",
+  "viewports": ["1440x1000", "390x844"],
+  "database": "disposable in-memory",
+  "payments": "demo",
+  "externalNotifications": "disabled",
+  "mainPreviewTestWrites": false,
+  "productCodeChanged": false,
+  "commitOrPush": false
+}

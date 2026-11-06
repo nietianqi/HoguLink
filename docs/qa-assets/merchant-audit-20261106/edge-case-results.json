@@ -1,0 +1,18 @@
+{
+  "clock": {
+    "serverNow": 1793935871710,
+    "deviceNow": 1793951062297,
+    "leaveStart": 1793943000000,
+    "uiApproveDisabled": true,
+    "apiDecision": "APPROVED"
+  },
+  "overrun": {
+    "id": "booking_d5ddf1b4-43b8-4031-8143-f32619b42949",
+    "status": "IN_SERVICE",
+    "startAt": 1793935800000,
+    "endAt": 1793939400000,
+    "serverNow": 1793951062308,
+    "deviceNow": 1793951062311,
+    "capturedAmount": 0
+  }
+}

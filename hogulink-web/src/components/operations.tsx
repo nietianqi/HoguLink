@@ -68,6 +68,8 @@ import { pc } from '@/lib/pc-consumer-i18n';
 import { MapPin, MessageCircle, LifeBuoy } from 'lucide-react';
 import { ca } from '@/lib/customer-auth-i18n';
 import { loadCustomerBookings } from '@/lib/customer-booking-data';
+import { customerTaskKind } from '@/lib/account-model';
+import { usePcLayout } from '@/lib/use-pc-layout';
 import {
   loadPartnerBookings,
   type PartnerDashboard as Dashboard,
@@ -94,6 +96,8 @@ export function Operations({
   initialFilter?: BookingFilter;
 }) {
   const { actor, setActor, loading } = useSession();
+  const isPc = usePcLayout();
+  const [customerNow, setCustomerNow] = useState<number>();
   const demoAccess = useDemoAccess();
   const [queueSearch, setQueueSearch] = useState('');
   const [queueStatus, setQueueStatus] = useState<BookingFilter>(initialFilter);
@@ -138,6 +142,7 @@ export function Operations({
       });
       setBookings(next.bookings);
       setReviewBookingIds(overview?.reviewBookingIds ?? []);
+      setCustomerNow(overview?.now);
       setReviewUnavailable(!bookingId && !overview);
       setOrdersLoaded(true);
       return;
@@ -168,6 +173,7 @@ export function Operations({
     messageVersion.current++;
     setOrdersLoaded(false);
     setReviewBookingIds([]);
+    setCustomerNow(undefined);
     setReviewUnavailable(false);
     setBookings([]);
     setCatalog(undefined);
@@ -281,15 +287,45 @@ export function Operations({
     }
   }
   const hasRole = actor?.role === role;
+  useEffect(() => {
+    if (!isPc || role !== 'CUSTOMER' || !bookingId || !ordersLoaded) return;
+    const reveal = () => {
+      const id = window.location.hash.slice(1);
+      if (
+        ![
+          `order-policy-${bookingId}`,
+          `order-messages-${bookingId}`,
+          `customer-review-${bookingId}`,
+          `customer-completion-${bookingId}`,
+          `customer-replacement-${bookingId}`,
+          `customer-guarantee-${bookingId}`,
+        ].includes(id)
+      )
+        return;
+      const panel = document.getElementById(id);
+      if (panel instanceof HTMLDetailsElement) panel.open = true;
+      panel?.scrollIntoView({ block: 'start' });
+    };
+    const frame = requestAnimationFrame(reveal);
+    window.addEventListener('hashchange', reveal);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('hashchange', reveal);
+    };
+  }, [isPc, role, bookingId, ordersLoaded]);
   const visibleBookings = filterBookings(bookings, {
     role,
-    status: queueStatus,
+    status: role === 'CUSTOMER' && isPc && queueStatus === 'attention' ? 'all' : queueStatus,
     search: queueSearch,
     period: queuePeriod,
     reviewBookingIds,
     describe: (b) =>
       `${stores.find((s) => s.id === b.storeId)?.name[l] ?? b.legalNameSnapshot} ${listingName(b.assignedListingId)} ${listingName(b.selectedStaffListingId)}`,
-  });
+  }).filter(
+    (b) =>
+      !(role === 'CUSTOMER' && isPc && queueStatus === 'attention') ||
+      !!customerTaskKind(b, reviewBookingIds, customerNow),
+  );
   const missingInitial =
     ordersLoaded &&
     !!initialSelected &&
@@ -553,6 +589,7 @@ export function Operations({
                     status={queueStatus}
                     onStatus={setQueueStatus}
                     period={queuePeriod}
+                    now={customerNow}
                     onPeriod={setQueuePeriod}
                   />
                 </OrderQueueDisclosure>

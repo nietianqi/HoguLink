@@ -1,8 +1,76 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { type SafetyEvent } from '@hogulink/contracts';
-import { fixture, booking, staff, customer, shop } from './helpers/experience-fixture.js';
+import { fixture, booking, start, staff, customer, shop } from './helpers/experience-fixture.js';
 const code = (value: string) => (error: unknown) => (error as { code?: string }).code === value;
+
+test('a finished service cannot be cancelled by staff safety termination; SOS keeps acceptance intact', () =>
+  fixture(async (e, clock) => {
+    let b = await start(e, clock);
+    clock.now = b.startedAt! + b.quote.endAt - b.quote.startAt;
+    b = await e.event(staff, b.id, b.version, 'COMPLETE');
+    const before = await e.booking(customer, b.id);
+    const records = () =>
+      e.repo.read(async (tx) => ({
+        payments: await tx.list('payments'),
+        holds: await tx.list('holds'),
+        fees: await tx.list('feeEntries'),
+        safety: await tx.list('safety'),
+      }));
+    const saved = await records();
+    await assert.rejects(
+      e.safety(staff, b.id, 'SAFETY_TERMINATION', b.version),
+      code('INVALID_STATE'),
+    );
+    assert.deepEqual(await e.booking(customer, b.id), before);
+    assert.deepEqual(await records(), saved);
+    b = await e.safety(staff, b.id, 'SOS', b.version);
+    assert.equal(b.status, 'AWAITING_COMPLETION');
+    assert.equal(b.paymentStatus, 'AUTHORIZED');
+    assert.equal(b.capturedAmount, 0);
+    b = await e.completionAction(
+      customer,
+      b.id,
+      {
+        version: b.version,
+        action: 'CONFIRM',
+        expectedAmount: b.quote.total,
+      },
+      'staff-safety-customer-confirm',
+    );
+    assert.equal(b.status, 'COMPLETED');
+    assert.equal(b.capturedAmount, b.quote.total);
+  }));
+
+for (const task of ['OFFERED', 'DECLINED', 'WITHDRAWN'] as const)
+  test(`${task} staff cannot use safety termination to cancel the shop's order`, () =>
+    fixture(async (e) => {
+      let b = await booking(e);
+      if (task === 'WITHDRAWN') b = await e.ack(staff, b.id, b.version);
+      if (task !== 'OFFERED')
+        b = await e.decline(staff, b.id, b.version, 'Transport: cannot serve');
+      const before = await e.booking(customer, b.id);
+      assert.equal(before.staffTaskStatus, task);
+      await assert.rejects(
+        e.safety(staff, b.id, 'SAFETY_TERMINATION', b.version),
+        code('INVALID_STATE'),
+      );
+      assert.deepEqual(await e.booking(customer, b.id), before);
+      assert.equal((await e.care.safetyEvents(staff)).length, 0);
+      b = await e.safety(staff, b.id, 'SOS', b.version);
+      assert.equal(b.status, before.status);
+      assert.equal(b.staffTaskStatus, task);
+    }));
+
+test('an acknowledged task can still be terminated for safety during actual service', () =>
+  fixture(async (e, clock) => {
+    let b = await start(e, clock);
+    b = await e.safety(staff, b.id, 'SAFETY_TERMINATION', b.version);
+    assert.equal(b.status, 'CANCELLED');
+    assert.equal(b.cancelReason, 'SAFETY_TERMINATION');
+    assert.equal(b.paymentStatus, 'VOIDED');
+    assert.equal(b.capturedAmount, 0);
+  }));
 test('safety notification progress distinguishes queued, failed, partial and accepted delivery', () =>
   fixture(async (e) => {
     let b = await booking(e);

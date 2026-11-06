@@ -21,6 +21,7 @@ import type {
   Store,
   StoreBookingRules,
   SafetyEvent,
+  SafetyCheckIn,
   ExperienceReview,
   ExperienceReply,
   TimeOffRequest,
@@ -88,7 +89,25 @@ export class MerchantService {
         status: 'APPROVED',
       });
       const replies = await tx.find<ExperienceReply>('experienceReplies', { storeId: store.id });
+      const urgentSafetyBookingIds = [
+        ...new Set([
+          ...(
+            await tx.find<SafetyCheckIn>('safetyCheckIns', {
+              storeId: store.id,
+              status: 'ESCALATED',
+            })
+          ).map((check) => check.bookingId),
+          ...(
+            await tx.find<SafetyEvent>('safety', {
+              storeId: store.id,
+              status: 'OPEN',
+            })
+          ).map((event) => event.bookingId),
+        ]),
+      ].sort();
       return {
+        serverNow: this.now(),
+        urgentSafetyBookingIds,
         unrepliedReviews: reviews.filter(
           (r) =>
             !replies.some(

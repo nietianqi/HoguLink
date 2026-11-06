@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { pc } from '@/lib/pc-consumer-i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -54,7 +55,7 @@ function HandoffCard({
     const body = { version: h.version, action, text },
       fingerprint = JSON.stringify(body);
     if (retry.current.body !== fingerprint)
-      retry.current = { body: fingerprint, key: crypto.randomUUID() };
+      retry.current = { body: fingerprint, key: newRequestKey() };
     try {
       await api(`work-handoffs/${h.id}/actions`, body, 'POST', retry.current.key);
       if (live.current) {
@@ -485,7 +486,7 @@ export function OrderCoordination({
               },
               fingerprint = JSON.stringify(body);
             if (retry.current.body !== fingerprint)
-              retry.current = { body: fingerprint, key: crypto.randomUUID() };
+              retry.current = { body: fingerprint, key: newRequestKey() };
             try {
               await api(`bookings/${b.id}/handoffs`, body, 'POST', retry.current.key);
               if (live.current) {

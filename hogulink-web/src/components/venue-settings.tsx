@@ -1,4 +1,5 @@
 'use client';
+import { newRequestKey } from '@/lib/request-key';
 import { useEffect, useRef, useState } from 'react';
 import {
   editableVenue,
@@ -206,7 +207,7 @@ export function VenueSettings({
                       id:
                         venue?.resources.find((r) => r.name === name)?.id ??
                         venue?.resources[i]?.id ??
-                        `unit-${crypto.randomUUID()}`,
+                        `unit-${newRequestKey()}`,
                       name,
                       active: true,
                     })),
